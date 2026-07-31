@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
 type system interface {
@@ -39,10 +41,9 @@ func sdkToolPath(goos, root, name string) string {
 }
 
 func simulatorPath(goos, root string) string {
-	switch goos {
-	case "darwin":
-		return filepath.Join(root, "bin", "Playdate Simulator.app", "Contents", "MacOS", "Playdate Simulator")
-	default:
-		return sdkToolPath(goos, root, "PlaydateSimulator")
+	policy, err := hostpolicy.For(goos)
+	if err != nil || len(policy.SimulatorCandidates) == 0 {
+		return ""
 	}
+	return filepath.Join(root, policy.SimulatorCandidates[0])
 }

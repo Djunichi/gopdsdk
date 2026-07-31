@@ -7,9 +7,12 @@ stable yet. The official Playdate C API is the normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
 references. Their implementation is not copied.
 
-The initial target matrix is Windows, macOS, and Linux for both Simulator and
-physical-device workflows. Public documentation will be added as the API takes
-shape; design documents remain internal during P0.
+The target matrix is Windows, macOS, and Linux for both Simulator and
+physical-device workflows. Host policy selects `.dll`, `.dylib`, or `.so`, the
+official SDK tool names, native compiler candidates, and Simulator layout.
+Windows is verified end to end; macOS and Linux execution remains unverified
+until run with their official SDK distributions. Public documentation will be
+added as the API takes shape; design documents remain internal during P0.
 
 ## Environment diagnostics
 

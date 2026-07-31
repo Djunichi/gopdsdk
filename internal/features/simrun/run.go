@@ -12,6 +12,7 @@ import (
 	"runtime"
 
 	"github.com/Djunichi/gopdsdk/internal/features/build"
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
 // Options supplies run dependencies for the command boundary.
@@ -63,14 +64,22 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer, options O
 
 // Launch starts Playdate Simulator and leaves it running.
 func Launch(sdkPath, pdxPath string) (int, error) {
-	if runtime.GOOS != "windows" {
-		return 0, fmt.Errorf("Simulator launch is not implemented for host %s", runtime.GOOS)
+	policy, err := hostpolicy.For(runtime.GOOS)
+	if err != nil {
+		return 0, err
 	}
-	simulator := filepath.Join(filepath.Clean(sdkPath), "bin", "PlaydateSimulator.exe")
-	if info, err := os.Stat(simulator); err != nil || info.IsDir() {
-		return 0, fmt.Errorf("required file %s is unavailable", simulator)
+	var simulator string
+	for _, relative := range policy.SimulatorCandidates {
+		candidate := filepath.Join(filepath.Clean(sdkPath), relative)
+		if info, statErr := os.Stat(candidate); statErr == nil && !info.IsDir() {
+			simulator = candidate
+			break
+		}
 	}
-	pdxPath, err := filepath.Abs(filepath.Clean(pdxPath))
+	if simulator == "" {
+		return 0, fmt.Errorf("Playdate Simulator is unavailable under %s", filepath.Join(filepath.Clean(sdkPath), "bin"))
+	}
+	pdxPath, err = filepath.Abs(filepath.Clean(pdxPath))
 	if err != nil {
 		return 0, fmt.Errorf("resolve .pdx path: %w", err)
 	}

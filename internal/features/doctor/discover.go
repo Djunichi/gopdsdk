@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
 type sdkCandidate struct {
@@ -148,14 +150,11 @@ func findTool(ctx context.Context, sys system, name string) (Tool, bool) {
 }
 
 func hostCompilerCandidates(goos string) []string {
-	switch goos {
-	case "windows":
-		return []string{"gcc", "clang", "cl"}
-	case "darwin":
-		return []string{"clang", "cc"}
-	default:
-		return []string{"gcc", "clang", "cc"}
+	policy, err := hostpolicy.For(goos)
+	if err != nil {
+		return nil
 	}
+	return policy.CompilerCandidates
 }
 
 func assess(report Report, sdkErr error, goos string) []Capability {

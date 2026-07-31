@@ -16,6 +16,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
 	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
 const sdkModule = "github.com/Djunichi/gopdsdk"
@@ -49,8 +50,9 @@ type packageInfo struct {
 
 // Simulator builds an importable Go package into a Playdate Simulator .pdx.
 func Simulator(ctx context.Context, config Config) (Result, error) {
-	if runtime.GOOS != "windows" {
-		return Result{}, fmt.Errorf("Simulator build is not implemented for host %s", runtime.GOOS)
+	policy, err := hostpolicy.For(runtime.GOOS)
+	if err != nil {
+		return Result{}, err
 	}
 	if config.SDKPath == "" {
 		return Result{}, fmt.Errorf("Playdate SDK path is required")
@@ -82,16 +84,16 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("resolve Playdate SDK path: %w", err)
 	}
-	pdc := filepath.Join(sdkPath, "bin", "pdc.exe")
+	pdc := filepath.Join(sdkPath, "bin", policy.PDCName)
 	apiHeader := filepath.Join(sdkPath, "C_API", "pd_api.h")
 	for _, path := range []string{pdc, apiHeader} {
 		if info, statErr := os.Stat(path); statErr != nil || info.IsDir() {
 			return Result{}, fmt.Errorf("required file %s is unavailable", path)
 		}
 	}
-	gcc, err := exec.LookPath("gcc")
+	compiler, err := lookPathAny(policy.CompilerCandidates)
 	if err != nil {
-		return Result{}, fmt.Errorf("find gcc: %w", err)
+		return Result{}, err
 	}
 
 	output := config.Output
@@ -126,7 +128,7 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, err
 	}
 	plan = buildplan.Resolve(plan, map[string]string{
-		"${WORK}": workDir, "${HOST_LIBRARY}": "dll", "${CC}": gcc,
+		"${WORK}": workDir, "${HOST_LIBRARY}": policy.LibraryExtension, "${CC}": compiler,
 		"${PDC}": pdc, "${PACKAGE_OUTPUT}": temporaryPDX,
 	})
 	cleanupPaths, err := buildplan.CleanupPaths(plan)
@@ -184,6 +186,15 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write output: %w", err)
 	}
 	return Result{PackageImport: app.ImportPath, Output: output}, nil
+}
+
+func lookPathAny(candidates []string) (string, error) {
+	for _, candidate := range candidates {
+		if path, err := exec.LookPath(candidate); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("find host C compiler (tried %s)", strings.Join(candidates, ", "))
 }
 
 func cleanupArtifacts(paths []string) {

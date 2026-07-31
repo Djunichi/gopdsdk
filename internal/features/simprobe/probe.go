@@ -13,6 +13,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
 	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
 // Config identifies the Playdate SDK used by the probe.
@@ -33,8 +34,9 @@ type Result struct {
 
 // Probe builds, inspects, and packages a minimal Simulator extension.
 func Probe(ctx context.Context, config Config) (Result, error) {
-	if runtime.GOOS != "windows" {
-		return Result{}, fmt.Errorf("simulator probe is not implemented for host %s", runtime.GOOS)
+	policy, err := hostpolicy.For(runtime.GOOS)
+	if err != nil {
+		return Result{}, err
 	}
 
 	sdkPath, err := filepath.Abs(filepath.Clean(config.SDKPath))
@@ -45,7 +47,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("read SDK version: %w", err)
 	}
-	pdc := filepath.Join(sdkPath, "bin", "pdc.exe")
+	pdc := filepath.Join(sdkPath, "bin", policy.PDCName)
 	if err := requireFile(pdc); err != nil {
 		return Result{}, err
 	}
@@ -53,13 +55,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := requireFile(apiHeader); err != nil {
 		return Result{}, err
 	}
-	gcc, err := exec.LookPath("gcc")
+	compiler, err := findCompiler(policy.CompilerCandidates)
 	if err != nil {
-		return Result{}, fmt.Errorf("find gcc: %w", err)
-	}
-	objdump, err := exec.LookPath("objdump")
-	if err != nil {
-		return Result{}, fmt.Errorf("find objdump: %w", err)
+		return Result{}, err
 	}
 	module, err := gomodule.Locate(ctx)
 	if err != nil {
@@ -107,12 +105,13 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write pdxinfo: %w", err)
 	}
 
-	dllPath := filepath.Join(sourceDir, "pdex.dll")
+	libraryName := "pdex." + policy.LibraryExtension
+	dllPath := filepath.Join(sourceDir, libraryName)
 	build := exec.CommandContext(ctx, "go", "build", "-buildmode=c-shared", "-o", dllPath, ".")
 	build.Dir = workDir
 	build.Env = append(os.Environ(),
 		"CGO_ENABLED=1",
-		"CC="+gcc,
+		"CC="+compiler,
 		"CGO_CFLAGS=-DTARGET_EXTENSION=1 -DTARGET_SIMULATOR=1",
 	)
 	if output, runErr := build.CombinedOutput(); runErr != nil {
@@ -123,13 +122,13 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	_ = os.Remove(filepath.Join(sourceDir, "pdex.h"))
 
-	inspect := exec.CommandContext(ctx, objdump, "-p", dllPath)
+	inspect := exec.CommandContext(ctx, "go", "tool", "nm", dllPath)
 	output, runErr := inspect.CombinedOutput()
 	if runErr != nil {
-		return Result{}, commandError("inspect DLL exports", runErr, output)
+		return Result{}, commandError("inspect Simulator exports", runErr, output)
 	}
 	if !containsExport(string(output), simabi.EventHandlerExport) {
-		return Result{}, fmt.Errorf("inspect DLL exports: %s was not exported", simabi.EventHandlerExport)
+		return Result{}, fmt.Errorf("inspect Simulator exports: %s was not exported", simabi.EventHandlerExport)
 	}
 
 	pdxPath := filepath.Join(workDir, "Probe.pdx")
@@ -141,14 +140,14 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if info, statErr := os.Stat(pdxPath); statErr != nil || !info.IsDir() {
 		return Result{}, fmt.Errorf("package probe: pdc did not create %s", pdxPath)
 	}
-	if err := requireFile(filepath.Join(pdxPath, "pdex.dll")); err != nil {
+	if err := requireFile(filepath.Join(pdxPath, libraryName)); err != nil {
 		return Result{}, fmt.Errorf("package probe: %w", err)
 	}
 
 	verifiedEvent := ""
 	if config.RunSimulator {
-		simulator := filepath.Join(sdkPath, "bin", "PlaydateSimulator.exe")
-		if err := requireFile(simulator); err != nil {
+		simulator, err := findSimulator(sdkPath, policy.SimulatorCandidates)
+		if err != nil {
 			return Result{}, err
 		}
 		timeout := config.Timeout
@@ -163,11 +162,30 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 
 	return Result{
 		SDKVersion: strings.TrimSpace(string(versionBytes)),
-		Compiler:   firstLine(runVersion(ctx, gcc)),
+		Compiler:   firstLine(runVersion(ctx, compiler)),
 		Export:     simabi.EventHandlerExport,
-		Package:    "pdex.dll in .pdx",
+		Package:    libraryName + " in .pdx",
 		Event:      verifiedEvent,
 	}, nil
+}
+
+func findCompiler(candidates []string) (string, error) {
+	for _, candidate := range candidates {
+		if path, err := exec.LookPath(candidate); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("find host C compiler (tried %s)", strings.Join(candidates, ", "))
+}
+
+func findSimulator(sdkPath string, candidates []string) (string, error) {
+	for _, relative := range candidates {
+		path := filepath.Join(sdkPath, relative)
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("Playdate Simulator is unavailable under %s", filepath.Join(sdkPath, "bin"))
 }
 
 func requireFile(path string) error {
@@ -184,7 +202,7 @@ func requireFile(path string) error {
 func containsExport(output, name string) bool {
 	for _, line := range strings.Split(output, "\n") {
 		fields := strings.Fields(line)
-		if len(fields) > 0 && fields[len(fields)-1] == name {
+		if len(fields) > 0 && (fields[len(fields)-1] == name || fields[len(fields)-1] == "_"+name) {
 			return true
 		}
 	}
