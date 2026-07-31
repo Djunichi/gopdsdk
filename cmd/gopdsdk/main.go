@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Djunichi/gopdsdk/internal/features/build"
+	"github.com/Djunichi/gopdsdk/internal/features/deviceprobe"
 	"github.com/Djunichi/gopdsdk/internal/features/doctor"
 	"github.com/Djunichi/gopdsdk/internal/features/initproject"
 	"github.com/Djunichi/gopdsdk/internal/features/simprobe"
@@ -32,7 +33,11 @@ func main() {
 		case "init":
 			err = initproject.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "probe":
-			err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+			if len(args) > 1 && args[1] == "device" {
+				err = deviceprobe.Run(context.Background(), args, os.Stdout)
+			} else {
+				err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+			}
 		case "run":
 			err = simrun.Run(context.Background(), args, os.Stdout, os.Stderr, simrun.Options{})
 		default:

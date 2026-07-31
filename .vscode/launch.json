@@ -38,6 +38,15 @@
       "cwd": "${workspaceFolder}"
     },
     {
+      "name": "gopdsdk: device compile probe",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": ["probe", "device"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
       "name": "gopdsdk: simulator acceptance",
       "type": "go",
       "request": "launch",

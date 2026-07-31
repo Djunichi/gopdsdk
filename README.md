@@ -55,6 +55,16 @@ go run ./cmd/gopdsdk probe simulator --run --sdk /path/to/PlaydateSDK
 The automated probe intentionally terminates the Simulator process it launches
 after verification succeeds or the timeout expires.
 
+Verify the first device compilation stage with:
+
+```sh
+go run ./cmd/gopdsdk probe device
+```
+
+This currently proves TinyGo Cortex-M7 object generation, ELF32/ARM format, and
+the `eventHandler` export. It does not yet prove the Playdate runtime adaptation,
+final `pdex.elf` link, packaging, or execution on physical hardware.
+
 ## Build a Simulator application
 
 Create an independent starter project during P0 with:
