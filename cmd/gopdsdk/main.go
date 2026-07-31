@@ -34,7 +34,7 @@ func main() {
 			err = initproject.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "probe":
 			if len(args) > 1 && args[1] == "device" {
-				err = deviceprobe.Run(context.Background(), args, os.Stdout)
+				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
 			} else {
 				err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
 			}

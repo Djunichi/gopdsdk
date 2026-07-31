@@ -20,8 +20,27 @@ type Result struct {
 	Pending string
 }
 
-// Probe compiles and inspects a minimal Cortex-M7 Go object.
-func Probe(ctx context.Context) (Result, error) {
+// Config identifies the official Playdate SDK used for the link stage.
+type Config struct {
+	SDKPath string
+}
+
+// Probe compiles and links a structural Playdate device ELF.
+func Probe(ctx context.Context, config Config) (Result, error) {
+	if config.SDKPath == "" {
+		return Result{}, fmt.Errorf("Playdate SDK path is required")
+	}
+	sdkPath, err := filepath.Abs(filepath.Clean(config.SDKPath))
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve Playdate SDK path: %w", err)
+	}
+	setupSource := filepath.Join(sdkPath, "C_API", "buildsupport", "setup.c")
+	linkerScript := filepath.Join(sdkPath, "C_API", "buildsupport", "link_map.ld")
+	for _, path := range []string{filepath.Join(sdkPath, "C_API", "pd_api.h"), setupSource, linkerScript} {
+		if info, statErr := os.Stat(path); statErr != nil || info.IsDir() {
+			return Result{}, fmt.Errorf("required file %s is unavailable", path)
+		}
+	}
 	tinygo, err := exec.LookPath("tinygo")
 	if err != nil {
 		return Result{}, fmt.Errorf("find tinygo: %w", err)
@@ -34,6 +53,10 @@ func Probe(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("find arm-none-eabi-readelf: %w", err)
 	}
+	nm, err := exec.LookPath("arm-none-eabi-nm")
+	if err != nil {
+		return Result{}, fmt.Errorf("find arm-none-eabi-nm: %w", err)
+	}
 	workDir, err := os.MkdirTemp("", "gopdsdk-device-probe-")
 	if err != nil {
 		return Result{}, fmt.Errorf("create device probe directory: %w", err)
@@ -45,18 +68,37 @@ func Probe(ctx context.Context) (Result, error) {
 	}{
 		{name: "go.mod", contents: fmt.Sprintf("module sdk.gopdsdk/deviceprobe\n\ngo %s\n", strings.TrimPrefix(runtime.Version(), "go"))},
 		{name: "main.go", contents: probeSource},
+		{name: "playdate.json", contents: targetSource},
+		{name: "adapter.S", contents: adapterSource},
 	} {
 		if err := os.WriteFile(filepath.Join(workDir, file.name), []byte(file.contents), 0o644); err != nil {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
 	objectPath := filepath.Join(workDir, "probe.o")
-	command := exec.CommandContext(ctx, tinygo, "build", "-target", "nucleo-f722ze", "-scheduler", "none", "-gc", "leaking", "-panic", "trap", "-o", objectPath, ".")
-	command.Dir = workDir
-	if output, runErr := command.CombinedOutput(); runErr != nil {
-		return Result{}, commandError("compile TinyGo Cortex-M7 object", runErr, output)
+	if err := runCommand(ctx, workDir, "compile TinyGo Playdate object", tinygo,
+		"build", "-target", filepath.Join(workDir, "playdate.json"), "-scheduler", "none", "-gc", "leaking", "-panic", "trap", "-o", objectPath, "."); err != nil {
+		return Result{}, err
 	}
-	command = exec.CommandContext(ctx, readelf, "-h", "-s", objectPath)
+	setupObject := filepath.Join(workDir, "setup.o")
+	adapterObject := filepath.Join(workDir, "adapter.o")
+	compileFlags := []string{"-c", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-O2", "-ffunction-sections", "-fdata-sections"}
+	setupArgs := append(append([]string{}, compileFlags...), "-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", filepath.Join(sdkPath, "C_API"), setupSource, "-o", setupObject)
+	if err := runCommand(ctx, workDir, "compile official Playdate setup", gcc, setupArgs...); err != nil {
+		return Result{}, err
+	}
+	adapterArgs := append(append([]string{}, compileFlags...), filepath.Join(workDir, "adapter.S"), "-o", adapterObject)
+	if err := runCommand(ctx, workDir, "compile TinyGo runtime adapter", gcc, adapterArgs...); err != nil {
+		return Result{}, err
+	}
+	elfPath := filepath.Join(workDir, "pdex.elf")
+	if err := runCommand(ctx, workDir, "link Playdate device ELF", gcc,
+		objectPath, setupObject, adapterObject,
+		"-nostartfiles", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16",
+		"-T", linkerScript, linkerFlags, "-o", elfPath); err != nil {
+		return Result{}, err
+	}
+	command := exec.CommandContext(ctx, readelf, "-h", "-A", "-s", elfPath)
 	output, runErr := command.CombinedOutput()
 	if runErr != nil {
 		return Result{}, commandError("inspect ARM object", runErr, output)
@@ -67,21 +109,40 @@ func Probe(ctx context.Context) (Result, error) {
 		required    string
 	}{
 		{description: "ELF class", required: "Class:                             ELF32"},
-		{description: "ELF type", required: "Type:                              REL (Relocatable file)"},
+		{description: "ELF type", required: "Type:                              EXEC (Executable file)"},
 		{description: "machine", required: "Machine:                           ARM"},
 		{description: "export", required: "eventHandler"},
+		{description: "entry point", required: "eventHandlerShim"},
+		{description: "hard-float ABI", required: "Tag_ABI_VFP_args: VFP registers"},
 	} {
 		if !strings.Contains(inspection, check.required) {
 			return Result{}, fmt.Errorf("inspect ARM object: %s was not verified", check.description)
 		}
 	}
+	undefined := exec.CommandContext(ctx, nm, "-u", elfPath)
+	undefinedOutput, runErr := undefined.CombinedOutput()
+	if runErr != nil {
+		return Result{}, commandError("inspect unresolved ELF symbols", runErr, undefinedOutput)
+	}
+	if strings.TrimSpace(string(undefinedOutput)) != "" {
+		return Result{}, fmt.Errorf("inspect unresolved ELF symbols: %s", strings.TrimSpace(string(undefinedOutput)))
+	}
 	return Result{
 		TinyGo:  firstLine(runVersion(ctx, tinygo, "version")),
 		GCC:     firstLine(runVersion(ctx, gcc, "--version")),
-		Format:  "ELF32 ARM relocatable object",
+		Format:  "ELF32 ARM executable, hard-float",
 		Export:  "eventHandler",
-		Pending: "Playdate runtime adaptation and pdex.elf link",
+		Pending: "TinyGo runtime initialization, Playdate-backed heap, packaging, and hardware execution",
 	}, nil
+}
+
+func runCommand(ctx context.Context, directory, action, executable string, args ...string) error {
+	command := exec.CommandContext(ctx, executable, args...)
+	command.Dir = directory
+	if output, err := command.CombinedOutput(); err != nil {
+		return commandError(action, err, output)
+	}
+	return nil
 }
 
 func runVersion(ctx context.Context, executable, argument string) string {
@@ -112,3 +173,39 @@ func eventHandler(uintptr, int32, uint32) int32 { return 0 }
 
 func main() {}
 `
+
+const targetSource = `{
+  "inherits": ["cortex-m7"],
+  "llvm-target": "thumbv7em-unknown-unknown-eabihf",
+  "build-tags": ["nucleof722ze", "stm32f722", "stm32f7x2", "stm32f7", "stm32"],
+  "serial": "none",
+  "cflags": ["-mfloat-abi=hard", "-mfpu=fpv5-sp-d16"]
+}
+`
+
+const adapterSource = `.syntax unified
+.thumb
+
+.section .text.DisableInterrupts,"ax",%progbits
+.global DisableInterrupts
+.type DisableInterrupts, %function
+.thumb_func
+DisableInterrupts:
+    mrs r0, primask
+    cpsid i
+    bx lr
+
+.section .text.EnableInterrupts,"ax",%progbits
+.global EnableInterrupts
+.type EnableInterrupts, %function
+.thumb_func
+EnableInterrupts:
+    msr primask, r0
+    bx lr
+`
+
+const linkerFlags = "-Wl,--gc-sections,--emit-relocs," +
+	"--defsym,_sbss=__bss_start__,--defsym,_ebss=__bss_end__," +
+	"--defsym,_sdata=__data_start__,--defsym,_edata=__data_end__,--defsym,_sidata=__etext," +
+	"--defsym,_heap_start=__bss_end__,--defsym,_heap_end=__bss_end__," +
+	"--defsym,_globals_start=__data_start__,--defsym,_globals_end=__bss_end__,--defsym,_stack_top=__bss_end__"

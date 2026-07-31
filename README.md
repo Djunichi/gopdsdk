@@ -61,9 +61,10 @@ Verify the first device compilation stage with:
 go run ./cmd/gopdsdk probe device
 ```
 
-This currently proves TinyGo Cortex-M7 object generation, ELF32/ARM format, and
-the `eventHandler` export. It does not yet prove the Playdate runtime adaptation,
-final `pdex.elf` link, packaging, or execution on physical hardware.
+This currently proves a hard-float Cortex-M7 TinyGo object, the official
+Playdate `setup.c` and `link_map.ld` link, an ELF32/ARM executable with
+`eventHandlerShim`, and no unresolved symbols. It does not yet prove TinyGo
+runtime initialization, a Playdate-backed heap, packaging, or physical hardware.
 
 ## Build a Simulator application
 
