@@ -30,20 +30,6 @@ func TestCommandErrorIncludesOutput(t *testing.T) {
 	}
 }
 
-func TestRenderProbeGoMod(t *testing.T) {
-	goMod := renderProbeGoMod(`C:\Work tree\gopdsdk`, "github.com/Djunichi/gopdsdk", "1.26.5")
-	for _, want := range []string{
-		"module github.com/Djunichi/gopdsdk/probe",
-		"go 1.26.5",
-		"require github.com/Djunichi/gopdsdk v0.0.0",
-		`replace github.com/Djunichi/gopdsdk => "C:/Work tree/gopdsdk"`,
-	} {
-		if !strings.Contains(goMod, want) {
-			t.Errorf("renderProbeGoMod() does not contain %q:\n%s", want, goMod)
-		}
-	}
-}
-
 func TestRenderProbeApplication(t *testing.T) {
 	source := renderProbeApplication(
 		"github.com/Djunichi/gopdsdk",

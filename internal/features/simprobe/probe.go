@@ -8,11 +8,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
+	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
 )
 
 // Config identifies the Playdate SDK used by the probe.
@@ -61,7 +61,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("find objdump: %w", err)
 	}
-	moduleRoot, modulePath, goVersion, err := findProjectModule(ctx)
+	module, err := gomodule.Locate(ctx)
 	if err != nil {
 		return Result{}, err
 	}
@@ -81,12 +81,12 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := os.MkdirAll(appDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create probe application directory: %w", err)
 	}
-	runtimeImport := modulePath + "/internal/features/runtime"
+	runtimeImport := module.Path + "/internal/features/runtime"
 	sources, err := simabi.Render(simabi.Config{
 		APIHeader:         apiHeader,
-		PublicAPIImport:   modulePath + "/playdate",
+		PublicAPIImport:   module.Path + "/playdate",
 		RuntimeImport:     runtimeImport,
-		ApplicationImport: modulePath + "/probe/app",
+		ApplicationImport: module.Path + "/probe/app",
 	})
 	if err != nil {
 		return Result{}, err
@@ -97,10 +97,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := os.WriteFile(filepath.Join(workDir, "bridge.c"), []byte(sources.C), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe bridge: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(appDir, "app.go"), []byte(renderProbeApplication(modulePath, initMarkerPath, updateMarkerPath)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(appDir, "app.go"), []byte(renderProbeApplication(module.Path, initMarkerPath, updateMarkerPath)), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe application: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(workDir, "go.mod"), []byte(renderProbeGoMod(moduleRoot, modulePath, goVersion)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(workDir, "go.mod"), []byte(gomodule.RenderProbe(module, "probe")), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe module: %w", err)
 	}
 	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), []byte(probePDXInfo), 0o644); err != nil {
@@ -210,47 +210,6 @@ func runVersion(ctx context.Context, path string) string {
 func firstLine(value string) string {
 	line, _, _ := strings.Cut(strings.TrimSpace(value), "\n")
 	return strings.TrimSpace(line)
-}
-
-func findProjectModule(ctx context.Context) (root, modulePath, goVersion string, err error) {
-	output, runErr := exec.CommandContext(ctx, "go", "env", "GOMOD").CombinedOutput()
-	if runErr != nil {
-		return "", "", "", commandError("locate project module", runErr, output)
-	}
-	goModPath := strings.TrimSpace(string(output))
-	if goModPath == "" || goModPath == os.DevNull {
-		return "", "", "", fmt.Errorf("locate project module: command is not running inside a Go module")
-	}
-	goMod, readErr := os.ReadFile(goModPath)
-	if readErr != nil {
-		return "", "", "", fmt.Errorf("read project module: %w", readErr)
-	}
-	for _, line := range strings.Split(string(goMod), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			continue
-		}
-		switch fields[0] {
-		case "module":
-			modulePath = fields[1]
-		case "go":
-			goVersion = fields[1]
-		}
-	}
-	if modulePath == "" || goVersion == "" {
-		return "", "", "", fmt.Errorf("read project module: module and go directives are required")
-	}
-	return filepath.Dir(goModPath), modulePath, goVersion, nil
-}
-
-func renderProbeGoMod(moduleRoot, modulePath, goVersion string) string {
-	return fmt.Sprintf("module %s/probe\n\ngo %s\n\nrequire %s v0.0.0\n\nreplace %s => %s\n",
-		modulePath,
-		goVersion,
-		modulePath,
-		modulePath,
-		strconv.Quote(filepath.ToSlash(moduleRoot)),
-	)
 }
 
 func renderProbeApplication(modulePath, initMarkerPath, updateMarkerPath string) string {

@@ -9,5 +9,6 @@ type Game interface {
 
 // Context exposes Playdate services available to a game callback.
 type Context interface {
+	Clear()
 	DrawText(text string, x, y int)
 }

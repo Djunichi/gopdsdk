@@ -56,6 +56,7 @@ func renderGo(config Config) string {
 #include %q
 #include <stdlib.h>
 void bridgeRegisterUpdate(PlaydateAPI* playdate);
+void bridgeClear(void);
 void bridgeDrawText(const char* text, size_t length, int x, int y);
 */
 import "C"
@@ -109,6 +110,8 @@ func goUpdate() C.int {
 
 type playdateContext struct{}
 
+func (playdateContext) Clear() { C.bridgeClear() }
+
 func (playdateContext) DrawText(text string, x, y int) {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
@@ -148,6 +151,11 @@ void bridgeRegisterUpdate(PlaydateAPI* playdate)
 void bridgeDrawText(const char* text, size_t length, int x, int y)
 {
 	bridgePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
+}
+
+void bridgeClear(void)
+{
+	bridgePlaydate->graphics->clear(kColorWhite);
 }
 `, filepath.ToSlash(apiHeader))
 }

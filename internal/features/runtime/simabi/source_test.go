@@ -24,6 +24,7 @@ func TestRender(t *testing.T) {
 		"gameRuntime.Update",
 		"game.Init(gameContext)",
 		"game.Update(gameContext)",
+		"C.bridgeClear",
 		"C.bridgeDrawText",
 	} {
 		if !strings.Contains(sources.Go, want) {
@@ -33,6 +34,7 @@ func TestRender(t *testing.T) {
 	for _, want := range []string{
 		`#include "C:/SDK with spaces/C_API/pd_api.h"`,
 		"setUpdateCallback(bridgeUpdate, NULL)",
+		"graphics->clear(kColorWhite)",
 		"drawText(text, length, kUTF8Encoding, x, y)",
 	} {
 		if !strings.Contains(sources.C, want) {

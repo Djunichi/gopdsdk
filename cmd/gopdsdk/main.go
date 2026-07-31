@@ -8,6 +8,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/features/build"
 	"github.com/Djunichi/gopdsdk/internal/features/deviceconnect"
+	"github.com/Djunichi/gopdsdk/internal/features/devicecrashlog"
 	"github.com/Djunichi/gopdsdk/internal/features/deviceprobe"
 	"github.com/Djunichi/gopdsdk/internal/features/doctor"
 	"github.com/Djunichi/gopdsdk/internal/features/initproject"
@@ -24,6 +25,8 @@ func main() {
 		switch args[0] {
 		case "build":
 			err = build.Run(context.Background(), args, os.Stdout, os.Stderr)
+		case "crashlog":
+			err = devicecrashlog.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "doctor":
 			err = doctor.Run(context.Background(), args, os.Stdout, os.Stderr, doctor.Options{
 				SimulatorProbe: func(ctx context.Context, sdkPath string) error {
@@ -42,7 +45,11 @@ func main() {
 				err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
 			}
 		case "run":
-			err = simrun.Run(context.Background(), args, os.Stdout, os.Stderr, simrun.Options{})
+			if len(args) > 1 && args[1] == "device" {
+				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+			} else {
+				err = simrun.Run(context.Background(), args, os.Stdout, os.Stderr, simrun.Options{})
+			}
 		default:
 			err = fmt.Errorf("unknown command %q", args[0])
 		}

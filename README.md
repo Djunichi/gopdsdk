@@ -66,7 +66,28 @@ Playdate `setup.c` and `link_map.ld` link, an ELF32/ARM executable with
 `eventHandlerShim`, a one-time TinyGo runtime bootstrap, no unresolved symbols,
 and conversion of `pdex.elf` into a packaged `pdex.bin` with the official `pdc`.
 Allocation uses `playdate->system->realloc` in a non-collecting P0 mode.
-Device deployment and physical hardware execution are not yet proven.
+Deployment and physical-device execution are proven on the Windows P0 setup.
+The marker was rendered after the Go event handler returned.
+
+After the read-only connection probe succeeds, explicitly install the verified
+probe package with:
+
+```powershell
+go run ./cmd/gopdsdk probe device --install --sdk /path/to/PlaydateSDK
+```
+
+`--install` changes the connected device by copying the probe game. It does not
+run the game; start `gopdsdk Device Probe` manually on the Playdate.
+
+Build, install, and launch the verified device probe in one command with:
+
+```powershell
+go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK
+```
+
+This changes the connected device, then asks the official `pdutil` to launch
+`/Games/DeviceProbe.pdx`. The existing `gopdsdk run <package>` form continues
+to build and launch a Simulator application.
 
 Safely check whether `pdutil` can open a connected Playdate without mounting,
 installing, or running anything:
@@ -78,6 +99,16 @@ go run ./cmd/gopdsdk probe connection --sdk /path/to/PlaydateSDK
 Connect and unlock the Playdate over USB before running the probe. A successful
 probe verifies communication only; it does not modify the device or prove that
 the packaged game runs.
+
+Mount the connected Playdate data disk and print its `crashlog.txt` directly to
+the console with:
+
+```powershell
+go run ./cmd/gopdsdk crashlog --sdk /path/to/PlaydateSDK
+```
+
+The crash log contents are written to stdout, so they can also be redirected to
+a file. The resolved source path is written to stderr.
 
 ## Build a Simulator application
 
