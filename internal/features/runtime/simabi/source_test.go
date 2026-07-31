@@ -1,13 +1,16 @@
 package simabi
 
 import (
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
 func TestRender(t *testing.T) {
+	header := filepath.Join(t.TempDir(), "SDK with spaces", "C_API", "pd_api.h")
 	sources, err := Render(Config{
-		APIHeader:         `C:\SDK with spaces\C_API\pd_api.h`,
+		APIHeader:         header,
 		PublicAPIImport:   "github.com/Djunichi/gopdsdk/playdate",
 		RuntimeImport:     "github.com/Djunichi/gopdsdk/internal/features/runtime",
 		ApplicationImport: "github.com/Djunichi/gopdsdk/probe/app",
@@ -16,7 +19,7 @@ func TestRender(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`#include "C:/SDK with spaces/C_API/pd_api.h"`,
+		"#include " + strconv.Quote(filepath.ToSlash(header)),
 		`github.com/Djunichi/gopdsdk/probe/app`,
 		`github.com/Djunichi/gopdsdk/playdate`,
 		"var game sdk.Game = app.New()",
@@ -32,7 +35,7 @@ func TestRender(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`#include "C:/SDK with spaces/C_API/pd_api.h"`,
+		"#include " + strconv.Quote(filepath.ToSlash(header)),
 		"setUpdateCallback(bridgeUpdate, NULL)",
 		"graphics->clear(kColorWhite)",
 		"drawText(text, length, kUTF8Encoding, x, y)",

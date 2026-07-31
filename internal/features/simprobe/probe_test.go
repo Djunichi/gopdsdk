@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,15 +32,17 @@ func TestCommandErrorIncludesOutput(t *testing.T) {
 }
 
 func TestRenderProbeApplication(t *testing.T) {
+	initMarker := filepath.Join(t.TempDir(), "Temp path", "init.marker")
+	updateMarker := filepath.Join(t.TempDir(), "Temp path", "update.marker")
 	source := renderProbeApplication(
 		"github.com/Djunichi/gopdsdk",
-		`C:\Temp path\init.marker`,
-		`C:\Temp path\update.marker`,
+		initMarker,
+		updateMarker,
 	)
 	for _, want := range []string{
 		`"github.com/Djunichi/gopdsdk/playdate"`,
-		`"C:/Temp path/init.marker"`,
-		`"C:/Temp path/update.marker"`,
+		strconv.Quote(filepath.ToSlash(initMarker)),
+		strconv.Quote(filepath.ToSlash(updateMarker)),
 		`context.DrawText("Hello from gopdsdk", 16, 16)`,
 	} {
 		if !strings.Contains(source, want) {

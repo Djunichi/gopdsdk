@@ -83,22 +83,24 @@ func TestBindExecutablesPreservesArguments(t *testing.T) {
 }
 
 func TestCleanupPathsReturnsOnlyResolvedOwnedArtifacts(t *testing.T) {
-	plan, err := New(Device, ".", "sdk", `C:\published\game.pdx`)
+	published := filepath.Join(t.TempDir(), "published", "game.pdx")
+	workspace := filepath.Join(t.TempDir(), "gopdsdk-work")
+	plan, err := New(Device, ".", "sdk", published)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan = Resolve(plan, map[string]string{"${WORK}": `C:\Temp\gopdsdk-work`})
+	plan = Resolve(plan, map[string]string{"${WORK}": workspace})
 	paths, err := CleanupPaths(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(paths) != 1 || paths[0] != `C:\Temp\gopdsdk-work` {
+	if len(paths) != 1 || paths[0] != workspace {
 		t.Fatalf("CleanupPaths() = %v", paths)
 	}
 }
 
 func TestCleanupPathsRejectsUnresolvedAndRootPaths(t *testing.T) {
-	for _, path := range []string{"${WORK}", filepath.VolumeName(`C:\`) + `\`} {
+	for _, path := range []string{"${WORK}", string(filepath.Separator)} {
 		plan := Plan{Artifacts: []Artifact{{Name: "workspace", Path: path, Retention: Cleanup}}}
 		if _, err := CleanupPaths(plan); err == nil {
 			t.Fatalf("CleanupPaths(%q) error = nil", path)

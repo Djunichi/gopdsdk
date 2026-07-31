@@ -3,6 +3,7 @@ package deviceprobe
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -10,10 +11,11 @@ import (
 )
 
 func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
-	app := applicationInfo{ImportPath: "example.com/game/pkg", Name: "pkg", Dir: `C:\game\pkg`}
-	app.Module = &struct{ Path, Dir, GoVersion string }{Path: "example.com/game", Dir: `C:\game`, GoVersion: "1.26"}
-	got := renderDeviceGoMod(gomodule.Info{Path: "github.com/Djunichi/gopdsdk", Root: `C:\sdk`, GoVersion: "1.26"}, app)
-	for _, want := range []string{"require example.com/game v0.0.0", "replace example.com/game =>", "C:/game"} {
+	gameDir := filepath.Join(t.TempDir(), "game")
+	app := applicationInfo{ImportPath: "example.com/game/pkg", Name: "pkg", Dir: filepath.Join(gameDir, "pkg")}
+	app.Module = &struct{ Path, Dir, GoVersion string }{Path: "example.com/game", Dir: gameDir, GoVersion: "1.26"}
+	got := renderDeviceGoMod(gomodule.Info{Path: "github.com/Djunichi/gopdsdk", Root: filepath.Join(t.TempDir(), "sdk"), GoVersion: "1.26"}, app)
+	for _, want := range []string{"require example.com/game v0.0.0", "replace example.com/game =>", strconv.Quote(filepath.ToSlash(gameDir))} {
 		if !strings.Contains(got, want) {
 			t.Errorf("renderDeviceGoMod() does not contain %q:\n%s", want, got)
 		}

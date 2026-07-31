@@ -3,13 +3,15 @@ package initproject
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
 func TestCreateWritesBuildableProjectContract(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "My Game")
-	result, err := Create(Config{Path: path, SDKDir: `C:\Work tree\gopdsdk`, GoVersion: "1.26.5"})
+	sdkDir := filepath.Join(t.TempDir(), "Work tree", "gopdsdk")
+	result, err := Create(Config{Path: path, SDKDir: sdkDir, GoVersion: "1.26.5"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,7 +19,7 @@ func TestCreateWritesBuildableProjectContract(t *testing.T) {
 		t.Fatalf("module = %q", result.Module)
 	}
 	wants := map[string][]string{
-		"go.mod":  {"module example.com/my-game", `replace github.com/Djunichi/gopdsdk => "C:/Work tree/gopdsdk"`},
+		"go.mod":  {"module example.com/my-game", "replace github.com/Djunichi/gopdsdk => " + strconv.Quote(filepath.ToSlash(sdkDir))},
 		"game.go": {"// Package game", "func New() playdate.Game", "context.DrawText"},
 		"pdxinfo": {"name=My Game", "author=Your Name", "bundleID=com.example.my-game", "buildNumber=1"},
 	}
