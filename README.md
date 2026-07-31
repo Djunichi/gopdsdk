@@ -29,3 +29,28 @@ go run ./cmd/gopdsdk doctor --sdk /path/to/PlaydateSDK
 The command assesses SDK discovery, development, Simulator compilation, device
 compilation, and device deployment separately. A tool reported as `UNVERIFIED`
 was found but has not yet passed an end-to-end probe.
+
+Run available build probes during diagnostics with:
+
+```sh
+go run ./cmd/gopdsdk doctor --probe
+```
+
+Run the Windows Simulator toolchain probe with:
+
+```sh
+go run ./cmd/gopdsdk probe simulator --sdk /path/to/PlaydateSDK
+```
+
+The probe builds a temporary Go shared library, verifies the required
+`eventHandler` export, packages a `.pdx`, and removes all temporary artifacts.
+
+Launch the packaged probe in Playdate Simulator and verify `kEventInit`, the
+update callback, and a Hello World `drawText` call with:
+
+```sh
+go run ./cmd/gopdsdk probe simulator --run --sdk /path/to/PlaydateSDK
+```
+
+The automated probe intentionally terminates the Simulator process it launches
+after verification succeeds or the timeout expires.

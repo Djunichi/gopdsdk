@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 )
@@ -36,8 +37,31 @@ func TestWriteReport(t *testing.T) {
 
 func TestRunRejectsUnknownCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	err := Run(t.Context(), []string{"build"}, &stdout, &stderr)
+	err := Run(t.Context(), []string{"build"}, &stdout, &stderr, Options{})
 	if err == nil || !strings.Contains(err.Error(), "unknown command") {
 		t.Fatalf("Run error = %v, want unknown command", err)
+	}
+}
+
+func TestRunSimulatorProbeReady(t *testing.T) {
+	report := Report{
+		SDKPath: "sdk",
+		Capabilities: []Capability{
+			{Name: "simulator", Status: StatusUnverified, Summary: "gcc found"},
+		},
+	}
+	called := false
+	runSimulatorProbe(t.Context(), &report, func(_ context.Context, sdkPath string) error {
+		called = true
+		if sdkPath != "sdk" {
+			t.Fatalf("sdkPath = %q, want sdk", sdkPath)
+		}
+		return nil
+	})
+	if !called {
+		t.Fatal("simulator probe was not called")
+	}
+	if got := report.Capabilities[0].Status; got != StatusReady {
+		t.Fatalf("simulator status = %q, want ready", got)
 	}
 }

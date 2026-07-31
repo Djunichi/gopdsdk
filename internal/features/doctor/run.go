@@ -8,8 +8,13 @@ import (
 	"strings"
 )
 
+// Options supplies capability probes at the application composition boundary.
+type Options struct {
+	SimulatorProbe func(context.Context, string) error
+}
+
 // Run executes the doctor subcommand CLI.
-func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+func Run(ctx context.Context, args []string, stdout, stderr io.Writer, options Options) error {
 	if len(args) == 0 {
 		return fmt.Errorf("expected a command (try \"gopdsdk doctor\")")
 	}
@@ -20,6 +25,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	flags := flag.NewFlagSet("gopdsdk doctor", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	sdkPath := flags.String("sdk", "", "path to the Playdate SDK")
+	probe := flags.Bool("probe", false, "run build probes for discovered toolchains")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -31,7 +37,32 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if *probe {
+		runSimulatorProbe(ctx, &report, options.SimulatorProbe)
+	}
 	return writeReport(stdout, report)
+}
+
+func runSimulatorProbe(ctx context.Context, report *Report, probe func(context.Context, string) error) {
+	for index := range report.Capabilities {
+		capability := &report.Capabilities[index]
+		if capability.Name != "simulator" || capability.Status != StatusUnverified {
+			continue
+		}
+		if probe == nil {
+			capability.Status = StatusIncompatible
+			capability.Summary = "simulator probe is not configured"
+			return
+		}
+		if err := probe(ctx, report.SDKPath); err != nil {
+			capability.Status = StatusIncompatible
+			capability.Summary = err.Error()
+			return
+		}
+		capability.Status = StatusReady
+		capability.Summary = "c-shared build, eventHandler export, and .pdx packaging verified"
+		return
+	}
 }
 
 func writeReport(out io.Writer, report Report) error {
