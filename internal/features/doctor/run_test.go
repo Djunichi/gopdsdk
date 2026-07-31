@@ -3,6 +3,7 @@ package doctor
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -63,5 +64,47 @@ func TestRunSimulatorProbeReady(t *testing.T) {
 	}
 	if got := report.Capabilities[0].Status; got != StatusReady {
 		t.Fatalf("simulator status = %q, want ready", got)
+	}
+}
+
+func TestRunDeviceProbeReady(t *testing.T) {
+	report := Report{
+		SDKPath: "sdk",
+		Capabilities: []Capability{
+			{Name: "device-build", Status: StatusUnverified, Summary: "toolchain found"},
+		},
+	}
+	called := false
+	runDeviceProbe(t.Context(), &report, func(_ context.Context, sdkPath string) error {
+		called = true
+		if sdkPath != "sdk" {
+			t.Fatalf("sdkPath = %q, want sdk", sdkPath)
+		}
+		return nil
+	})
+	if !called {
+		t.Fatal("device probe was not called")
+	}
+	if got := report.Capabilities[0].Status; got != StatusReady {
+		t.Fatalf("device-build status = %q, want ready", got)
+	}
+	if !strings.Contains(report.Capabilities[0].Summary, "TinyGo PIC build") {
+		t.Fatalf("device-build summary = %q", report.Capabilities[0].Summary)
+	}
+}
+
+func TestRunCapabilityProbeFailureDoesNotChangeOtherCapabilities(t *testing.T) {
+	report := Report{Capabilities: []Capability{
+		{Name: "simulator", Status: StatusUnverified, Summary: "gcc found"},
+		{Name: "device-build", Status: StatusUnverified, Summary: "toolchain found"},
+	}}
+	runSimulatorProbe(t.Context(), &report, func(context.Context, string) error {
+		return fmt.Errorf("probe failed")
+	})
+	if got := report.Capabilities[0].Status; got != StatusIncompatible {
+		t.Fatalf("simulator status = %q, want incompatible", got)
+	}
+	if got := report.Capabilities[1].Status; got != StatusUnverified {
+		t.Fatalf("device-build status = %q, want unverified", got)
 	}
 }

@@ -11,6 +11,7 @@ import (
 // Options supplies capability probes at the application composition boundary.
 type Options struct {
 	SimulatorProbe func(context.Context, string) error
+	DeviceProbe    func(context.Context, string) error
 }
 
 // Run executes the doctor subcommand CLI.
@@ -39,19 +40,30 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer, options O
 	}
 	if *probe {
 		runSimulatorProbe(ctx, &report, options.SimulatorProbe)
+		runDeviceProbe(ctx, &report, options.DeviceProbe)
 	}
 	return writeReport(stdout, report)
 }
 
+func runDeviceProbe(ctx context.Context, report *Report, probe func(context.Context, string) error) {
+	runCapabilityProbe(ctx, report, "device-build", "device probe is not configured",
+		"TinyGo PIC build, hard-float ELF link, relocation checks, and .pdx packaging verified", probe)
+}
+
 func runSimulatorProbe(ctx context.Context, report *Report, probe func(context.Context, string) error) {
+	runCapabilityProbe(ctx, report, "simulator", "simulator probe is not configured",
+		"c-shared build, eventHandler export, and .pdx packaging verified", probe)
+}
+
+func runCapabilityProbe(ctx context.Context, report *Report, name, unconfigured, ready string, probe func(context.Context, string) error) {
 	for index := range report.Capabilities {
 		capability := &report.Capabilities[index]
-		if capability.Name != "simulator" || capability.Status != StatusUnverified {
+		if capability.Name != name || capability.Status != StatusUnverified {
 			continue
 		}
 		if probe == nil {
 			capability.Status = StatusIncompatible
-			capability.Summary = "simulator probe is not configured"
+			capability.Summary = unconfigured
 			return
 		}
 		if err := probe(ctx, report.SDKPath); err != nil {
@@ -60,7 +72,7 @@ func runSimulatorProbe(ctx context.Context, report *Report, probe func(context.C
 			return
 		}
 		capability.Status = StatusReady
-		capability.Summary = "c-shared build, eventHandler export, and .pdx packaging verified"
+		capability.Summary = ready
 		return
 	}
 }

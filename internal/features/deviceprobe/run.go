@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
 )
 
 // Run executes the device probe command.
@@ -24,6 +26,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	artifactsDir := flags.String("artifacts", "", "directory for diagnostic build artifacts")
 	output := flags.String("output", "", "output .pdx path")
 	force := flags.Bool("force", false, "replace an existing .pdx output")
+	dryRun := flags.Bool("dry-run", false, "print the build plan without executing tools")
 	if err := flags.Parse(args[2:]); err != nil {
 		return err
 	}
@@ -36,6 +39,16 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	if flags.NArg() == 1 {
 		application = flags.Arg(0)
+	}
+	if *dryRun {
+		if !buildDevice {
+			return fmt.Errorf("--dry-run is supported by \"gopdsdk build device\"")
+		}
+		plan, err := buildplan.New(buildplan.Device, application, *sdkPath, *output)
+		if err != nil {
+			return err
+		}
+		return buildplan.Write(stdout, plan)
 	}
 	if *sdkPath == "" {
 		home, err := os.UserHomeDir()

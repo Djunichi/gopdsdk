@@ -30,11 +30,14 @@ The command assesses SDK discovery, development, Simulator compilation, device
 compilation, and device deployment separately. A tool reported as `UNVERIFIED`
 was found but has not yet passed an end-to-end probe.
 
-Run available build probes during diagnostics with:
+Run the Simulator and device-build probes during diagnostics with:
 
 ```sh
 go run ./cmd/gopdsdk doctor --probe
 ```
+
+This verifies both packaging pipelines but intentionally does not install or run
+anything on a connected Playdate; `device-deploy` remains a separate capability.
 
 Run the Windows Simulator toolchain probe with:
 
@@ -141,6 +144,16 @@ go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
 The default output is `build/hello.pdx`. Use `--output` to select another path.
 The build command does not overwrite an existing artifact. Simulator execution
 on macOS and Linux remains unverified; device builds use the P0 TinyGo runtime.
+
+Inspect either build without running compilers or SDK tools:
+
+```sh
+go run ./cmd/gopdsdk build --dry-run --sdk /path/to/PlaydateSDK ./examples/hello
+go run ./cmd/gopdsdk build device --dry-run --sdk /path/to/PlaydateSDK ./examples/hello
+```
+
+Dry-run output is a typed semantic plan with structured executable arguments and
+portable `${WORK}` and `${PACKAGE}` tokens.
 
 Build and launch the example, replacing its previous build artifact, with:
 

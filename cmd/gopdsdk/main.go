@@ -37,6 +37,10 @@ func main() {
 					_, probeErr := simprobe.Probe(ctx, simprobe.Config{SDKPath: sdkPath})
 					return probeErr
 				},
+				DeviceProbe: func(ctx context.Context, sdkPath string) error {
+					_, probeErr := deviceprobe.Probe(ctx, deviceprobe.Config{SDKPath: sdkPath})
+					return probeErr
+				},
 			})
 		case "init":
 			err = initproject.Run(context.Background(), args, os.Stdout, os.Stderr)
