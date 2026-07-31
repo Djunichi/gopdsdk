@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Djunichi/gopdsdk/internal/features/build"
 	"github.com/Djunichi/gopdsdk/internal/features/doctor"
 	"github.com/Djunichi/gopdsdk/internal/features/simprobe"
+	"github.com/Djunichi/gopdsdk/internal/features/simrun"
 )
 
 func main() {
@@ -17,6 +19,8 @@ func main() {
 		err = fmt.Errorf("expected a command (try \"gopdsdk doctor\")")
 	} else {
 		switch args[0] {
+		case "build":
+			err = build.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "doctor":
 			err = doctor.Run(context.Background(), args, os.Stdout, os.Stderr, doctor.Options{
 				SimulatorProbe: func(ctx context.Context, sdkPath string) error {
@@ -26,6 +30,8 @@ func main() {
 			})
 		case "probe":
 			err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+		case "run":
+			err = simrun.Run(context.Background(), args, os.Stdout, os.Stderr, simrun.Options{})
 		default:
 			err = fmt.Errorf("unknown command %q", args[0])
 		}

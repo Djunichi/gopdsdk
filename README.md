@@ -54,3 +54,25 @@ go run ./cmd/gopdsdk probe simulator --run --sdk /path/to/PlaydateSDK
 
 The automated probe intentionally terminates the Simulator process it launches
 after verification succeeds or the timeout expires.
+
+## Build a Simulator application
+
+An application is an importable Go package that provides
+`New() playdate.Game`. Build the included Hello World example on Windows with:
+
+```sh
+go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
+```
+
+The default output is `build/hello.pdx`. Use `--output` to select another path.
+The build command does not overwrite an existing artifact. Simulator builds on
+macOS and Linux and physical-device builds are not implemented yet.
+
+Build and launch the example, replacing its previous build artifact, with:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/hello
+```
+
+The command leaves the Simulator process running. `Process.Kill` is used only by
+the automated probe command.

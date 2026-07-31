@@ -45,6 +45,38 @@
       "program": "${workspaceFolder}/cmd/gopdsdk",
       "args": ["probe", "simulator", "--run", "--sdk", "${env:PLAYDATE_SDK_PATH}"],
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "gopdsdk: build Hello World",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": [
+        "build",
+        "--sdk",
+        "${env:PLAYDATE_SDK_PATH}",
+        "--output",
+        "${workspaceFolder}/.cache/hello.pdx",
+        "./examples/hello"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "gopdsdk: run Hello World",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": [
+        "run",
+        "--sdk",
+        "${env:PLAYDATE_SDK_PATH}",
+        "--output",
+        "${workspaceFolder}/.cache/hello-run.pdx",
+        "./examples/hello"
+      ],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }
