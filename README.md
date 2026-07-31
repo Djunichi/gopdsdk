@@ -68,6 +68,17 @@ and conversion of `pdex.elf` into a packaged `pdex.bin` with the official `pdc`.
 Allocation uses `playdate->system->realloc` in a non-collecting P0 mode.
 Device deployment and physical hardware execution are not yet proven.
 
+Safely check whether `pdutil` can open a connected Playdate without mounting,
+installing, or running anything:
+
+```powershell
+go run ./cmd/gopdsdk probe connection --sdk /path/to/PlaydateSDK
+```
+
+Connect and unlock the Playdate over USB before running the probe. A successful
+probe verifies communication only; it does not modify the device or prove that
+the packaged game runs.
+
 ## Build a Simulator application
 
 Create an independent starter project during P0 with:

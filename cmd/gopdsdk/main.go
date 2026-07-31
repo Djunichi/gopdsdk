@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Djunichi/gopdsdk/internal/features/build"
+	"github.com/Djunichi/gopdsdk/internal/features/deviceconnect"
 	"github.com/Djunichi/gopdsdk/internal/features/deviceprobe"
 	"github.com/Djunichi/gopdsdk/internal/features/doctor"
 	"github.com/Djunichi/gopdsdk/internal/features/initproject"
@@ -33,7 +34,9 @@ func main() {
 		case "init":
 			err = initproject.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "probe":
-			if len(args) > 1 && args[1] == "device" {
+			if len(args) > 1 && args[1] == "connection" {
+				err = deviceconnect.Run(context.Background(), args, os.Stdout, os.Stderr)
+			} else if len(args) > 1 && args[1] == "device" {
 				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
 			} else {
 				err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
