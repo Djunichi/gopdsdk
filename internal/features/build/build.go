@@ -42,6 +42,7 @@ type module struct {
 type packageInfo struct {
 	ImportPath string
 	Name       string
+	Dir        string
 	Module     *module
 }
 
@@ -66,6 +67,10 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	}
 	if app.Module == nil {
 		return Result{}, fmt.Errorf("inspect application package: %s is not in a Go module", app.ImportPath)
+	}
+	pdxInfo, err := loadPDXInfo(filepath.Join(app.Dir, "pdxinfo"))
+	if err != nil {
+		return Result{}, err
 	}
 	sdk, err := inspectModule(ctx, sdkModule)
 	if err != nil {
@@ -141,7 +146,7 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), []byte(renderPDXInfo(app.Name)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), pdxInfo, 0o644); err != nil {
 		return Result{}, fmt.Errorf("write pdxinfo: %w", err)
 	}
 
@@ -210,10 +215,6 @@ func renderGoMod(sdk, app module) string {
 		fmt.Fprintf(&builder, "replace %s => %s\n", app.Path, strconv.Quote(filepath.ToSlash(app.Dir)))
 	}
 	return builder.String()
-}
-
-func renderPDXInfo(name string) string {
-	return fmt.Sprintf("name=%s\nauthor=gopdsdk\nbundleID=sdk.gopdsdk.%s\nversion=0.0.0\nbuildNumber=1\n", name, name)
 }
 
 func commandError(action string, err error, output []byte) error {

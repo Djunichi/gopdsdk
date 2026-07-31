@@ -8,6 +8,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/features/build"
 	"github.com/Djunichi/gopdsdk/internal/features/doctor"
+	"github.com/Djunichi/gopdsdk/internal/features/initproject"
 	"github.com/Djunichi/gopdsdk/internal/features/simprobe"
 	"github.com/Djunichi/gopdsdk/internal/features/simrun"
 )
@@ -28,6 +29,8 @@ func main() {
 					return probeErr
 				},
 			})
+		case "init":
+			err = initproject.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "probe":
 			err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "run":

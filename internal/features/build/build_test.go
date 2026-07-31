@@ -34,10 +34,3 @@ func TestRenderGoModForExternalApplication(t *testing.T) {
 		}
 	}
 }
-
-func TestRenderPDXInfo(t *testing.T) {
-	info := renderPDXInfo("hello")
-	if !strings.Contains(info, "name=hello\n") || !strings.Contains(info, "bundleID=sdk.gopdsdk.hello\n") {
-		t.Fatalf("renderPDXInfo() = %q", info)
-	}
-}

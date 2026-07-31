@@ -57,8 +57,18 @@ after verification succeeds or the timeout expires.
 
 ## Build a Simulator application
 
+Create an independent starter project during P0 with:
+
+```sh
+go run ./cmd/gopdsdk init --module example.com/my-game --author "Your Name" --bundle-id com.example.my-game ./my-game
+```
+
+The generated `go.mod` uses a local `replace` directive until gopdsdk has a
+versioned module release. The command never overwrites an existing path.
+
 An application is an importable Go package that provides
-`New() playdate.Game`. Build the included Hello World example on Windows with:
+`New() playdate.Game` and an official Playdate `pdxinfo` file in the same
+directory. Build the included Hello World example on Windows with:
 
 ```sh
 go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
