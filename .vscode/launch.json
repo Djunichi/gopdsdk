@@ -47,6 +47,39 @@
       "cwd": "${workspaceFolder}"
     },
     {
+      "name": "gopdsdk: device connection probe",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": ["probe", "connection", "--sdk", "${env:PLAYDATE_SDK_PATH}"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "gopdsdk: device run Hello World",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": [
+        "run",
+        "device",
+        "--sdk",
+        "${env:PLAYDATE_SDK_PATH}",
+        "${workspaceFolder}/examples/hello"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "gopdsdk: device crashlog",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": ["crashlog", "--sdk", "${env:PLAYDATE_SDK_PATH}"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
       "name": "gopdsdk: simulator acceptance",
       "type": "go",
       "request": "launch",
@@ -85,6 +118,15 @@
         "${workspaceFolder}/.cache/hello-run.pdx",
         "./examples/hello"
       ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "gopdsdk: external consumer acceptance test",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": ["-test.run", "^TestCLIExternalConsumerWorkflow$", "-test.v"],
       "cwd": "${workspaceFolder}"
     }
   ]

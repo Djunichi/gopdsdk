@@ -127,3 +127,15 @@ func TestStrongUndefinedSymbolsIgnoresWeakReferences(t *testing.T) {
 		t.Fatalf("strongUndefinedSymbols() = %v, want [requiredSymbol]", got)
 	}
 }
+
+func TestUnsupportedRuntimeSymbolsRejectsDeferRuntime(t *testing.T) {
+	output := "00003ae0 t runtime.setupDeferFrame\n000056b8 t runtime._recover\n00003298 t runtime/interrupt.In\n"
+	got := unsupportedRuntimeSymbols(output)
+	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime/interrupt.In"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("unsupportedRuntimeSymbols() = %v, want %v", got, want)
+	}
+	if got := unsupportedRuntimeSymbols("00000100 t runtime.run\n"); len(got) != 0 {
+		t.Fatalf("unsupportedRuntimeSymbols(safe) = %v, want none", got)
+	}
+}

@@ -48,8 +48,12 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if config.SDKPath == "" {
 		return Result{}, fmt.Errorf("Playdate SDK path is required")
 	}
+	module, err := gomodule.Locate(ctx)
+	if err != nil {
+		return Result{}, err
+	}
 	if config.Application == "" {
-		config.Application = "./examples/hello"
+		config.Application = module.Path + "/examples/hello"
 	}
 	app, err := inspectApplication(ctx, config.Application)
 	if err != nil {
@@ -101,10 +105,6 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("find arm-none-eabi-objcopy: %w", err)
 	}
-	module, err := gomodule.Locate(ctx)
-	if err != nil {
-		return Result{}, err
-	}
 	workDir, err := os.MkdirTemp("", "gopdsdk-device-probe-")
 	if err != nil {
 		return Result{}, fmt.Errorf("create device probe directory: %w", err)
@@ -120,7 +120,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	plan = buildplan.Resolve(plan, map[string]string{"${WORK}": workDir, "${PACKAGE_OUTPUT}": pdxPath})
 	plan = buildplan.BindExecutables(plan, map[string]string{
 		"tinygo": tinygo, "arm-none-eabi-objcopy": objcopy, "arm-none-eabi-gcc": gcc,
-		"arm-none-eabi-readelf": readelf, "arm-none-eabi-nm": nm, plan.Commands[9].Executable: pdc,
+		"arm-none-eabi-readelf": readelf, "arm-none-eabi-nm": nm, plan.Commands[10].Executable: pdc,
 	})
 	cleanupPaths, err := buildplan.CleanupPaths(plan)
 	if err != nil {
@@ -141,17 +141,17 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
-	for index, planned := range plan.Commands[:6] {
+	for index, planned := range plan.Commands[:7] {
 		if _, err := runPlannedCommand(ctx, planned); err != nil {
 			return Result{}, err
 		}
-		if index == 1 {
+		if index == 2 {
 			if err := os.WriteFile(filepath.Join(workDir, "bootstrap.c"), []byte(bootstrapSource), 0o644); err != nil {
 				return Result{}, fmt.Errorf("write bootstrap.c: %w", err)
 			}
 		}
 	}
-	inspectionOutput, err := runPlannedCommand(ctx, plan.Commands[6])
+	inspectionOutput, err := runPlannedCommand(ctx, plan.Commands[7])
 	if err != nil {
 		return Result{}, err
 	}
@@ -179,14 +179,14 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("inspect ARM object: unsupported Playdate relocation %s remains", forbidden)
 		}
 	}
-	undefinedOutput, err := runPlannedCommand(ctx, plan.Commands[7])
+	undefinedOutput, err := runPlannedCommand(ctx, plan.Commands[8])
 	if err != nil {
 		return Result{}, err
 	}
 	if unresolved := strongUndefinedSymbols(undefinedOutput); len(unresolved) != 0 {
 		return Result{}, fmt.Errorf("inspect unresolved ELF symbols: %s", strings.Join(unresolved, ", "))
 	}
-	symbolOutput, err := runPlannedCommand(ctx, plan.Commands[8])
+	symbolOutput, err := runPlannedCommand(ctx, plan.Commands[9])
 	if err != nil {
 		return Result{}, err
 	}
@@ -195,6 +195,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		if strings.Contains(lowerSymbols, forbidden) {
 			return Result{}, fmt.Errorf("inspect linked ELF symbols: board-specific symbol %q remains", forbidden)
 		}
+	}
+	if unsupported := unsupportedRuntimeSymbols(symbolOutput); len(unsupported) != 0 {
+		return Result{}, fmt.Errorf("inspect linked ELF symbols: unsupported TinyGo runtime symbols remain: %s", strings.Join(unsupported, ", "))
 	}
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
@@ -207,7 +210,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), pdxInfo, 0o644); err != nil {
 		return Result{}, fmt.Errorf("write device pdxinfo: %w", err)
 	}
-	if _, err := runPlannedCommand(ctx, plan.Commands[9]); err != nil {
+	if _, err := runPlannedCommand(ctx, plan.Commands[10]); err != nil {
 		return Result{}, err
 	}
 	packagedBinary := filepath.Join(pdxPath, "pdex.bin")
@@ -391,6 +394,16 @@ func strongUndefinedSymbols(output string) []string {
 		fields := strings.Fields(line)
 		if len(fields) >= 2 && fields[len(fields)-2] == "U" {
 			symbols = append(symbols, fields[len(fields)-1])
+		}
+	}
+	return symbols
+}
+
+func unsupportedRuntimeSymbols(output string) []string {
+	var symbols []string
+	for _, forbidden := range []string{"runtime.setupDeferFrame", "runtime._recover", "runtime/interrupt.In"} {
+		if strings.Contains(output, forbidden) {
+			symbols = append(symbols, forbidden)
 		}
 	}
 	return symbols

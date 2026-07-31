@@ -24,6 +24,22 @@ implementation:
 Do not mix unrelated cleanup into feature work. Preserve user changes in a dirty
 worktree. Do not publish or commit unless explicitly requested.
 
+## Verification levels
+
+- Unit tests are deterministic and require neither the Playdate SDK nor a
+  connected device.
+- CLI acceptance tests build `gopdsdk`, create a separate Go module, compile
+  that consumer, and inspect Simulator/device dry-run plans.
+- Native CI runs unit and CLI acceptance tests on Windows, macOS, and Linux.
+- SDK integration requires the official SDK and executes `doctor --probe` or a
+  target-specific probe.
+- Hardware acceptance requires a connected Playdate and a post-run crashlog
+  check. CI, cross-compilation, and Docker do not substitute for it.
+
+Never promote native CI evidence to Simulator, SDK-tool, or device readiness.
+Docker may add reproducible Linux coverage, but it does not verify Windows,
+macOS, GUI Simulator behavior, or USB deployment.
+
 ## Project layout
 
 ```text
@@ -71,5 +87,10 @@ go vet ./...
 git diff --check
 go run ./cmd/gopdsdk doctor
 ```
+
+Before a P0 release candidate, also run the external-consumer acceptance test
+on the current host and inspect the GitHub Actions matrix. Run
+`doctor --probe` only where the official SDK/toolchains are installed; report
+other hosts as `CI-tested, SDK integration unverified`.
 
 Never hide an earlier failed command behind a later successful command.

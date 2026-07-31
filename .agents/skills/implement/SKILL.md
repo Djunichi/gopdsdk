@@ -25,5 +25,10 @@ Follow `AGENTS.md`; it is the repository contract.
 8. Inspect the diff for unrelated edits, platform assumptions, missing
    provenance, and false readiness claims.
 
+Choose the lowest sufficient verification level and name it in the handoff:
+unit, external-consumer CLI acceptance, native-host CI, SDK integration, or
+physical-device acceptance. Do not treat Docker or a dry-run as native SDK
+integration on another operating system.
+
 Do not add dependencies, generated bindings, public API, or shared packages
 speculatively. Do not copy implementation material from pdgo.

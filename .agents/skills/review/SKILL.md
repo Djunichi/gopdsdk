@@ -19,6 +19,10 @@ Follow `AGENTS.md`. Review read-only unless the user explicitly requests fixes.
    - required package comments in primary implementation files and no
      comment-only `doc.go` files;
    - deterministic tests and capability probe integrity;
+   - whether CI evidence is overstated as SDK, Simulator, or hardware
+     verification;
+   - whether external-module behavior is covered when module resolution or CLI
+     composition changes;
    - accidental copying or structural imitation of third-party implementation;
    - security, destructive behavior, and secret exposure.
 5. Report actionable findings ordered by severity, with precise file and line

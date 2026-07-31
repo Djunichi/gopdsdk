@@ -12,11 +12,11 @@ func TestDevicePlanIsDeterministicAndStructured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Commands) != 10 {
-		t.Fatalf("len(Commands) = %d, want 10", len(plan.Commands))
+	if len(plan.Commands) != 11 {
+		t.Fatalf("len(Commands) = %d, want 11", len(plan.Commands))
 	}
-	if plan.Commands[0].Executable != "tinygo" || plan.Commands[0].Args[0] != "build" {
-		t.Fatalf("first command = %#v", plan.Commands[0])
+	if plan.Commands[1].Executable != "tinygo" || plan.Commands[1].Args[0] != "build" {
+		t.Fatalf("TinyGo command = %#v", plan.Commands[1])
 	}
 	var output bytes.Buffer
 	if err := Write(&output, plan); err != nil {
@@ -71,13 +71,13 @@ func TestBindExecutablesPreservesArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	bound := BindExecutables(plan, map[string]string{"tinygo": `C:\tools\tinygo.exe`})
-	if got, want := bound.Commands[0].Executable, `C:\tools\tinygo.exe`; got != want {
+	if got, want := bound.Commands[1].Executable, `C:\tools\tinygo.exe`; got != want {
 		t.Fatalf("Executable = %q, want %q", got, want)
 	}
-	if got, want := bound.Commands[0].Args[0], "build"; got != want {
+	if got, want := bound.Commands[1].Args[0], "build"; got != want {
 		t.Fatalf("first argument = %q, want %q", got, want)
 	}
-	if plan.Commands[0].Executable != "tinygo" {
+	if plan.Commands[1].Executable != "tinygo" {
 		t.Fatal("BindExecutables mutated source plan")
 	}
 }

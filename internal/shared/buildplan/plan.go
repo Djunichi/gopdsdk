@@ -162,6 +162,7 @@ func deviceCommands(sdkPath, output string) []Command {
 	compileFlags := []string{"-c", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-O2", "-ffunction-sections", "-fdata-sections"}
 	apiFlags := []string{"-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", sdkFile(sdkPath, "C_API")}
 	return []Command{
+		{Purpose: "resolve Go module graph", Executable: "go", Args: []string{"mod", "tidy"}, Directory: "${WORK}"},
 		{Purpose: "compile TinyGo PIC object", Executable: "tinygo", Args: []string{"build", "-target", "${WORK}/playdate.json", "-scheduler", "none", "-gc", "none", "-panic", "trap", "-opt", "0", "-o", "${WORK}/probe.o", "."}, Directory: "${WORK}"},
 		{Purpose: "expose TinyGo runtime bootstrap symbol", Executable: "arm-none-eabi-objcopy", Args: []string{"--globalize-symbol=runtime.run", "${WORK}/probe.o"}, Directory: "${WORK}"},
 		{Purpose: "compile official Playdate setup", Executable: "arm-none-eabi-gcc", Args: append(append(append([]string{}, compileFlags...), apiFlags...), sdkFile(sdkPath, "C_API", "buildsupport", "setup.c"), "-o", "${WORK}/setup.o"), Directory: "${WORK}"},

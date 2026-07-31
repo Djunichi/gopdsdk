@@ -21,33 +21,6 @@ func TestNewRequiresCallbacks(t *testing.T) {
 	}
 }
 
-func TestRuntimeContainsCallbackPanics(t *testing.T) {
-	runtime, err := New(Callbacks{Init: func() error { return nil }, Update: func() (bool, error) { panic("boom") }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.Handle(EventInit, 0); err != nil {
-		t.Fatal(err)
-	}
-	refresh, err := runtime.Update()
-	if refresh != 0 || !errors.Is(err, ErrCallbackPanic) {
-		t.Fatalf("Update() = %d, %v; want 0, ErrCallbackPanic", refresh, err)
-	}
-	if _, err := runtime.Update(); !errors.Is(err, ErrNotInitialized) {
-		t.Fatalf("Update() after panic error = %v", err)
-	}
-}
-
-func TestRuntimeContainsInitPanic(t *testing.T) {
-	runtime, err := New(Callbacks{Init: func() error { panic("boom") }, Update: func() (bool, error) { return true, nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.Handle(EventInit, 0); !errors.Is(err, ErrCallbackPanic) {
-		t.Fatalf("Handle() error = %v, want ErrCallbackPanic", err)
-	}
-}
-
 func TestRuntimeLifecycle(t *testing.T) {
 	initCalls := 0
 	updateCalls := 0

@@ -3,7 +3,6 @@ package runtime
 
 import (
 	"errors"
-	"fmt"
 )
 
 // Event identifies an event delivered by the Playdate runtime.
@@ -34,8 +33,6 @@ var (
 	ErrAlreadyInitialized = errors.New("runtime is already initialized")
 	// ErrNotInitialized indicates an update before successful initialization.
 	ErrNotInitialized = errors.New("runtime is not initialized")
-	// ErrCallbackPanic indicates that application code panicked at the native boundary.
-	ErrCallbackPanic = errors.New("application callback panicked")
 )
 
 // Callbacks contains application behavior invoked by Runtime.
@@ -63,13 +60,7 @@ func New(callbacks Callbacks) (*Runtime, error) {
 }
 
 // Handle delivers a Playdate system event to the lifecycle.
-func (r *Runtime) Handle(event Event, _ uint32) (err error) {
-	defer func() {
-		if value := recover(); value != nil {
-			r.failed = true
-			err = fmt.Errorf("%w: %v", ErrCallbackPanic, value)
-		}
-	}()
+func (r *Runtime) Handle(event Event, _ uint32) error {
 	if event != EventInit {
 		return nil
 	}
@@ -86,14 +77,7 @@ func (r *Runtime) Handle(event Event, _ uint32) (err error) {
 
 // Update invokes application update and converts its refresh decision to the
 // integer contract expected by Playdate.
-func (r *Runtime) Update() (refresh int32, err error) {
-	defer func() {
-		if value := recover(); value != nil {
-			r.failed = true
-			refresh = 0
-			err = fmt.Errorf("%w: %v", ErrCallbackPanic, value)
-		}
-	}()
+func (r *Runtime) Update() (int32, error) {
 	if !r.initialized || r.failed {
 		return 0, ErrNotInitialized
 	}

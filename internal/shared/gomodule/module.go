@@ -3,13 +3,16 @@ package gomodule
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
+
+// Path is the canonical gopdsdk module path.
+const Path = "github.com/Djunichi/gopdsdk"
 
 // Info identifies the active gopdsdk module.
 type Info struct {
@@ -18,37 +21,20 @@ type Info struct {
 	GoVersion string
 }
 
-// Locate reads the active module selected by the Go command.
+// Locate resolves the canonical gopdsdk module selected by the Go command.
 func Locate(ctx context.Context) (Info, error) {
-	output, err := exec.CommandContext(ctx, "go", "env", "GOMOD").CombinedOutput()
+	output, err := exec.CommandContext(ctx, "go", "list", "-m", "-json", Path).CombinedOutput()
 	if err != nil {
-		return Info{}, fmt.Errorf("locate project module: %w: %s", err, strings.TrimSpace(string(output)))
+		return Info{}, fmt.Errorf("locate gopdsdk module: %w: %s", err, strings.TrimSpace(string(output)))
 	}
-	goModPath := strings.TrimSpace(string(output))
-	if goModPath == "" || goModPath == os.DevNull {
-		return Info{}, fmt.Errorf("locate project module: command is not running inside a Go module")
+	var module struct{ Path, Dir, GoVersion string }
+	if err := json.Unmarshal(output, &module); err != nil {
+		return Info{}, fmt.Errorf("locate gopdsdk module: decode go list output: %w", err)
 	}
-	contents, err := os.ReadFile(goModPath)
-	if err != nil {
-		return Info{}, fmt.Errorf("read project module: %w", err)
+	if module.Path != Path || module.Dir == "" || module.GoVersion == "" {
+		return Info{}, fmt.Errorf("locate gopdsdk module: incomplete module metadata")
 	}
-	info := Info{Root: filepath.Dir(goModPath)}
-	for _, line := range strings.Split(string(contents), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			continue
-		}
-		switch fields[0] {
-		case "module":
-			info.Path = fields[1]
-		case "go":
-			info.GoVersion = fields[1]
-		}
-	}
-	if info.Path == "" || info.GoVersion == "" {
-		return Info{}, fmt.Errorf("read project module: module and go directives are required")
-	}
-	return info, nil
+	return Info{Root: filepath.Clean(module.Dir), Path: module.Path, GoVersion: module.GoVersion}, nil
 }
 
 // RenderProbe returns a go.mod for a temporary child module.
