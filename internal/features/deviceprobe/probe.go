@@ -109,7 +109,25 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("create device probe directory: %w", err)
 	}
-	defer os.RemoveAll(workDir)
+	elfPath := filepath.Join(workDir, "pdex.elf")
+	pdxName := app.Name + ".pdx"
+	pdxPath := filepath.Join(workDir, pdxName)
+	plan, err := buildplan.New(buildplan.Device, config.Application, sdkPath, config.Output)
+	if err != nil {
+		_ = os.RemoveAll(workDir)
+		return Result{}, err
+	}
+	plan = buildplan.Resolve(plan, map[string]string{"${WORK}": workDir, "${PACKAGE_OUTPUT}": pdxPath})
+	plan = buildplan.BindExecutables(plan, map[string]string{
+		"tinygo": tinygo, "arm-none-eabi-objcopy": objcopy, "arm-none-eabi-gcc": gcc,
+		"arm-none-eabi-readelf": readelf, "arm-none-eabi-nm": nm, plan.Commands[9].Executable: pdc,
+	})
+	cleanupPaths, err := buildplan.CleanupPaths(plan)
+	if err != nil {
+		_ = os.RemoveAll(workDir)
+		return Result{}, err
+	}
+	defer cleanupArtifacts(cleanupPaths)
 	for _, file := range []struct {
 		name     string
 		contents string
@@ -123,20 +141,6 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
-	elfPath := filepath.Join(workDir, "pdex.elf")
-	pdxName := app.Name + ".pdx"
-	pdxPath := filepath.Join(workDir, pdxName)
-	plan, err := buildplan.New(buildplan.Device, config.Application, sdkPath, config.Output)
-	if err != nil {
-		return Result{}, err
-	}
-	plan = buildplan.Resolve(plan, map[string]string{
-		"${WORK}": workDir, "${PACKAGE_OUTPUT}": pdxPath,
-	})
-	plan = buildplan.BindExecutables(plan, map[string]string{
-		"tinygo": tinygo, "arm-none-eabi-objcopy": objcopy, "arm-none-eabi-gcc": gcc,
-		"arm-none-eabi-readelf": readelf, "arm-none-eabi-nm": nm, plan.Commands[9].Executable: pdc,
-	})
 	for index, planned := range plan.Commands[:6] {
 		if _, err := runPlannedCommand(ctx, planned); err != nil {
 			return Result{}, err
@@ -287,6 +291,12 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		Run:     execution,
 		Pending: pending,
 	}, nil
+}
+
+func cleanupArtifacts(paths []string) {
+	for _, path := range paths {
+		_ = os.RemoveAll(path)
+	}
 }
 
 func runDeviceProbe(ctx context.Context, directory, pdutil, devicePath string) (string, error) {

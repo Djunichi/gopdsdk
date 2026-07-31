@@ -2,6 +2,7 @@ package buildplan
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -78,5 +79,29 @@ func TestBindExecutablesPreservesArguments(t *testing.T) {
 	}
 	if plan.Commands[0].Executable != "tinygo" {
 		t.Fatal("BindExecutables mutated source plan")
+	}
+}
+
+func TestCleanupPathsReturnsOnlyResolvedOwnedArtifacts(t *testing.T) {
+	plan, err := New(Device, ".", "sdk", `C:\published\game.pdx`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan = Resolve(plan, map[string]string{"${WORK}": `C:\Temp\gopdsdk-work`})
+	paths, err := CleanupPaths(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 1 || paths[0] != `C:\Temp\gopdsdk-work` {
+		t.Fatalf("CleanupPaths() = %v", paths)
+	}
+}
+
+func TestCleanupPathsRejectsUnresolvedAndRootPaths(t *testing.T) {
+	for _, path := range []string{"${WORK}", filepath.VolumeName(`C:\`) + `\`} {
+		plan := Plan{Artifacts: []Artifact{{Name: "workspace", Path: path, Retention: Cleanup}}}
+		if _, err := CleanupPaths(plan); err == nil {
+			t.Fatalf("CleanupPaths(%q) error = nil", path)
+		}
 	}
 }

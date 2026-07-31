@@ -119,7 +119,22 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("create build directory: %w", err)
 	}
-	defer os.RemoveAll(workDir)
+	temporaryPDX := filepath.Join(workDir, "Application.pdx")
+	plan, err := buildplan.New(buildplan.Simulator, config.Package, sdkPath, output)
+	if err != nil {
+		_ = os.RemoveAll(workDir)
+		return Result{}, err
+	}
+	plan = buildplan.Resolve(plan, map[string]string{
+		"${WORK}": workDir, "${HOST_LIBRARY}": "dll", "${CC}": gcc,
+		"${PDC}": pdc, "${PACKAGE_OUTPUT}": temporaryPDX,
+	})
+	cleanupPaths, err := buildplan.CleanupPaths(plan)
+	if err != nil {
+		_ = os.RemoveAll(workDir)
+		return Result{}, err
+	}
+	defer cleanupArtifacts(cleanupPaths)
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create Source directory: %w", err)
@@ -151,18 +166,6 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write pdxinfo: %w", err)
 	}
 
-	temporaryPDX := filepath.Join(workDir, "Application.pdx")
-	plan, err := buildplan.New(buildplan.Simulator, config.Package, sdkPath, output)
-	if err != nil {
-		return Result{}, err
-	}
-	plan = buildplan.Resolve(plan, map[string]string{
-		"${WORK}":           workDir,
-		"${HOST_LIBRARY}":   "dll",
-		"${CC}":             gcc,
-		"${PDC}":            pdc,
-		"${PACKAGE_OUTPUT}": temporaryPDX,
-	})
 	for index, planned := range plan.Commands {
 		if err := executePlannedCommand(ctx, planned); err != nil {
 			return Result{}, err
@@ -181,6 +184,12 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write output: %w", err)
 	}
 	return Result{PackageImport: app.ImportPath, Output: output}, nil
+}
+
+func cleanupArtifacts(paths []string) {
+	for _, path := range paths {
+		_ = os.RemoveAll(path)
+	}
 }
 
 func executePlannedCommand(ctx context.Context, planned buildplan.Command) error {

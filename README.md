@@ -152,8 +152,10 @@ go run ./cmd/gopdsdk build --dry-run --sdk /path/to/PlaydateSDK ./examples/hello
 go run ./cmd/gopdsdk build device --dry-run --sdk /path/to/PlaydateSDK ./examples/hello
 ```
 
-Dry-run output is a typed semantic plan with structured executable arguments and
-portable `${WORK}` and `${PACKAGE}` tokens.
+Dry-run output is a typed semantic plan with structured executable arguments,
+portable `${WORK}` and `${PACKAGE}` tokens, and explicit artifact retention.
+Temporary workspaces are marked `cleanup`; published `.pdx` outputs are marked
+`preserve`. Cleanup rejects unresolved, relative, and filesystem-root paths.
 
 Build and launch the example, replacing its previous build artifact, with:
 

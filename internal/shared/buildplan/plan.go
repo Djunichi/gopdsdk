@@ -35,6 +35,23 @@ type Command struct {
 	Environment []string
 }
 
+// Retention defines whether an artifact survives plan execution.
+type Retention string
+
+const (
+	// Cleanup removes an owned temporary artifact when execution ends.
+	Cleanup Retention = "cleanup"
+	// Preserve keeps a published artifact after successful execution.
+	Preserve Retention = "preserve"
+)
+
+// Artifact records a path and its ownership policy.
+type Artifact struct {
+	Name      string
+	Path      string
+	Retention Retention
+}
+
 // Plan describes a build without executing it.
 type Plan struct {
 	Target      Target
@@ -42,6 +59,7 @@ type Plan struct {
 	SDKPath     string
 	Output      string
 	Commands    []Command
+	Artifacts   []Artifact
 }
 
 // New returns a deterministic semantic plan using portable workspace tokens.
@@ -56,6 +74,10 @@ func New(target Target, application, sdkPath, output string) (Plan, error) {
 		output = "build/${PACKAGE}.pdx"
 	}
 	plan := Plan{Target: target, Application: application, SDKPath: sdkPath, Output: output}
+	plan.Artifacts = []Artifact{
+		{Name: "workspace", Path: "${WORK}", Retention: Cleanup},
+		{Name: "application package", Path: output, Retention: Preserve},
+	}
 	switch target {
 	case Simulator:
 		plan.Commands = simulatorCommands(sdkPath, output)
@@ -78,6 +100,11 @@ func simulatorCommands(sdkPath, output string) []Command {
 func Resolve(plan Plan, tokens map[string]string) Plan {
 	resolved := plan
 	resolved.Commands = make([]Command, len(plan.Commands))
+	resolved.Artifacts = make([]Artifact, len(plan.Artifacts))
+	for index, artifact := range plan.Artifacts {
+		resolved.Artifacts[index] = artifact
+		resolved.Artifacts[index].Path = resolveValue(artifact.Path, tokens)
+	}
 	for index, command := range plan.Commands {
 		resolved.Commands[index] = command
 		resolved.Commands[index].Executable = resolveValue(command.Executable, tokens)
@@ -86,6 +113,22 @@ func Resolve(plan Plan, tokens map[string]string) Plan {
 		resolved.Commands[index].Environment = resolveValues(command.Environment, tokens)
 	}
 	return resolved
+}
+
+// CleanupPaths returns validated absolute paths owned by the resolved plan.
+func CleanupPaths(plan Plan) ([]string, error) {
+	var paths []string
+	for _, artifact := range plan.Artifacts {
+		if artifact.Retention != Cleanup {
+			continue
+		}
+		path := filepath.Clean(artifact.Path)
+		if strings.Contains(path, "${") || !filepath.IsAbs(path) || filepath.Dir(path) == path {
+			return nil, fmt.Errorf("unsafe cleanup path for artifact %q: %q", artifact.Name, artifact.Path)
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
 }
 
 // BindExecutables replaces discovered tool names while preserving command arguments.
@@ -142,7 +185,15 @@ func sdkFile(sdkPath string, parts ...string) string {
 
 // Write renders a stable human-readable plan.
 func Write(writer io.Writer, plan Plan) error {
-	if _, err := fmt.Fprintf(writer, "Build plan\nTarget:      %s\nApplication: %s\nSDK:         %s\nOutput:      %s\nCommands:\n", plan.Target, plan.Application, plan.SDKPath, plan.Output); err != nil {
+	if _, err := fmt.Fprintf(writer, "Build plan\nTarget:      %s\nApplication: %s\nSDK:         %s\nOutput:      %s\nArtifacts:\n", plan.Target, plan.Application, plan.SDKPath, plan.Output); err != nil {
+		return err
+	}
+	for _, artifact := range plan.Artifacts {
+		if _, err := fmt.Fprintf(writer, "  - %s: %s (%s)\n", artifact.Name, artifact.Path, artifact.Retention); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(writer, "Commands:"); err != nil {
 		return err
 	}
 	for index, command := range plan.Commands {
