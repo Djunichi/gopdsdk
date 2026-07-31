@@ -1,4 +1,4 @@
-// Package deviceprobe verifies the TinyGo ARM object compilation stage.
+// Package deviceprobe verifies TinyGo ARM linking and Playdate packaging.
 package deviceprobe
 
 import (
@@ -17,6 +17,7 @@ type Result struct {
 	GCC     string
 	Format  string
 	Export  string
+	Package string
 	Pending string
 }
 
@@ -36,7 +37,12 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	setupSource := filepath.Join(sdkPath, "C_API", "buildsupport", "setup.c")
 	linkerScript := filepath.Join(sdkPath, "C_API", "buildsupport", "link_map.ld")
-	for _, path := range []string{filepath.Join(sdkPath, "C_API", "pd_api.h"), setupSource, linkerScript} {
+	pdcName := "pdc"
+	if runtime.GOOS == "windows" {
+		pdcName += ".exe"
+	}
+	pdc := filepath.Join(sdkPath, "bin", pdcName)
+	for _, path := range []string{filepath.Join(sdkPath, "C_API", "pd_api.h"), setupSource, linkerScript, pdc} {
 		if info, statErr := os.Stat(path); statErr != nil || info.IsDir() {
 			return Result{}, fmt.Errorf("required file %s is unavailable", path)
 		}
@@ -147,13 +153,59 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if strings.TrimSpace(string(undefinedOutput)) != "" {
 		return Result{}, fmt.Errorf("inspect unresolved ELF symbols: %s", strings.TrimSpace(string(undefinedOutput)))
 	}
+	sourceDir := filepath.Join(workDir, "Source")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		return Result{}, fmt.Errorf("create device package source: %w", err)
+	}
+	packagedELFSource := filepath.Join(sourceDir, "pdex.elf")
+	if err := copyFile(elfPath, packagedELFSource); err != nil {
+		return Result{}, fmt.Errorf("stage device ELF: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), []byte(probePDXInfo), 0o644); err != nil {
+		return Result{}, fmt.Errorf("write device pdxinfo: %w", err)
+	}
+	pdxPath := filepath.Join(workDir, "DeviceProbe.pdx")
+	if err := runCommand(ctx, workDir, "package device probe", pdc,
+		"-sdkpath", sdkPath, "-q", sourceDir, pdxPath); err != nil {
+		return Result{}, err
+	}
+	packagedBinary := filepath.Join(pdxPath, "pdex.bin")
+	if err := requireNonEmptyFile(packagedBinary); err != nil {
+		return Result{}, fmt.Errorf("verify packaged device binary: %w", err)
+	}
+	if info, statErr := os.Stat(filepath.Join(pdxPath, "pdxinfo")); statErr != nil || info.IsDir() {
+		return Result{}, fmt.Errorf("verify packaged pdxinfo: pdc did not create a file")
+	}
 	return Result{
 		TinyGo:  firstLine(runVersion(ctx, tinygo, "version")),
 		GCC:     firstLine(runVersion(ctx, gcc, "--version")),
 		Format:  "ELF32 ARM executable, hard-float",
 		Export:  "eventHandler",
-		Pending: "packaging and hardware execution; allocator is non-collecting",
+		Package: "pdex.bin in .pdx",
+		Pending: "device deployment and hardware execution; allocator is non-collecting",
 	}, nil
+}
+
+func copyFile(source, destination string) error {
+	contents, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(destination, contents, 0o644)
+}
+
+func requireNonEmptyFile(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("%s is a directory", path)
+	}
+	if info.Size() == 0 {
+		return fmt.Errorf("%s is empty", path)
+	}
+	return nil
 }
 
 func runCommand(ctx context.Context, directory, action, executable string, args ...string) error {
@@ -262,3 +314,10 @@ const linkerFlags = "-Wl,--gc-sections,--emit-relocs," +
 	"--defsym,_sdata=__data_start__,--defsym,_edata=__data_end__,--defsym,_sidata=__etext," +
 	"--defsym,_heap_start=__bss_end__,--defsym,_heap_end=__bss_end__," +
 	"--defsym,_globals_start=__data_start__,--defsym,_globals_end=__bss_end__,--defsym,_stack_top=__bss_end__"
+
+const probePDXInfo = `name=gopdsdk Device Probe
+author=gopdsdk
+bundleID=sdk.gopdsdk.deviceprobe
+version=0.0.0
+buildNumber=1
+`

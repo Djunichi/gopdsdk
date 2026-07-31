@@ -105,9 +105,9 @@ func discoverSDK(sys system, explicit string) (string, string, error) {
 		return root, version, nil
 	}
 	if len(problems) == 0 {
-		return "", "", errors.New("Playdate SDK not found; set PLAYDATE_SDK_PATH or pass --sdk")
+		return "", "", errors.New("playdate SDK not found; set PLAYDATE_SDK_PATH or pass --sdk")
 	}
-	return "", "", fmt.Errorf("Playdate SDK not found (%s)", strings.Join(problems, "; "))
+	return "", "", fmt.Errorf("playdate SDK not found (%s)", strings.Join(problems, "; "))
 }
 
 func conventionalSDKCandidates(goos, home string) []sdkCandidate {

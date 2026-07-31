@@ -1,6 +1,8 @@
 package deviceprobe
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -40,5 +42,35 @@ func TestAdapterDefinesInterruptHooks(t *testing.T) {
 func TestFirstLine(t *testing.T) {
 	if got, want := firstLine("first\r\nsecond\n"), "first"; got != want {
 		t.Fatalf("firstLine() = %q, want %q", got, want)
+	}
+}
+
+func TestRequireNonEmptyFile(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "pdex.bin")
+	if err := os.WriteFile(path, []byte("device binary"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireNonEmptyFile(path); err != nil {
+		t.Fatalf("requireNonEmptyFile() error = %v", err)
+	}
+}
+
+func TestRequireNonEmptyFileRejectsEmptyFile(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "pdex.bin")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireNonEmptyFile(path); err == nil {
+		t.Fatal("requireNonEmptyFile() error = nil, want empty-file error")
+	}
+}
+
+func TestProbePDXInfoIdentifiesDeviceProbe(t *testing.T) {
+	for _, want := range []string{"name=gopdsdk Device Probe", "bundleID=sdk.gopdsdk.deviceprobe", "version=0.0.0"} {
+		if !strings.Contains(probePDXInfo, want) {
+			t.Errorf("probePDXInfo does not contain %q", want)
+		}
 	}
 }

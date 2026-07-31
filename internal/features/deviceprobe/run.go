@@ -33,7 +33,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(stdout, "Device link stage: READY\nTinyGo:              %s\nCompiler:            %s\nELF:                 %s\nExport:              %s\nStill unverified:    %s\n",
-		result.TinyGo, result.GCC, result.Format, result.Export, result.Pending)
+	_, err = fmt.Fprintf(stdout, "Device package stage: READY\nTinyGo:              %s\nCompiler:            %s\nELF:                 %s\nExport:              %s\nPackage:             %s\nStill unverified:    %s\n",
+		result.TinyGo, result.GCC, result.Format, result.Export, result.Package, result.Pending)
 	return err
 }
