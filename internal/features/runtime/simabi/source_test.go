@@ -7,20 +7,24 @@ import (
 
 func TestRender(t *testing.T) {
 	sources, err := Render(Config{
-		APIHeader:        `C:\SDK with spaces\C_API\pd_api.h`,
-		InitMarkerPath:   `C:\Temp path\init.marker`,
-		UpdateMarkerPath: `C:\Temp path\update.marker`,
-		RuntimeImport:    "github.com/Djunichi/gopdsdk/internal/features/runtime",
+		APIHeader:         `C:\SDK with spaces\C_API\pd_api.h`,
+		PublicAPIImport:   "github.com/Djunichi/gopdsdk/playdate",
+		RuntimeImport:     "github.com/Djunichi/gopdsdk/internal/features/runtime",
+		ApplicationImport: "github.com/Djunichi/gopdsdk/probe/app",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
 		`#include "C:/SDK with spaces/C_API/pd_api.h"`,
-		`"C:/Temp path/init.marker"`,
-		`"C:/Temp path/update.marker"`,
+		`github.com/Djunichi/gopdsdk/probe/app`,
+		`github.com/Djunichi/gopdsdk/playdate`,
+		"var game sdk.Game = app.New()",
 		"gameRuntime.Handle",
 		"gameRuntime.Update",
+		"game.Init(gameContext)",
+		"game.Update(gameContext)",
+		"C.bridgeDrawText",
 	} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q:\n%s", want, sources.Go)
@@ -29,7 +33,7 @@ func TestRender(t *testing.T) {
 	for _, want := range []string{
 		`#include "C:/SDK with spaces/C_API/pd_api.h"`,
 		"setUpdateCallback(bridgeUpdate, NULL)",
-		"drawText(message, strlen(message), kASCIIEncoding, 16, 16)",
+		"drawText(text, length, kUTF8Encoding, x, y)",
 	} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("C source does not contain %q:\n%s", want, sources.C)

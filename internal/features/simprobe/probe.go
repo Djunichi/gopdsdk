@@ -72,17 +72,21 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	defer os.RemoveAll(workDir)
 	sourceDir := filepath.Join(workDir, "Source")
+	appDir := filepath.Join(workDir, "app")
 	initMarkerPath := filepath.Join(workDir, "init.marker")
 	updateMarkerPath := filepath.Join(workDir, "update.marker")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create Source directory: %w", err)
 	}
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		return Result{}, fmt.Errorf("create probe application directory: %w", err)
+	}
 	runtimeImport := modulePath + "/internal/features/runtime"
 	sources, err := simabi.Render(simabi.Config{
-		APIHeader:        apiHeader,
-		InitMarkerPath:   initMarkerPath,
-		UpdateMarkerPath: updateMarkerPath,
-		RuntimeImport:    runtimeImport,
+		APIHeader:         apiHeader,
+		PublicAPIImport:   modulePath + "/playdate",
+		RuntimeImport:     runtimeImport,
+		ApplicationImport: modulePath + "/probe/app",
 	})
 	if err != nil {
 		return Result{}, err
@@ -92,6 +96,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	if err := os.WriteFile(filepath.Join(workDir, "bridge.c"), []byte(sources.C), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe bridge: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(appDir, "app.go"), []byte(renderProbeApplication(modulePath, initMarkerPath, updateMarkerPath)), 0o644); err != nil {
+		return Result{}, fmt.Errorf("write probe application: %w", err)
 	}
 	if err := os.WriteFile(filepath.Join(workDir, "go.mod"), []byte(renderProbeGoMod(moduleRoot, modulePath, goVersion)), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe module: %w", err)
@@ -244,6 +251,33 @@ func renderProbeGoMod(moduleRoot, modulePath, goVersion string) string {
 		modulePath,
 		strconv.Quote(filepath.ToSlash(moduleRoot)),
 	)
+}
+
+func renderProbeApplication(modulePath, initMarkerPath, updateMarkerPath string) string {
+	return fmt.Sprintf(`package app
+
+import (
+	"os"
+
+	%q
+)
+
+type game struct{}
+
+func New() playdate.Game { return game{} }
+
+func (game) Init(playdate.Context) error {
+	return os.WriteFile(%q, []byte("kEventInit"), 0o600)
+}
+
+func (game) Update(context playdate.Context) (bool, error) {
+	context.DrawText("Hello from gopdsdk", 16, 16)
+	if err := os.WriteFile(%q, []byte("update"), 0o600); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+`, modulePath+"/playdate", filepath.ToSlash(initMarkerPath), filepath.ToSlash(updateMarkerPath))
 }
 
 func launchAndWait(ctx context.Context, simulator, pdxPath, initMarkerPath, updateMarkerPath string, timeout time.Duration) error {

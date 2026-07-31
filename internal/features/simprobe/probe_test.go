@@ -44,6 +44,24 @@ func TestRenderProbeGoMod(t *testing.T) {
 	}
 }
 
+func TestRenderProbeApplication(t *testing.T) {
+	source := renderProbeApplication(
+		"github.com/Djunichi/gopdsdk",
+		`C:\Temp path\init.marker`,
+		`C:\Temp path\update.marker`,
+	)
+	for _, want := range []string{
+		`"github.com/Djunichi/gopdsdk/playdate"`,
+		`"C:/Temp path/init.marker"`,
+		`"C:/Temp path/update.marker"`,
+		`context.DrawText("Hello from gopdsdk", 16, 16)`,
+	} {
+		if !strings.Contains(source, want) {
+			t.Errorf("renderProbeApplication() does not contain %q:\n%s", want, source)
+		}
+	}
+}
+
 func TestWaitForFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "marker")
 	go func() {

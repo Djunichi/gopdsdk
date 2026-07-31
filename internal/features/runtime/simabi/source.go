@@ -15,10 +15,10 @@ const (
 
 // Config identifies the paths and import used by generated bridge sources.
 type Config struct {
-	APIHeader        string
-	InitMarkerPath   string
-	UpdateMarkerPath string
-	RuntimeImport    string
+	APIHeader         string
+	PublicAPIImport   string
+	RuntimeImport     string
+	ApplicationImport string
 }
 
 // Sources contains the generated Go and C sides of the Simulator bridge.
@@ -34,9 +34,9 @@ func Render(config Config) (Sources, error) {
 		value string
 	}{
 		{name: "APIHeader", value: config.APIHeader},
-		{name: "InitMarkerPath", value: config.InitMarkerPath},
-		{name: "UpdateMarkerPath", value: config.UpdateMarkerPath},
+		{name: "PublicAPIImport", value: config.PublicAPIImport},
 		{name: "RuntimeImport", value: config.RuntimeImport},
+		{name: "ApplicationImport", value: config.ApplicationImport},
 	} {
 		if field.value == "" {
 			return Sources{}, fmt.Errorf("render Simulator ABI: %s is required", field.name)
@@ -54,24 +54,34 @@ func renderGo(config Config) string {
 
 /*
 #include %q
+#include <stdlib.h>
 void bridgeRegisterUpdate(PlaydateAPI* playdate);
-void bridgeDrawHello(void);
+void bridgeDrawText(const char* text, size_t length, int x, int y);
 */
 import "C"
 import (
-	"os"
+	"unsafe"
 
+	sdk %q
 	sdkRuntime %q
+	app %q
 )
 
 var activePlaydate *C.PlaydateAPI
+var game sdk.Game = app.New()
+var gameContext playdateContext
 
 var gameRuntime = mustRuntime()
 
 func mustRuntime() *sdkRuntime.Runtime {
 	runtime, err := sdkRuntime.New(sdkRuntime.Callbacks{
-		Init: initGame,
-		Update: updateGame,
+		Init: func() error {
+			C.bridgeRegisterUpdate(activePlaydate)
+			return game.Init(gameContext)
+		},
+		Update: func() (bool, error) {
+			return game.Update(gameContext)
+		},
 	})
 	if err != nil {
 		panic(err)
@@ -97,24 +107,20 @@ func goUpdate() C.int {
 	return C.int(refresh)
 }
 
-func initGame() error {
-	_ = os.WriteFile(%q, []byte("kEventInit"), 0o600)
-	C.bridgeRegisterUpdate(activePlaydate)
-	return nil
-}
+type playdateContext struct{}
 
-func updateGame() (bool, error) {
-	C.bridgeDrawHello()
-	_ = os.WriteFile(%q, []byte("update"), 0o600)
-	return true, nil
+func (playdateContext) DrawText(text string, x, y int) {
+	cText := C.CString(text)
+	defer C.free(unsafe.Pointer(cText))
+	C.bridgeDrawText(cText, C.size_t(len(text)), C.int(x), C.int(y))
 }
 
 func main() {}
 `,
 		filepath.ToSlash(config.APIHeader),
+		config.PublicAPIImport,
 		config.RuntimeImport,
-		filepath.ToSlash(config.InitMarkerPath),
-		filepath.ToSlash(config.UpdateMarkerPath),
+		config.ApplicationImport,
 	)
 }
 
@@ -139,10 +145,9 @@ void bridgeRegisterUpdate(PlaydateAPI* playdate)
 	playdate->system->setUpdateCallback(bridgeUpdate, NULL);
 }
 
-void bridgeDrawHello(void)
+void bridgeDrawText(const char* text, size_t length, int x, int y)
 {
-	static const char message[] = "Hello from gopdsdk";
-	bridgePlaydate->graphics->drawText(message, strlen(message), kASCIIEncoding, 16, 16);
+	bridgePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
 }
 `, filepath.ToSlash(apiHeader))
 }
