@@ -57,6 +57,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("find arm-none-eabi-nm: %w", err)
 	}
+	objcopy, err := exec.LookPath("arm-none-eabi-objcopy")
+	if err != nil {
+		return Result{}, fmt.Errorf("find arm-none-eabi-objcopy: %w", err)
+	}
 	workDir, err := os.MkdirTemp("", "gopdsdk-device-probe-")
 	if err != nil {
 		return Result{}, fmt.Errorf("create device probe directory: %w", err)
@@ -77,11 +81,20 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	objectPath := filepath.Join(workDir, "probe.o")
 	if err := runCommand(ctx, workDir, "compile TinyGo Playdate object", tinygo,
-		"build", "-target", filepath.Join(workDir, "playdate.json"), "-scheduler", "none", "-gc", "leaking", "-panic", "trap", "-o", objectPath, "."); err != nil {
+		"build", "-target", filepath.Join(workDir, "playdate.json"), "-scheduler", "none", "-gc", "none", "-panic", "trap", "-o", objectPath, "."); err != nil {
 		return Result{}, err
+	}
+	if err := runCommand(ctx, workDir, "expose TinyGo runtime bootstrap symbols", objcopy,
+		"--globalize-symbol=runtime.preinit", "--globalize-symbol=runtime.run", objectPath); err != nil {
+		return Result{}, err
+	}
+	bootstrapSourcePath := filepath.Join(workDir, "bootstrap.c")
+	if err := os.WriteFile(bootstrapSourcePath, []byte(bootstrapSource), 0o644); err != nil {
+		return Result{}, fmt.Errorf("write bootstrap.c: %w", err)
 	}
 	setupObject := filepath.Join(workDir, "setup.o")
 	adapterObject := filepath.Join(workDir, "adapter.o")
+	bootstrapObject := filepath.Join(workDir, "bootstrap.o")
 	compileFlags := []string{"-c", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-O2", "-ffunction-sections", "-fdata-sections"}
 	setupArgs := append(append([]string{}, compileFlags...), "-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", filepath.Join(sdkPath, "C_API"), setupSource, "-o", setupObject)
 	if err := runCommand(ctx, workDir, "compile official Playdate setup", gcc, setupArgs...); err != nil {
@@ -91,9 +104,13 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := runCommand(ctx, workDir, "compile TinyGo runtime adapter", gcc, adapterArgs...); err != nil {
 		return Result{}, err
 	}
+	bootstrapArgs := append(append([]string{}, compileFlags...), "-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", filepath.Join(sdkPath, "C_API"), bootstrapSourcePath, "-o", bootstrapObject)
+	if err := runCommand(ctx, workDir, "compile TinyGo runtime bootstrap", gcc, bootstrapArgs...); err != nil {
+		return Result{}, err
+	}
 	elfPath := filepath.Join(workDir, "pdex.elf")
 	if err := runCommand(ctx, workDir, "link Playdate device ELF", gcc,
-		objectPath, setupObject, adapterObject,
+		objectPath, setupObject, adapterObject, bootstrapObject,
 		"-nostartfiles", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16",
 		"-T", linkerScript, linkerFlags, "-o", elfPath); err != nil {
 		return Result{}, err
@@ -113,6 +130,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		{description: "machine", required: "Machine:                           ARM"},
 		{description: "export", required: "eventHandler"},
 		{description: "entry point", required: "eventHandlerShim"},
+		{description: "Go event handler", required: "goEventHandler"},
+		{description: "runtime preinit", required: "runtime.preinit"},
+		{description: "runtime run", required: "runtime.run"},
 		{description: "hard-float ABI", required: "Tag_ABI_VFP_args: VFP registers"},
 	} {
 		if !strings.Contains(inspection, check.required) {
@@ -132,7 +152,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		GCC:     firstLine(runVersion(ctx, gcc, "--version")),
 		Format:  "ELF32 ARM executable, hard-float",
 		Export:  "eventHandler",
-		Pending: "TinyGo runtime initialization, Playdate-backed heap, packaging, and hardware execution",
+		Pending: "packaging and hardware execution; allocator is non-collecting",
 	}, nil
 }
 
@@ -168,10 +188,43 @@ func commandError(action string, err error, output []byte) error {
 
 const probeSource = `package main
 
-//export eventHandler
-func eventHandler(uintptr, int32, uint32) int32 { return 0 }
+//export goEventHandler
+func goEventHandler(uintptr, int32, uint32) int32 { return 0 }
 
 func main() {}
+`
+
+const bootstrapSource = `#include "pd_api.h"
+
+extern void runtimePreinit(void) __asm__("runtime.preinit");
+extern void runtimeRun(void) __asm__("runtime.run");
+extern int goEventHandler(PlaydateAPI*, PDSystemEvent, uint32_t);
+void* runtimeAlloc(uintptr_t, void*) __asm__("runtime.alloc");
+
+static int booted;
+static PlaydateAPI* activePlaydate;
+
+void* runtimeAlloc(uintptr_t size, void* layout)
+{
+    (void)layout;
+    unsigned char* pointer = activePlaydate->system->realloc(NULL, size);
+    if (pointer == NULL)
+        return NULL;
+    for (uintptr_t index = 0; index < size; ++index)
+        pointer[index] = 0;
+    return pointer;
+}
+
+int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
+{
+    if (event == kEventInit && !booted) {
+        activePlaydate = playdate;
+        runtimePreinit();
+        runtimeRun();
+        booted = 1;
+    }
+    return goEventHandler(playdate, event, arg);
+}
 `
 
 const targetSource = `{

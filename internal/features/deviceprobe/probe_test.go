@@ -5,10 +5,18 @@ import (
 	"testing"
 )
 
-func TestProbeSourceExportsEventHandler(t *testing.T) {
-	for _, want := range []string{"package main", "//export eventHandler", "func eventHandler", "func main()"} {
+func TestProbeSourceExportsGoEventHandler(t *testing.T) {
+	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "func main()"} {
 		if !strings.Contains(probeSource, want) {
 			t.Errorf("probeSource does not contain %q", want)
+		}
+	}
+}
+
+func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
+	for _, want := range []string{"runtime.preinit", "runtime.run", "runtime.alloc", "activePlaydate->system->realloc(NULL, size)", "event == kEventInit && !booted", "runtimePreinit();", "runtimeRun();", "goEventHandler(playdate, event, arg)"} {
+		if !strings.Contains(bootstrapSource, want) {
+			t.Errorf("bootstrapSource does not contain %q", want)
 		}
 	}
 }

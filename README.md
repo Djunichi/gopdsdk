@@ -63,8 +63,9 @@ go run ./cmd/gopdsdk probe device
 
 This currently proves a hard-float Cortex-M7 TinyGo object, the official
 Playdate `setup.c` and `link_map.ld` link, an ELF32/ARM executable with
-`eventHandlerShim`, and no unresolved symbols. It does not yet prove TinyGo
-runtime initialization, a Playdate-backed heap, packaging, or physical hardware.
+`eventHandlerShim`, a one-time TinyGo runtime bootstrap, and no unresolved
+symbols. Allocation uses `playdate->system->realloc` in a non-collecting P0
+mode. Packaging and physical hardware execution are not yet proven.
 
 ## Build a Simulator application
 
