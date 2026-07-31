@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "gopdsdk: doctor (auto-discovery)",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": ["doctor"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "gopdsdk: doctor (PLAYDATE_SDK_PATH)",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/gopdsdk",
+      "args": ["doctor", "--sdk", "${env:PLAYDATE_SDK_PATH}"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
