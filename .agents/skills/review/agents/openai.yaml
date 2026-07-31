@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review"
+  short_description: "Review Go changes for correctness and risk"
+  default_prompt: "Use $review to review the current gopdsdk changes and report actionable findings."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement"
+  short_description: "Implement scoped Go changes with verification"
+  default_prompt: "Use $implement to implement the requested gopdsdk change and verify it."
