@@ -69,6 +69,15 @@ Allocation uses `playdate->system->realloc` in a non-collecting P0 mode.
 Deployment and physical-device execution are proven on the Windows P0 setup.
 The marker was rendered after the Go event handler returned.
 
+Build an importable application package for a physical Playdate with:
+
+```powershell
+go run ./cmd/gopdsdk build device --sdk /path/to/PlaydateSDK ./examples/hello
+```
+
+The default output is `build/<package>.pdx`; `--output` selects another path and
+`--force` replaces an existing output.
+
 After the read-only connection probe succeeds, explicitly install the verified
 probe package with:
 
@@ -82,12 +91,12 @@ run the game; start `gopdsdk Device Probe` manually on the Playdate.
 Build, install, and launch the verified device probe in one command with:
 
 ```powershell
-go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK
+go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK ./examples/hello
 ```
 
 This changes the connected device, then asks the official `pdutil` to launch
-`/Games/DeviceProbe.pdx`. The existing `gopdsdk run <package>` form continues
-to build and launch a Simulator application.
+the installed package. The existing `gopdsdk run <package>` form continues to
+build and launch a Simulator application.
 
 Safely check whether `pdutil` can open a connected Playdate without mounting,
 installing, or running anything:
@@ -130,8 +139,8 @@ go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
 ```
 
 The default output is `build/hello.pdx`. Use `--output` to select another path.
-The build command does not overwrite an existing artifact. Simulator builds on
-macOS and Linux and physical-device builds are not implemented yet.
+The build command does not overwrite an existing artifact. Simulator execution
+on macOS and Linux remains unverified; device builds use the P0 TinyGo runtime.
 
 Build and launch the example, replacing its previous build artifact, with:
 

@@ -3,11 +3,14 @@ package deviceprobe
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +24,7 @@ type Result struct {
 	Format  string
 	Export  string
 	Package string
+	Output  string
 	Deploy  string
 	Run     string
 	Pending string
@@ -29,6 +33,10 @@ type Result struct {
 // Config identifies the official Playdate SDK used for the link stage.
 type Config struct {
 	SDKPath      string
+	Application  string
+	Output       string
+	Replace      bool
+	Persist      bool
 	Install      bool
 	Run          bool
 	ArtifactsDir string
@@ -38,6 +46,23 @@ type Config struct {
 func Probe(ctx context.Context, config Config) (Result, error) {
 	if config.SDKPath == "" {
 		return Result{}, fmt.Errorf("Playdate SDK path is required")
+	}
+	if config.Application == "" {
+		config.Application = "./examples/hello"
+	}
+	app, err := inspectApplication(ctx, config.Application)
+	if err != nil {
+		return Result{}, err
+	}
+	if app.Name == "main" || app.Module == nil {
+		return Result{}, fmt.Errorf("inspect application package: %s must be an importable package in a Go module", app.ImportPath)
+	}
+	pdxInfo, err := os.ReadFile(filepath.Join(app.Dir, "pdxinfo"))
+	if err != nil {
+		return Result{}, fmt.Errorf("read application pdxinfo: %w", err)
+	}
+	if config.Persist && config.Output == "" {
+		config.Output = filepath.Join("build", app.Name+".pdx")
 	}
 	sdkPath, err := filepath.Abs(filepath.Clean(config.SDKPath))
 	if err != nil {
@@ -88,8 +113,8 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		name     string
 		contents string
 	}{
-		{name: "go.mod", contents: gomodule.RenderProbe(module, "probe/device")},
-		{name: "main.go", contents: renderProbeSource(module.Path)},
+		{name: "go.mod", contents: renderDeviceGoMod(module, app)},
+		{name: "main.go", contents: renderProbeSource(module.Path, app.ImportPath)},
 		{name: "playdate.json", contents: targetSource},
 		{name: "adapter.S", contents: adapterSource},
 	} {
@@ -189,10 +214,11 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := copyFile(elfPath, packagedELFSource); err != nil {
 		return Result{}, fmt.Errorf("stage device ELF: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), []byte(probePDXInfo), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), pdxInfo, 0o644); err != nil {
 		return Result{}, fmt.Errorf("write device pdxinfo: %w", err)
 	}
-	pdxPath := filepath.Join(workDir, "DeviceProbe.pdx")
+	pdxName := app.Name + ".pdx"
+	pdxPath := filepath.Join(workDir, pdxName)
 	if err := runCommand(ctx, workDir, "package device probe", pdc,
 		"-sdkpath", sdkPath, "-q", sourceDir, pdxPath); err != nil {
 		return Result{}, err
@@ -216,6 +242,30 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("save diagnostic ELF: %w", err)
 		}
 	}
+	artifactOutput := "temporary package"
+	if config.Output != "" {
+		outputPath, err := filepath.Abs(filepath.Clean(config.Output))
+		if err != nil {
+			return Result{}, fmt.Errorf("resolve output path: %w", err)
+		}
+		if info, statErr := os.Stat(outputPath); statErr == nil {
+			if !config.Replace {
+				return Result{}, fmt.Errorf("output already exists: %s", outputPath)
+			}
+			if !info.IsDir() {
+				return Result{}, fmt.Errorf("output path is not a directory: %s", outputPath)
+			}
+			if err := os.RemoveAll(outputPath); err != nil {
+				return Result{}, fmt.Errorf("replace output: %w", err)
+			}
+		} else if !os.IsNotExist(statErr) {
+			return Result{}, fmt.Errorf("inspect output path: %w", statErr)
+		}
+		if err := copyDirectory(pdxPath, outputPath); err != nil {
+			return Result{}, fmt.Errorf("write output: %w", err)
+		}
+		artifactOutput = outputPath
+	}
 	deployment := "not requested"
 	execution := "not requested"
 	pending := "device deployment and hardware execution; allocator is non-collecting"
@@ -235,7 +285,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		deployment = summarizeOutput(installOutput)
 		pending = "hardware execution; allocator is non-collecting"
 		if config.Run {
-			runOutput, err := runDeviceProbe(ctx, workDir, pdutil)
+			runOutput, err := runDeviceProbe(ctx, workDir, pdutil, "/Games/"+pdxName)
 			if err != nil {
 				return Result{}, err
 			}
@@ -248,17 +298,18 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		GCC:     firstLine(runVersion(ctx, gcc, "--version")),
 		Format:  "ELF32 ARM executable, hard-float",
 		Export:  "eventHandler",
-		Package: "pdex.bin in .pdx",
+		Package: app.ImportPath,
+		Output:  artifactOutput,
 		Deploy:  deployment,
 		Run:     execution,
 		Pending: pending,
 	}, nil
 }
 
-func runDeviceProbe(ctx context.Context, directory, pdutil string) (string, error) {
+func runDeviceProbe(ctx context.Context, directory, pdutil, devicePath string) (string, error) {
 	const attempts = 10
 	for attempt := 1; attempt <= attempts; attempt++ {
-		output, err := runCommandOutput(ctx, directory, "run device probe", pdutil, "run", deviceProbeInstallPath)
+		output, err := runCommandOutput(ctx, directory, "run device probe", pdutil, "run", devicePath)
 		if err == nil {
 			return output, nil
 		}
@@ -280,6 +331,23 @@ func copyFile(source, destination string) error {
 		return err
 	}
 	return os.WriteFile(destination, contents, 0o644)
+}
+
+func copyDirectory(source, destination string) error {
+	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(destination, relative)
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		return copyFile(path, target)
+	})
 }
 
 func requireNonEmptyFile(path string) error {
@@ -357,7 +425,7 @@ func commandError(action string, err error, output []byte) error {
 	return fmt.Errorf("%s: %w: %s", action, err, detail)
 }
 
-func renderProbeSource(modulePath string) string {
+func renderProbeSource(modulePath, applicationImport string) string {
 	return fmt.Sprintf(`package main
 
 import (
@@ -415,7 +483,35 @@ func goUpdate() int32 {
 }
 
 func main() {}
-`, modulePath+"/playdate", modulePath+"/internal/features/runtime", modulePath+"/examples/hello")
+`, modulePath+"/playdate", modulePath+"/internal/features/runtime", applicationImport)
+}
+
+type applicationInfo struct {
+	ImportPath string
+	Name       string
+	Dir        string
+	Module     *struct{ Path, Dir, GoVersion string }
+}
+
+func renderDeviceGoMod(module gomodule.Info, app applicationInfo) string {
+	contents := gomodule.RenderProbe(module, "probe/device")
+	if app.Module == nil || app.Module.Path == module.Path {
+		return contents
+	}
+	return contents + fmt.Sprintf("\nrequire %s v0.0.0\nreplace %s => %s\n",
+		app.Module.Path, app.Module.Path, strconv.Quote(filepath.ToSlash(app.Module.Dir)))
+}
+
+func inspectApplication(ctx context.Context, pattern string) (applicationInfo, error) {
+	output, err := exec.CommandContext(ctx, "go", "list", "-json", pattern).CombinedOutput()
+	if err != nil {
+		return applicationInfo{}, commandError("inspect application package", err, output)
+	}
+	var app applicationInfo
+	if err := json.Unmarshal(output, &app); err != nil {
+		return applicationInfo{}, fmt.Errorf("inspect application package: decode go list output: %w", err)
+	}
+	return app, nil
 }
 
 const bootstrapSource = `#include "pd_api.h"
@@ -539,12 +635,3 @@ const linkerFlags = "-Wl,--gc-sections,--emit-relocs," +
 	"--defsym,_sdata=__data_start__,--defsym,_edata=__data_end__,--defsym,_sidata=__etext," +
 	"--defsym,_heap_start=__bss_end__,--defsym,_heap_end=__bss_end__," +
 	"--defsym,_globals_start=__data_start__,--defsym,_globals_end=__bss_end__,--defsym,_stack_top=__bss_end__"
-
-const probePDXInfo = `name=gopdsdk Device Probe
-author=gopdsdk
-bundleID=sdk.gopdsdk.deviceprobe
-version=0.0.0
-buildNumber=1
-`
-
-const deviceProbeInstallPath = "/Games/DeviceProbe.pdx"

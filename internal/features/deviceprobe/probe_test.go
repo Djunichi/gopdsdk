@@ -5,11 +5,24 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
 )
 
+func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
+	app := applicationInfo{ImportPath: "example.com/game/pkg", Name: "pkg", Dir: `C:\game\pkg`}
+	app.Module = &struct{ Path, Dir, GoVersion string }{Path: "example.com/game", Dir: `C:\game`, GoVersion: "1.26"}
+	got := renderDeviceGoMod(gomodule.Info{Path: "github.com/Djunichi/gopdsdk", Root: `C:\sdk`, GoVersion: "1.26"}, app)
+	for _, want := range []string{"require example.com/game v0.0.0", "replace example.com/game =>", "C:/game"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("renderDeviceGoMod() does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
 func TestProbeSourceExportsGoEventHandler(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk")
-	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "game.Update(gameContext)", "bridgeClear", "bridgeDrawText", `"github.com/Djunichi/gopdsdk/examples/hello"`, "func main()"} {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "game.Update(gameContext)", "bridgeClear", "bridgeDrawText", `"example.com/game"`, "func main()"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
@@ -89,14 +102,6 @@ func TestRequireNonEmptyFileRejectsEmptyFile(t *testing.T) {
 	}
 }
 
-func TestProbePDXInfoIdentifiesDeviceProbe(t *testing.T) {
-	for _, want := range []string{"name=gopdsdk Device Probe", "bundleID=sdk.gopdsdk.deviceprobe", "version=0.0.0"} {
-		if !strings.Contains(probePDXInfo, want) {
-			t.Errorf("probePDXInfo does not contain %q", want)
-		}
-	}
-}
-
 func TestSummarizeOutput(t *testing.T) {
 	if got, want := summarizeOutput("Playdate detected\r\nInstalled DeviceProbe.pdx\r\n"), "Playdate detected Installed DeviceProbe.pdx"; got != want {
 		t.Fatalf("summarizeOutput() = %q, want %q", got, want)
@@ -112,12 +117,6 @@ func TestSummarizeRunOutput(t *testing.T) {
 	}
 	if got, want := summarizeRunOutput("\r\n"), "launch command sent by pdutil"; got != want {
 		t.Fatalf("summarizeRunOutput(empty) = %q, want %q", got, want)
-	}
-}
-
-func TestDeviceProbeInstallPathMatchesPackageName(t *testing.T) {
-	if got, want := deviceProbeInstallPath, "/Games/DeviceProbe.pdx"; got != want {
-		t.Fatalf("deviceProbeInstallPath = %q, want %q", got, want)
 	}
 }
 

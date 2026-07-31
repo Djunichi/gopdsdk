@@ -24,7 +24,11 @@ func main() {
 	} else {
 		switch args[0] {
 		case "build":
-			err = build.Run(context.Background(), args, os.Stdout, os.Stderr)
+			if len(args) > 1 && args[1] == "device" {
+				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+			} else {
+				err = build.Run(context.Background(), args, os.Stdout, os.Stderr)
+			}
 		case "crashlog":
 			err = devicecrashlog.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "doctor":
