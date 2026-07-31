@@ -92,7 +92,11 @@ func mustRuntime() *sdkRuntime.Runtime {
 
 //export eventHandler
 func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t) C.int {
-	activePlaydate = playdate
+	if sdkRuntime.Event(event) == sdkRuntime.EventInit {
+		activePlaydate = playdate
+	} else if activePlaydate == nil {
+		return -1
+	}
 	if err := gameRuntime.Handle(sdkRuntime.Event(event), uint32(arg)); err != nil {
 		return -1
 	}
@@ -131,6 +135,11 @@ func renderC(apiHeader string) string {
 	return fmt.Sprintf(`#include %q
 #include <stddef.h>
 #include <string.h>
+
+_Static_assert(sizeof(PDSystemEvent) <= 4, "PDSystemEvent must fit a 32-bit call slot");
+_Static_assert(kEventMirrorEnded <= INT32_MAX, "PDSystemEvent values must fit int32_t");
+_Static_assert(sizeof(uint32_t) == 4, "event argument must be 32-bit");
+_Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
 
 extern int goUpdate(void);
 

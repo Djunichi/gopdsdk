@@ -14,6 +14,11 @@ Windows is verified end to end; macOS and Linux execution remains unverified
 until run with their official SDK distributions. Public documentation will be
 added as the API takes shape; design documents remain internal during P0.
 
+The exact P0 verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
+solely by version number: `doctor` reports them as `UNVERIFIED` until the
+relevant probe succeeds.
+
 ## Environment diagnostics
 
 Run the read-only environment check:

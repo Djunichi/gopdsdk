@@ -508,6 +508,12 @@ func inspectApplication(ctx context.Context, pattern string) (applicationInfo, e
 
 const bootstrapSource = `#include "pd_api.h"
 
+_Static_assert(sizeof(PDSystemEvent) <= 4, "PDSystemEvent must fit a 32-bit call slot");
+_Static_assert(kEventMirrorEnded <= INT32_MAX, "PDSystemEvent values must fit int32_t");
+_Static_assert(sizeof(uint32_t) == 4, "event argument must be 32-bit");
+_Static_assert(sizeof(uintptr_t) == 4, "device pointers must be 32-bit");
+_Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
+
 extern void runtimeRun(void) __asm__("runtime.run");
 extern int goEventHandler(PlaydateAPI*, PDSystemEvent, uint32_t);
 extern int goUpdate(void);

@@ -3,7 +3,14 @@ package runtime
 import (
 	"errors"
 	"testing"
+	"unsafe"
 )
+
+func TestABIFixedWidthTypes(t *testing.T) {
+	if got := unsafe.Sizeof(Event(0)); got != 4 {
+		t.Fatalf("sizeof(Event) = %d, want 4", got)
+	}
+}
 
 func TestNewRequiresCallbacks(t *testing.T) {
 	if _, err := New(Callbacks{}); !errors.Is(err, ErrInitRequired) {
@@ -11,6 +18,33 @@ func TestNewRequiresCallbacks(t *testing.T) {
 	}
 	if _, err := New(Callbacks{Init: func() error { return nil }}); !errors.Is(err, ErrUpdateRequired) {
 		t.Fatalf("New() error = %v, want ErrUpdateRequired", err)
+	}
+}
+
+func TestRuntimeContainsCallbackPanics(t *testing.T) {
+	runtime, err := New(Callbacks{Init: func() error { return nil }, Update: func() (bool, error) { panic("boom") }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err := runtime.Update()
+	if refresh != 0 || !errors.Is(err, ErrCallbackPanic) {
+		t.Fatalf("Update() = %d, %v; want 0, ErrCallbackPanic", refresh, err)
+	}
+	if _, err := runtime.Update(); !errors.Is(err, ErrNotInitialized) {
+		t.Fatalf("Update() after panic error = %v", err)
+	}
+}
+
+func TestRuntimeContainsInitPanic(t *testing.T) {
+	runtime, err := New(Callbacks{Init: func() error { panic("boom") }, Update: func() (bool, error) { return true, nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Handle(EventInit, 0); !errors.Is(err, ErrCallbackPanic) {
+		t.Fatalf("Handle() error = %v, want ErrCallbackPanic", err)
 	}
 }
 
@@ -53,7 +87,7 @@ func TestRuntimeRefreshAndErrors(t *testing.T) {
 	tests := []struct {
 		name        string
 		update      func() (bool, error)
-		wantRefresh int
+		wantRefresh int32
 		wantErr     error
 	}{
 		{"no refresh", func() (bool, error) { return false, nil }, 0, nil},

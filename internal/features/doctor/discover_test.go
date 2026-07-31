@@ -109,6 +109,7 @@ func TestEnvironmentSDKPathPrecedesConventionalPath(t *testing.T) {
 	if report.SDKPath != envSDK || report.SDKVersion != "3.2.0" {
 		t.Fatalf("selected SDK = %q %q, want environment SDK", report.SDKPath, report.SDKVersion)
 	}
+	assertCapability(t, report, "sdk", StatusUnverified)
 }
 
 func makeSDK(t *testing.T, root, goos, version string, tools ...string) {

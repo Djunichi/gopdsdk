@@ -163,6 +163,8 @@ func assess(report Report, sdkErr error, goos string) []Capability {
 		capabilities = append(capabilities, Capability{"sdk", StatusMissing, sdkErr.Error()})
 	} else if _, pdc := report.tool("pdc"); !pdc {
 		capabilities = append(capabilities, Capability{"sdk", StatusIncompatible, "SDK is missing pdc"})
+	} else if report.SDKVersion != verifiedSDKVersion {
+		capabilities = append(capabilities, Capability{"sdk", StatusUnverified, "Playdate SDK " + report.SDKVersion + "; verified profile uses " + verifiedSDKVersion})
 	} else {
 		capabilities = append(capabilities, Capability{"sdk", StatusReady, "Playdate SDK " + report.SDKVersion})
 	}
@@ -172,7 +174,12 @@ func assess(report Report, sdkErr error, goos string) []Capability {
 		if summary == "" {
 			summary = tool.Path
 		}
-		capabilities = append(capabilities, Capability{"develop", StatusReady, summary})
+		status := StatusReady
+		if tool.Version != "" && !matchesVerifiedTool("go", tool.Version) {
+			status = StatusUnverified
+			summary += "; verified profile uses " + verifiedGoVersion
+		}
+		capabilities = append(capabilities, Capability{"develop", status, summary})
 	} else {
 		capabilities = append(capabilities, Capability{"develop", StatusMissing, "Go compiler not found on PATH"})
 	}
@@ -197,7 +204,11 @@ func assess(report Report, sdkErr error, goos string) []Capability {
 	case !armgcc:
 		capabilities = append(capabilities, Capability{"device-build", StatusMissing, "arm-none-eabi-gcc not found"})
 	default:
-		capabilities = append(capabilities, Capability{"device-build", StatusUnverified, "toolchain found; probe build has not run"})
+		summary := "toolchain found; probe build has not run"
+		if detected := detectedToolchainSummary(report); detected != "" {
+			summary = detected + "; verified profile: TinyGo " + verifiedTinyGoVersion + ", Arm GCC " + verifiedArmGCCVersion + "; probe build has not run"
+		}
+		capabilities = append(capabilities, Capability{"device-build", StatusUnverified, summary})
 	}
 
 	if _, pdutil := report.tool("pdutil"); !pdutil {
