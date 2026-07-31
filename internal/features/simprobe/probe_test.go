@@ -30,31 +30,16 @@ func TestCommandErrorIncludesOutput(t *testing.T) {
 	}
 }
 
-func TestRenderProbeSourceUsesSlashPath(t *testing.T) {
-	source := renderProbeSource(
-		`C:\SDK with spaces\C_API\pd_api.h`,
-		`C:\Temp path\init.marker`,
-		`C:\Temp path\update.marker`,
-	)
-	if !strings.Contains(source, `#include "C:/SDK with spaces/C_API/pd_api.h"`) {
-		t.Fatalf("renderProbeSource() did not render a portable include path:\n%s", source)
-	}
-	for _, marker := range []string{`"C:/Temp path/init.marker"`, `"C:/Temp path/update.marker"`} {
-		if !strings.Contains(source, marker) {
-			t.Fatalf("renderProbeSource() did not render marker %s:\n%s", marker, source)
-		}
-	}
-}
-
-func TestRenderBridgeSource(t *testing.T) {
-	source := renderBridgeSource(`C:\SDK with spaces\C_API\pd_api.h`)
+func TestRenderProbeGoMod(t *testing.T) {
+	goMod := renderProbeGoMod(`C:\Work tree\gopdsdk`, "github.com/Djunichi/gopdsdk", "1.26.5")
 	for _, want := range []string{
-		`#include "C:/SDK with spaces/C_API/pd_api.h"`,
-		"setUpdateCallback(bridgeUpdate, NULL)",
-		"drawText(message, strlen(message), kASCIIEncoding, 16, 16)",
+		"module github.com/Djunichi/gopdsdk/probe",
+		"go 1.26.5",
+		"require github.com/Djunichi/gopdsdk v0.0.0",
+		`replace github.com/Djunichi/gopdsdk => "C:/Work tree/gopdsdk"`,
 	} {
-		if !strings.Contains(source, want) {
-			t.Errorf("renderBridgeSource() does not contain %q:\n%s", want, source)
+		if !strings.Contains(goMod, want) {
+			t.Errorf("renderProbeGoMod() does not contain %q:\n%s", want, goMod)
 		}
 	}
 }

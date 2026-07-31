@@ -17,7 +17,8 @@ Follow `AGENTS.md`; it is the repository contract.
    - keep `cmd/<binary>` limited to composition and process concerns.
 3. State assumptions and the package boundary before editing.
 4. Implement the smallest complete behavior, including error paths.
-5. Add `doc.go` for every new package with `// Package <name>`.
+5. Add a `// Package <name>` comment to the package's primary implementation
+   file. Do not create a separate `doc.go` solely for this comment.
 6. Add deterministic tests. Abstract filesystem or process behavior only where
    tests or platform boundaries require it.
 7. Format and run the checks from `AGENTS.md` plus the relevant end-to-end path.

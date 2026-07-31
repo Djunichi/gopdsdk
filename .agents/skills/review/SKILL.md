@@ -16,7 +16,8 @@ Follow `AGENTS.md`. Review read-only unless the user explicitly requests fixes.
    - behavior, errors, cleanup, and exit semantics;
    - Windows, macOS, and Linux path, executable, and process differences;
    - feature cohesion and premature `internal/shared` extraction;
-   - required `doc.go` package comments;
+   - required package comments in primary implementation files and no
+     comment-only `doc.go` files;
    - deterministic tests and capability probe integrity;
    - accidental copying or structural imitation of third-party implementation;
    - security, destructive behavior, and secret exposure.

@@ -44,8 +44,9 @@ codes; they do not contain business logic.
 
 ## Go conventions
 
-- Every package has a `doc.go` comment beginning exactly with
-  `// Package <name>` and a short purpose statement.
+- Every package has a comment beginning exactly with `// Package <name>` and a
+  short purpose statement in its primary implementation file. Do not create a
+  separate `doc.go` solely for the package comment.
 - Keep package names short, lowercase, and singular where natural.
 - Use the standard library by default; record the reason for each dependency.
 - Accept `context.Context` at boundaries that may execute processes or perform

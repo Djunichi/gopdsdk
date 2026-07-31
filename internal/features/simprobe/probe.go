@@ -1,3 +1,4 @@
+// Package simprobe verifies that Go can produce a loadable Playdate Simulator artifact.
 package simprobe
 
 import (
@@ -7,8 +8,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
 )
 
 // Config identifies the Playdate SDK used by the probe.
@@ -57,6 +61,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("find objdump: %w", err)
 	}
+	moduleRoot, modulePath, goVersion, err := findProjectModule(ctx)
+	if err != nil {
+		return Result{}, err
+	}
 
 	workDir, err := os.MkdirTemp("", "gopdsdk-simulator-probe-")
 	if err != nil {
@@ -69,13 +77,23 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create Source directory: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(workDir, "probe.go"), []byte(renderProbeSource(apiHeader, initMarkerPath, updateMarkerPath)), 0o644); err != nil {
+	runtimeImport := modulePath + "/internal/features/runtime"
+	sources, err := simabi.Render(simabi.Config{
+		APIHeader:        apiHeader,
+		InitMarkerPath:   initMarkerPath,
+		UpdateMarkerPath: updateMarkerPath,
+		RuntimeImport:    runtimeImport,
+	})
+	if err != nil {
+		return Result{}, err
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "probe.go"), []byte(sources.Go), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe source: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(workDir, "bridge.c"), []byte(renderBridgeSource(apiHeader)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(workDir, "bridge.c"), []byte(sources.C), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe bridge: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(workDir, "go.mod"), []byte("module gopdsdk.local/simprobe\n\ngo 1.23\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(workDir, "go.mod"), []byte(renderProbeGoMod(moduleRoot, modulePath, goVersion)), 0o644); err != nil {
 		return Result{}, fmt.Errorf("write probe module: %w", err)
 	}
 	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), []byte(probePDXInfo), 0o644); err != nil {
@@ -103,8 +121,8 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if runErr != nil {
 		return Result{}, commandError("inspect DLL exports", runErr, output)
 	}
-	if !containsExport(string(output), "eventHandler") {
-		return Result{}, fmt.Errorf("inspect DLL exports: eventHandler was not exported")
+	if !containsExport(string(output), simabi.EventHandlerExport) {
+		return Result{}, fmt.Errorf("inspect DLL exports: %s was not exported", simabi.EventHandlerExport)
 	}
 
 	pdxPath := filepath.Join(workDir, "Probe.pdx")
@@ -139,7 +157,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	return Result{
 		SDKVersion: strings.TrimSpace(string(versionBytes)),
 		Compiler:   firstLine(runVersion(ctx, gcc)),
-		Export:     "eventHandler",
+		Export:     simabi.EventHandlerExport,
 		Package:    "pdex.dll in .pdx",
 		Event:      verifiedEvent,
 	}, nil
@@ -187,64 +205,45 @@ func firstLine(value string) string {
 	return strings.TrimSpace(line)
 }
 
-func renderProbeSource(apiHeader, initMarkerPath, updateMarkerPath string) string {
-	return fmt.Sprintf(`package main
-
-/*
-#include %q
-void bridgeRegisterUpdate(PlaydateAPI* playdate);
-void bridgeDrawHello(void);
-*/
-import "C"
-import "os"
-
-//export eventHandler
-func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t) C.int {
-	if event == C.kEventInit {
-		_ = os.WriteFile(%q, []byte("kEventInit"), 0o600)
-		C.bridgeRegisterUpdate(playdate)
+func findProjectModule(ctx context.Context) (root, modulePath, goVersion string, err error) {
+	output, runErr := exec.CommandContext(ctx, "go", "env", "GOMOD").CombinedOutput()
+	if runErr != nil {
+		return "", "", "", commandError("locate project module", runErr, output)
 	}
-	return 0
+	goModPath := strings.TrimSpace(string(output))
+	if goModPath == "" || goModPath == os.DevNull {
+		return "", "", "", fmt.Errorf("locate project module: command is not running inside a Go module")
+	}
+	goMod, readErr := os.ReadFile(goModPath)
+	if readErr != nil {
+		return "", "", "", fmt.Errorf("read project module: %w", readErr)
+	}
+	for _, line := range strings.Split(string(goMod), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+		switch fields[0] {
+		case "module":
+			modulePath = fields[1]
+		case "go":
+			goVersion = fields[1]
+		}
+	}
+	if modulePath == "" || goVersion == "" {
+		return "", "", "", fmt.Errorf("read project module: module and go directives are required")
+	}
+	return filepath.Dir(goModPath), modulePath, goVersion, nil
 }
 
-//export goUpdate
-func goUpdate() C.int {
-	C.bridgeDrawHello()
-	_ = os.WriteFile(%q, []byte("update"), 0o600)
-	return 1
-}
-
-func main() {}
-`, filepath.ToSlash(apiHeader), filepath.ToSlash(initMarkerPath), filepath.ToSlash(updateMarkerPath))
-}
-
-func renderBridgeSource(apiHeader string) string {
-	return fmt.Sprintf(`#include %q
-#include <stddef.h>
-#include <string.h>
-
-extern int goUpdate(void);
-
-static PlaydateAPI* bridgePlaydate;
-
-static int bridgeUpdate(void* userdata)
-{
-	(void)userdata;
-	return goUpdate();
-}
-
-void bridgeRegisterUpdate(PlaydateAPI* playdate)
-{
-	bridgePlaydate = playdate;
-	playdate->system->setUpdateCallback(bridgeUpdate, NULL);
-}
-
-void bridgeDrawHello(void)
-{
-	static const char message[] = "Hello from gopdsdk";
-	bridgePlaydate->graphics->drawText(message, strlen(message), kASCIIEncoding, 16, 16);
-}
-`, filepath.ToSlash(apiHeader))
+func renderProbeGoMod(moduleRoot, modulePath, goVersion string) string {
+	return fmt.Sprintf("module %s/probe\n\ngo %s\n\nrequire %s v0.0.0\n\nreplace %s => %s\n",
+		modulePath,
+		goVersion,
+		modulePath,
+		modulePath,
+		strconv.Quote(filepath.ToSlash(moduleRoot)),
+	)
 }
 
 func launchAndWait(ctx context.Context, simulator, pdxPath, initMarkerPath, updateMarkerPath string, timeout time.Duration) error {
