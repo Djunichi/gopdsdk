@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
+	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
 )
 
 const sdkModule = "github.com/Djunichi/gopdsdk"
@@ -150,19 +151,25 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write pdxinfo: %w", err)
 	}
 
-	dllPath := filepath.Join(sourceDir, "pdex.dll")
-	command := exec.CommandContext(ctx, "go", "build", "-buildmode=c-shared", "-o", dllPath, ".")
-	command.Dir = workDir
-	command.Env = append(os.Environ(), "CGO_ENABLED=1", "CC="+gcc, "CGO_CFLAGS=-DTARGET_EXTENSION=1 -DTARGET_SIMULATOR=1")
-	if outputBytes, runErr := command.CombinedOutput(); runErr != nil {
-		return Result{}, commandError("build Simulator library", runErr, outputBytes)
-	}
-	_ = os.Remove(filepath.Join(sourceDir, "pdex.h"))
-
 	temporaryPDX := filepath.Join(workDir, "Application.pdx")
-	command = exec.CommandContext(ctx, pdc, "-sdkpath", sdkPath, sourceDir, temporaryPDX)
-	if outputBytes, runErr := command.CombinedOutput(); runErr != nil {
-		return Result{}, commandError("package application", runErr, outputBytes)
+	plan, err := buildplan.New(buildplan.Simulator, config.Package, sdkPath, output)
+	if err != nil {
+		return Result{}, err
+	}
+	plan = buildplan.Resolve(plan, map[string]string{
+		"${WORK}":           workDir,
+		"${HOST_LIBRARY}":   "dll",
+		"${CC}":             gcc,
+		"${PDC}":            pdc,
+		"${PACKAGE_OUTPUT}": temporaryPDX,
+	})
+	for index, planned := range plan.Commands {
+		if err := executePlannedCommand(ctx, planned); err != nil {
+			return Result{}, err
+		}
+		if index == 0 {
+			_ = os.Remove(filepath.Join(sourceDir, "pdex.h"))
+		}
 	}
 	if outputExists {
 		if err := os.RemoveAll(output); err != nil {
@@ -174,6 +181,16 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write output: %w", err)
 	}
 	return Result{PackageImport: app.ImportPath, Output: output}, nil
+}
+
+func executePlannedCommand(ctx context.Context, planned buildplan.Command) error {
+	command := exec.CommandContext(ctx, planned.Executable, planned.Args...)
+	command.Dir = planned.Directory
+	command.Env = append(os.Environ(), planned.Environment...)
+	if output, err := command.CombinedOutput(); err != nil {
+		return commandError(planned.Purpose, err, output)
+	}
+	return nil
 }
 
 func inspectPackage(ctx context.Context, pattern string) (packageInfo, error) {

@@ -11,8 +11,8 @@ func TestDevicePlanIsDeterministicAndStructured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Commands) != 9 {
-		t.Fatalf("len(Commands) = %d, want 9", len(plan.Commands))
+	if len(plan.Commands) != 10 {
+		t.Fatalf("len(Commands) = %d, want 10", len(plan.Commands))
 	}
 	if plan.Commands[0].Executable != "tinygo" || plan.Commands[0].Args[0] != "build" {
 		t.Fatalf("first command = %#v", plan.Commands[0])
@@ -44,5 +44,39 @@ func TestSimulatorPlanDoesNotRequireSDKExecution(t *testing.T) {
 func TestNewRejectsUnknownTarget(t *testing.T) {
 	if _, err := New(Target("unknown"), ".", "", ""); err == nil {
 		t.Fatal("New() error = nil, want unknown-target error")
+	}
+}
+
+func TestResolveSubstitutesStructuredCommandFields(t *testing.T) {
+	plan, err := New(Simulator, ".", "sdk", "out")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved := Resolve(plan, map[string]string{"${WORK}": "work", "${HOST_LIBRARY}": "dll", "${CC}": "gcc", "${PDC}": "pdc.exe", "${PACKAGE_OUTPUT}": "temporary.pdx"})
+	if got, want := resolved.Commands[0].Args[3], "work/Source/pdex.dll"; got != want {
+		t.Fatalf("library output = %q, want %q", got, want)
+	}
+	if got, want := resolved.Commands[0].Environment[1], "CC=gcc"; got != want {
+		t.Fatalf("compiler environment = %q, want %q", got, want)
+	}
+	if got, want := resolved.Commands[1].Executable, "pdc.exe"; got != want {
+		t.Fatalf("pdc executable = %q, want %q", got, want)
+	}
+}
+
+func TestBindExecutablesPreservesArguments(t *testing.T) {
+	plan, err := New(Device, ".", "sdk", "out")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound := BindExecutables(plan, map[string]string{"tinygo": `C:\tools\tinygo.exe`})
+	if got, want := bound.Commands[0].Executable, `C:\tools\tinygo.exe`; got != want {
+		t.Fatalf("Executable = %q, want %q", got, want)
+	}
+	if got, want := bound.Commands[0].Args[0], "build"; got != want {
+		t.Fatalf("first argument = %q, want %q", got, want)
+	}
+	if plan.Commands[0].Executable != "tinygo" {
+		t.Fatal("BindExecutables mutated source plan")
 	}
 }

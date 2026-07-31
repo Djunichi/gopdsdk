@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
 	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
 )
 
@@ -122,48 +123,35 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
-	objectPath := filepath.Join(workDir, "probe.o")
-	if err := runCommand(ctx, workDir, "compile TinyGo Playdate object", tinygo,
-		"build", "-target", filepath.Join(workDir, "playdate.json"), "-scheduler", "none", "-gc", "none", "-panic", "trap", "-opt", "0", "-o", objectPath, "."); err != nil {
-		return Result{}, err
-	}
-	if err := runCommand(ctx, workDir, "expose TinyGo runtime bootstrap symbols", objcopy,
-		"--globalize-symbol=runtime.run", objectPath); err != nil {
-		return Result{}, err
-	}
-	bootstrapSourcePath := filepath.Join(workDir, "bootstrap.c")
-	if err := os.WriteFile(bootstrapSourcePath, []byte(bootstrapSource), 0o644); err != nil {
-		return Result{}, fmt.Errorf("write bootstrap.c: %w", err)
-	}
-	setupObject := filepath.Join(workDir, "setup.o")
-	adapterObject := filepath.Join(workDir, "adapter.o")
-	bootstrapObject := filepath.Join(workDir, "bootstrap.o")
-	compileFlags := []string{"-c", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-O2", "-ffunction-sections", "-fdata-sections"}
-	setupArgs := append(append([]string{}, compileFlags...), "-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", filepath.Join(sdkPath, "C_API"), setupSource, "-o", setupObject)
-	if err := runCommand(ctx, workDir, "compile official Playdate setup", gcc, setupArgs...); err != nil {
-		return Result{}, err
-	}
-	adapterArgs := append(append([]string{}, compileFlags...), filepath.Join(workDir, "adapter.S"), "-o", adapterObject)
-	if err := runCommand(ctx, workDir, "compile TinyGo runtime adapter", gcc, adapterArgs...); err != nil {
-		return Result{}, err
-	}
-	bootstrapArgs := append(append([]string{}, compileFlags...), "-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", filepath.Join(sdkPath, "C_API"), bootstrapSourcePath, "-o", bootstrapObject)
-	if err := runCommand(ctx, workDir, "compile TinyGo runtime bootstrap", gcc, bootstrapArgs...); err != nil {
-		return Result{}, err
-	}
 	elfPath := filepath.Join(workDir, "pdex.elf")
-	if err := runCommand(ctx, workDir, "link Playdate device ELF", gcc,
-		objectPath, setupObject, adapterObject, bootstrapObject,
-		"-nostartfiles", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16",
-		"-T", linkerScript, linkerFlags, "-o", elfPath); err != nil {
+	pdxName := app.Name + ".pdx"
+	pdxPath := filepath.Join(workDir, pdxName)
+	plan, err := buildplan.New(buildplan.Device, config.Application, sdkPath, config.Output)
+	if err != nil {
 		return Result{}, err
 	}
-	command := exec.CommandContext(ctx, readelf, "-h", "-A", "-s", "-r", elfPath)
-	output, runErr := command.CombinedOutput()
-	if runErr != nil {
-		return Result{}, commandError("inspect ARM object", runErr, output)
+	plan = buildplan.Resolve(plan, map[string]string{
+		"${WORK}": workDir, "${PACKAGE_OUTPUT}": pdxPath,
+	})
+	plan = buildplan.BindExecutables(plan, map[string]string{
+		"tinygo": tinygo, "arm-none-eabi-objcopy": objcopy, "arm-none-eabi-gcc": gcc,
+		"arm-none-eabi-readelf": readelf, "arm-none-eabi-nm": nm, plan.Commands[9].Executable: pdc,
+	})
+	for index, planned := range plan.Commands[:6] {
+		if _, err := runPlannedCommand(ctx, planned); err != nil {
+			return Result{}, err
+		}
+		if index == 1 {
+			if err := os.WriteFile(filepath.Join(workDir, "bootstrap.c"), []byte(bootstrapSource), 0o644); err != nil {
+				return Result{}, fmt.Errorf("write bootstrap.c: %w", err)
+			}
+		}
 	}
-	inspection := string(output)
+	inspectionOutput, err := runPlannedCommand(ctx, plan.Commands[6])
+	if err != nil {
+		return Result{}, err
+	}
+	inspection := inspectionOutput
 	for _, check := range []struct {
 		description string
 		required    string
@@ -187,20 +175,18 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("inspect ARM object: unsupported Playdate relocation %s remains", forbidden)
 		}
 	}
-	undefined := exec.CommandContext(ctx, nm, "-u", elfPath)
-	undefinedOutput, runErr := undefined.CombinedOutput()
-	if runErr != nil {
-		return Result{}, commandError("inspect unresolved ELF symbols", runErr, undefinedOutput)
+	undefinedOutput, err := runPlannedCommand(ctx, plan.Commands[7])
+	if err != nil {
+		return Result{}, err
 	}
-	if unresolved := strongUndefinedSymbols(string(undefinedOutput)); len(unresolved) != 0 {
+	if unresolved := strongUndefinedSymbols(undefinedOutput); len(unresolved) != 0 {
 		return Result{}, fmt.Errorf("inspect unresolved ELF symbols: %s", strings.Join(unresolved, ", "))
 	}
-	symbols := exec.CommandContext(ctx, nm, elfPath)
-	symbolOutput, runErr := symbols.CombinedOutput()
-	if runErr != nil {
-		return Result{}, commandError("inspect linked ELF symbols", runErr, symbolOutput)
+	symbolOutput, err := runPlannedCommand(ctx, plan.Commands[8])
+	if err != nil {
+		return Result{}, err
 	}
-	lowerSymbols := strings.ToLower(string(symbolOutput))
+	lowerSymbols := strings.ToLower(symbolOutput)
 	for _, forbidden := range []string{"stm32", "initclk", "machine.tim"} {
 		if strings.Contains(lowerSymbols, forbidden) {
 			return Result{}, fmt.Errorf("inspect linked ELF symbols: board-specific symbol %q remains", forbidden)
@@ -217,10 +203,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err := os.WriteFile(filepath.Join(sourceDir, "pdxinfo"), pdxInfo, 0o644); err != nil {
 		return Result{}, fmt.Errorf("write device pdxinfo: %w", err)
 	}
-	pdxName := app.Name + ".pdx"
-	pdxPath := filepath.Join(workDir, pdxName)
-	if err := runCommand(ctx, workDir, "package device probe", pdc,
-		"-sdkpath", sdkPath, "-q", sourceDir, pdxPath); err != nil {
+	if _, err := runPlannedCommand(ctx, plan.Commands[9]); err != nil {
 		return Result{}, err
 	}
 	packagedBinary := filepath.Join(pdxPath, "pdex.bin")
@@ -364,9 +347,8 @@ func requireNonEmptyFile(path string) error {
 	return nil
 }
 
-func runCommand(ctx context.Context, directory, action, executable string, args ...string) error {
-	_, err := runCommandOutput(ctx, directory, action, executable, args...)
-	return err
+func runPlannedCommand(ctx context.Context, planned buildplan.Command) (string, error) {
+	return runCommandOutput(ctx, planned.Directory, planned.Purpose, planned.Executable, planned.Args...)
 }
 
 func runCommandOutput(ctx context.Context, directory, action, executable string, args ...string) (string, error) {
@@ -628,10 +610,3 @@ _getpid:
     movs r0, #1
     bx lr
 `
-
-const linkerFlags = "-Wl,--gc-sections,--emit-relocs," +
-	"--defsym,__exidx_start=0,--defsym,__exidx_end=0," +
-	"--defsym,_sbss=__bss_start__,--defsym,_ebss=__bss_end__," +
-	"--defsym,_sdata=__data_start__,--defsym,_edata=__data_end__,--defsym,_sidata=__etext," +
-	"--defsym,_heap_start=__bss_end__,--defsym,_heap_end=__bss_end__," +
-	"--defsym,_globals_start=__data_start__,--defsym,_globals_end=__bss_end__,--defsym,_stack_top=__bss_end__"
