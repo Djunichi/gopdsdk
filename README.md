@@ -273,13 +273,33 @@ domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, and
 `InputReader` capabilities so application helpers can depend on only the API
 surface they use.
 
-## P1.3 direction
+## P1.3 external playable consumer
 
-P1.3 will prove the combined SDK through a crank-controlled application in a
-separate Go module. It will use the documented `resources/` layout and only the
-accepted lifecycle, input, timing, text, and bitmap APIs. The slice will add no
-sprite, audio, collision, animation, font, framebuffer, or resource-manager API
-unless the external application demonstrates a blocking requirement.
+The P1.3 acceptance fixture is copied into a temporary directory and compiled
+as a separate Go module with a local `replace` to gopdsdk. It is a small
+crank-controlled catch game using buttons for catch/nudge actions, lifecycle
+pause/resume, frame delta, and two packaged `resources/images` bitmaps. Gameplay
+is a pure-Go state machine and rendering is derived as a deterministic draw
+plan. Tests verify the 60-second completion marker, partial-initialization
+rollback, and one-time termination cleanup.
+
+The external-consumer CLI acceptance test compiles the fixture and inspects
+both Simulator and device dry-run plans. On the accepted Windows profile, that
+same fixture has also been built and launched in the official Simulator and
+built, installed, and launched on a physical Playdate. The device completed a
+65-second conservative-GC soak; `errorlog.txt` remained 142 bytes with its
+pre-run timestamp and `crashlog.txt` remained 4337 bytes with its pre-run
+timestamp, so the run produced no new log entry.
+
+Repeat the physical acceptance procedure after relevant runtime or toolchain
+changes:
+
+1. Run the consumer in Simulator and exercise crank, A, d-pad, pause, and resume.
+2. Run that same package on device for at least 60 seconds until `PASS` appears.
+3. Mount the data disk and confirm that `errorlog.txt` and `crashlog.txt` have no
+   new entry from the acceptance run.
+
+No public API or subsystem was added for P1.3.
 
 ## Development and CI
 

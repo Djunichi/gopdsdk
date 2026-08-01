@@ -1,0 +1,6 @@
+name=gopdsdk P1.3 Crank Catch
+author=gopdsdk
+description=External playable consumer acceptance
+bundleID=dev.gopdsdk.p13-crank-catch
+version=0.1.0
+buildNumber=1
