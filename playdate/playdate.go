@@ -11,4 +11,6 @@ type Game interface {
 type Context interface {
 	Clear()
 	DrawText(text string, x, y int)
+	// CurrentTimeMilliseconds returns the wrapping monotonic device clock.
+	CurrentTimeMilliseconds() uint32
 }

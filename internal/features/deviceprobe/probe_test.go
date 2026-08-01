@@ -25,7 +25,7 @@ func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 
 func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", `"example.com/game"`, "func main()"} {
+	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", `"example.com/game"`, "func main()"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
@@ -76,7 +76,7 @@ func TestBootstrapReservesBoundedAlignedHeap(t *testing.T) {
 
 func TestBootstrapDelegatesUpdateAndGraphicsToGo(t *testing.T) {
 	for _, source := range []string{bootstrapSource, conservativeBootstrapSource} {
-		for _, want := range []string{"result = goEventHandler(playdate, event, arg);", "setUpdateCallback(bridgeUpdate, playdate)", "return goUpdate();", "void bridgeClear(void)", "void bridgeDrawText", "graphics->drawText"} {
+		for _, want := range []string{"result = goEventHandler(playdate, event, arg);", "setUpdateCallback(bridgeUpdate, playdate)", "return goUpdate();", "void bridgeClear(void)", "void bridgeDrawText", "graphics->drawText", "bridgeCurrentTimeMilliseconds", "system->getCurrentTimeMilliseconds()"} {
 			if !strings.Contains(source, want) {
 				t.Errorf("bootstrap source does not contain %q", want)
 			}
@@ -182,6 +182,7 @@ func TestValidateConservativeHeapSymbols(t *testing.T) {
 00040200 B __bss_end__
 00000010 D playdateRuntimeSCB
 00000014 D runtime.stackTop
+00000018 T runtime.runtimePanicAt
 00000020 t runtime/interrupt.In
 00000030 T tinygo_scanCurrentStack
 `
@@ -193,6 +194,7 @@ func TestValidateConservativeHeapSymbols(t *testing.T) {
 		output string
 	}{
 		{"missing adapter", strings.ReplaceAll(valid, "00000010 D playdateRuntimeSCB\n", "")},
+		{"missing panic trap", strings.ReplaceAll(valid, "00000018 T runtime.runtimePanicAt\n", "")},
 		{"globals overlap", strings.ReplaceAll(valid, "00000100 B _globals_end", "000000f0 B _globals_end")},
 		{"misaligned", strings.ReplaceAll(valid, "00000100 B _heap_start\n00000100 B playdateRuntimeHeap\n00040100 A _heap_end", "00000101 B _heap_start\n00000101 B playdateRuntimeHeap\n00040101 A _heap_end")},
 		{"wrong size", strings.ReplaceAll(valid, "00040100 A _heap_end", "00030100 A _heap_end")},

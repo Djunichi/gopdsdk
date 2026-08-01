@@ -461,7 +461,7 @@ func validateConservativeHeapSymbols(output string) error {
 			addresses[fields[len(fields)-1]] = address
 		}
 	}
-	required := []string{"_globals_end", "_heap_start", "_heap_end", "__bss_end__", "playdateRuntimeHeap", "playdateRuntimeSCB", "runtime.stackTop", "runtime/interrupt.In", "tinygo_scanCurrentStack"}
+	required := []string{"_globals_end", "_heap_start", "_heap_end", "__bss_end__", "playdateRuntimeHeap", "playdateRuntimeSCB", "runtime.stackTop", "runtime.runtimePanicAt", "runtime/interrupt.In", "tinygo_scanCurrentStack"}
 	for _, name := range required {
 		if _, ok := addresses[name]; !ok {
 			return fmt.Errorf("required symbol %s is missing", name)
@@ -521,12 +521,19 @@ func bridgeClear()
 //go:linkname bridgeDrawText bridgeDrawText
 func bridgeDrawText(text *byte, length uintptr, x, y int32)
 
+//go:linkname bridgeCurrentTimeMilliseconds bridgeCurrentTimeMilliseconds
+func bridgeCurrentTimeMilliseconds() uint32
+
 type playdateContext struct{}
 
 func (playdateContext) Clear() { bridgeClear() }
 
 func (playdateContext) DrawText(text string, x, y int) {
 	bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y))
+}
+
+func (playdateContext) CurrentTimeMilliseconds() uint32 {
+	return bridgeCurrentTimeMilliseconds()
 }
 
 var gameContext playdateContext
@@ -646,6 +653,11 @@ void bridgeDrawText(const char* text, uintptr_t length, int32_t x, int32_t y)
 {
 	activePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
 }
+
+uint32_t bridgeCurrentTimeMilliseconds(void)
+{
+	return activePlaydate->system->getCurrentTimeMilliseconds();
+}
 `
 
 const conservativeBootstrapSource = `#include "pd_api.h"
@@ -706,6 +718,11 @@ void bridgeClear(void)
 void bridgeDrawText(const char* text, uintptr_t length, int32_t x, int32_t y)
 {
 	activePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
+}
+
+uint32_t bridgeCurrentTimeMilliseconds(void)
+{
+	return activePlaydate->system->getCurrentTimeMilliseconds();
 }
 `
 
