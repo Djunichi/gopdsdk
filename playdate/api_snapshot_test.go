@@ -124,6 +124,10 @@ const ButtonDown Buttons
 const ButtonLeft Buttons
 const ButtonRight Buttons
 const ButtonUp Buttons
+const CollisionBounce CollisionResponse
+const CollisionFreeze CollisionResponse
+const CollisionOverlap CollisionResponse
+const CollisionSlide CollisionResponse
 const ColorBlack Color
 const ColorClear Color
 const ColorWhite Color
@@ -138,6 +142,8 @@ func (Buttons).Has(requested Buttons) bool
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
 type BitmapLoadError string
 type Buttons uint8
+type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
+type CollisionResponse uint8
 type Color uint8
 type Context interface{System; Graphics; InputReader; Sprites}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
@@ -146,8 +152,11 @@ type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Butto
 type InputReader interface{Input() Input}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
-type Sprite interface{Add() error; Close() error; MoveBy(dx float32, dy float32) error; Remove() error; SetBitmap(Bitmap) error; SetPosition(x float32, y float32) error; SetVisible(bool) error; SetZIndex(int) error}
-type Sprites interface{NewSprite() (Sprite, error); UpdateAndDrawSprites()}
+type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
+type Point struct{X float32; Y float32}
+type Rect struct{X float32; Y float32; Width float32; Height float32}
+type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
+type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
 var ErrBitmapBorrowed error
 var ErrBitmapClosed error
@@ -155,6 +164,7 @@ var ErrBitmapColor error
 var ErrBitmapCreate error
 var ErrBitmapScale error
 var ErrBitmapSize error
+var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error
 `

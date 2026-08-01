@@ -32,6 +32,15 @@ func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 	}
 }
 
+func TestProbeSourceContainsCollisionBridge(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "sdkRuntime.NativeCollision"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("probe source does not contain %q", want)
+		}
+	}
+}
+
 func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
 	for _, want := range []string{"runtime.run", "runtime.alloc", "activePlaydate->system->realloc(NULL, size)", "event == kEventInit && !booted", "runtimeRun();", "goEventHandler(playdate, event, arg)"} {
 		if !strings.Contains(bootstrapSource, want) {

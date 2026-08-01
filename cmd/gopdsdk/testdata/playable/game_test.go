@@ -82,6 +82,9 @@ func (c *context) DrawBitmap(value playdate.Bitmap, x, y int) error {
 }
 func (*context) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 func (*context) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
+func (*context) QuerySpritesAtPoint(float32, float32) []playdate.Sprite             { return nil }
+func (*context) QuerySpritesInRect(playdate.Rect) []playdate.Sprite                 { return nil }
+func (*context) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) { return nil, nil }
 func (*context) UpdateAndDrawSprites()                                              {}
 
 func TestGameExecutesPlanAndClosesOnce(t *testing.T) {

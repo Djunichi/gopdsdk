@@ -22,7 +22,12 @@ func (*testContext) NewBitmap(int, int) (playdate.Bitmap, error)                
 func (*testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (*testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 func (*testContext) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
-func (*testContext) UpdateAndDrawSprites()                                              {}
+func (*testContext) QuerySpritesAtPoint(float32, float32) []playdate.Sprite             { return nil }
+func (*testContext) QuerySpritesInRect(playdate.Rect) []playdate.Sprite                 { return nil }
+func (*testContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) {
+	return nil, nil
+}
+func (*testContext) UpdateAndDrawSprites() {}
 
 type timingContext struct {
 	milliseconds uint32
@@ -42,7 +47,12 @@ func (*timingContext) NewBitmap(int, int) (playdate.Bitmap, error)              
 func (*timingContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (*timingContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 func (*timingContext) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
-func (*timingContext) UpdateAndDrawSprites()                                              {}
+func (*timingContext) QuerySpritesAtPoint(float32, float32) []playdate.Sprite             { return nil }
+func (*timingContext) QuerySpritesInRect(playdate.Rect) []playdate.Sprite                 { return nil }
+func (*timingContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) {
+	return nil, nil
+}
+func (*timingContext) UpdateAndDrawSprites() {}
 
 func TestUpdateKeepsBoundedLiveWindow(t *testing.T) {
 	game := newGame(func() {}, func(*runtime.MemStats) {})
