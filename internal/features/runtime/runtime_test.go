@@ -18,6 +18,8 @@ func (testContext) LoadBitmap(string) (playdate.Bitmap, error)                  
 func (testContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
 func (testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
+func (testContext) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
+func (testContext) UpdateAndDrawSprites()                                              {}
 
 func TestBitmapOwnershipLifecycle(t *testing.T) {
 	var freed []uintptr
@@ -79,6 +81,58 @@ func TestBitmapArgumentValidation(t *testing.T) {
 	}
 	if err := ValidateBitmapScale(1, *(*float32)(unsafe.Pointer(&[]uint32{0x7fc00000}[0]))); !errors.Is(err, playdate.ErrBitmapScale) {
 		t.Fatalf("NaN scale error = %v", err)
+	}
+}
+
+func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
+	var operations []string
+	driver := SpriteDriver{
+		SetBitmap:  func(sprite, bitmap uintptr) { operations = append(operations, "bitmap") },
+		MoveTo:     func(uintptr, float32, float32) { operations = append(operations, "position") },
+		MoveBy:     func(uintptr, float32, float32) { operations = append(operations, "move") },
+		SetVisible: func(uintptr, bool) { operations = append(operations, "visible") },
+		SetZIndex:  func(uintptr, int) { operations = append(operations, "z") },
+		Add:        func(uintptr) { operations = append(operations, "add") },
+		Remove:     func(uintptr) { operations = append(operations, "remove") },
+		Free:       func(uintptr) { operations = append(operations, "free") },
+	}
+	sprite := NewOwnedSprite(9, driver)
+	bitmap := NewOwnedBitmap(7, BitmapDriver{})
+	if err := sprite.SetBitmap(bitmap); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.SetPosition(1, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.MoveBy(3, 4); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.SetVisible(true); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.SetZIndex(5); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.Add(); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.Add(); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.Close(); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"bitmap", "position", "move", "visible", "z", "add", "remove", "free"}
+	if len(operations) != len(want) {
+		t.Fatalf("operations = %v, want %v", operations, want)
+	}
+	for index := range want {
+		if operations[index] != want[index] {
+			t.Fatalf("operations = %v, want %v", operations, want)
+		}
+	}
+	if err := sprite.Close(); !errors.Is(err, playdate.ErrSpriteClosed) {
+		t.Fatalf("double Close() = %v", err)
 	}
 }
 

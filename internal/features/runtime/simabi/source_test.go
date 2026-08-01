@@ -39,6 +39,16 @@ func TestRender(t *testing.T) {
 		"C.bridgeFillBitmap",
 		"C.bridgeDrawBitmap",
 		"C.bridgeDrawScaledBitmap",
+		"C.bridgeNewSprite",
+		"C.bridgeSpriteSetBitmap",
+		"C.bridgeSpriteMoveTo",
+		"C.bridgeSpriteMoveBy",
+		"C.bridgeSpriteSetVisible",
+		"C.bridgeSpriteSetZIndex",
+		"C.bridgeSpriteAdd",
+		"C.bridgeSpriteRemove",
+		"C.bridgeFreeSprite",
+		"C.bridgeUpdateAndDrawSprites",
 	} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q:\n%s", want, sources.Go)
@@ -63,6 +73,16 @@ func TestRender(t *testing.T) {
 		"graphics->clearBitmap",
 		"graphics->drawBitmap",
 		"graphics->drawScaledBitmap",
+		"sprite->newSprite",
+		"sprite->setImage",
+		"sprite->moveTo",
+		"sprite->moveBy",
+		"sprite->setVisible",
+		"sprite->setZIndex",
+		"sprite->addSprite",
+		"sprite->removeSprite",
+		"sprite->freeSprite",
+		"sprite->updateAndDrawSprites",
 	} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("C source does not contain %q:\n%s", want, sources.C)

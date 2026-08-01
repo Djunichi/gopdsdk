@@ -81,6 +81,8 @@ func (c *context) DrawBitmap(value playdate.Bitmap, x, y int) error {
 	return nil
 }
 func (*context) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
+func (*context) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
+func (*context) UpdateAndDrawSprites()                                              {}
 
 func TestGameExecutesPlanAndClosesOnce(t *testing.T) {
 	c := &context{input: playdate.Input{CrankDelta: 8, DeltaSeconds: 1}}

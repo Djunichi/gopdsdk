@@ -71,6 +71,16 @@ void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height);
 void bridgeFillBitmap(uintptr_t bitmap, int color);
 void bridgeDrawBitmap(uintptr_t bitmap, int x, int y);
 void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY);
+uintptr_t bridgeNewSprite(void);
+void bridgeFreeSprite(uintptr_t sprite);
+void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap);
+void bridgeSpriteMoveTo(uintptr_t sprite, float x, float y);
+void bridgeSpriteMoveBy(uintptr_t sprite, float dx, float dy);
+void bridgeSpriteSetVisible(uintptr_t sprite, int visible);
+void bridgeSpriteSetZIndex(uintptr_t sprite, int z);
+void bridgeSpriteAdd(uintptr_t sprite);
+void bridgeSpriteRemove(uintptr_t sprite);
+void bridgeUpdateAndDrawSprites(void);
 */
 import "C"
 import (
@@ -167,6 +177,22 @@ func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, sca
 	C.bridgeDrawScaledBitmap(C.uintptr_t(handle), C.int(x), C.int(y), C.float(scaleX), C.float(scaleY)); return nil
 }
 
+var spriteDriver = sdkRuntime.SpriteDriver{
+	SetBitmap: func(sprite, bitmap uintptr) { C.bridgeSpriteSetBitmap(C.uintptr_t(sprite), C.uintptr_t(bitmap)) },
+	MoveTo: func(sprite uintptr, x, y float32) { C.bridgeSpriteMoveTo(C.uintptr_t(sprite), C.float(x), C.float(y)) },
+	MoveBy: func(sprite uintptr, dx, dy float32) { C.bridgeSpriteMoveBy(C.uintptr_t(sprite), C.float(dx), C.float(dy)) },
+	SetVisible: func(sprite uintptr, visible bool) { value := C.int(0); if visible { value = 1 }; C.bridgeSpriteSetVisible(C.uintptr_t(sprite), value) },
+	SetZIndex: func(sprite uintptr, z int) { C.bridgeSpriteSetZIndex(C.uintptr_t(sprite), C.int(z)) },
+	Add: func(sprite uintptr) { C.bridgeSpriteAdd(C.uintptr_t(sprite)) },
+	Remove: func(sprite uintptr) { C.bridgeSpriteRemove(C.uintptr_t(sprite)) },
+	Free: func(sprite uintptr) { C.bridgeFreeSprite(C.uintptr_t(sprite)) },
+}
+func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
+	handle := uintptr(C.bridgeNewSprite()); if handle == 0 { return nil, sdkPlaydate.ErrSpriteCreate }
+	return sdkRuntime.NewOwnedSprite(handle, spriteDriver), nil
+}
+func (playdateContext) UpdateAndDrawSprites() { C.bridgeUpdateAndDrawSprites() }
+
 func main() {}
 `,
 		filepath.ToSlash(config.APIHeader),
@@ -244,5 +270,15 @@ static LCDColor bridgeBitmapColor(int color) { return color == 1 ? kColorWhite :
 void bridgeFillBitmap(uintptr_t bitmap, int color) { bridgePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
 void bridgeDrawBitmap(uintptr_t bitmap, int x, int y) { bridgePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY) { bridgePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, scaleX, scaleY); }
+uintptr_t bridgeNewSprite(void) { return (uintptr_t)bridgePlaydate->sprite->newSprite(); }
+void bridgeFreeSprite(uintptr_t sprite) { bridgePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
+void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { bridgePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
+void bridgeSpriteMoveTo(uintptr_t sprite, float x, float y) { bridgePlaydate->sprite->moveTo((LCDSprite*)sprite, x, y); }
+void bridgeSpriteMoveBy(uintptr_t sprite, float dx, float dy) { bridgePlaydate->sprite->moveBy((LCDSprite*)sprite, dx, dy); }
+void bridgeSpriteSetVisible(uintptr_t sprite, int visible) { bridgePlaydate->sprite->setVisible((LCDSprite*)sprite, visible); }
+void bridgeSpriteSetZIndex(uintptr_t sprite, int z) { bridgePlaydate->sprite->setZIndex((LCDSprite*)sprite, z); }
+void bridgeSpriteAdd(uintptr_t sprite) { bridgePlaydate->sprite->addSprite((LCDSprite*)sprite); }
+void bridgeSpriteRemove(uintptr_t sprite) { bridgePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
+void bridgeUpdateAndDrawSprites(void) { bridgePlaydate->sprite->updateAndDrawSprites(); }
 `, filepath.ToSlash(apiHeader))
 }

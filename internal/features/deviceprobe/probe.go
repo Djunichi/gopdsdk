@@ -620,6 +620,26 @@ func bridgeFillBitmap(bitmap uintptr, color int32)
 func bridgeDrawBitmap(bitmap uintptr, x, y int32)
 //go:linkname bridgeDrawScaledBitmapBits bridgeDrawScaledBitmapBits
 func bridgeDrawScaledBitmapBits(bitmap uintptr, x, y int32, scaleX, scaleY uint32)
+//go:linkname bridgeNewSprite bridgeNewSprite
+func bridgeNewSprite() uintptr
+//go:linkname bridgeFreeSprite bridgeFreeSprite
+func bridgeFreeSprite(sprite uintptr)
+//go:linkname bridgeSpriteSetBitmap bridgeSpriteSetBitmap
+func bridgeSpriteSetBitmap(sprite, bitmap uintptr)
+//go:linkname bridgeSpriteMoveToBits bridgeSpriteMoveToBits
+func bridgeSpriteMoveToBits(sprite uintptr, x, y uint32)
+//go:linkname bridgeSpriteMoveByBits bridgeSpriteMoveByBits
+func bridgeSpriteMoveByBits(sprite uintptr, dx, dy uint32)
+//go:linkname bridgeSpriteSetVisible bridgeSpriteSetVisible
+func bridgeSpriteSetVisible(sprite uintptr, visible int32)
+//go:linkname bridgeSpriteSetZIndex bridgeSpriteSetZIndex
+func bridgeSpriteSetZIndex(sprite uintptr, z int32)
+//go:linkname bridgeSpriteAdd bridgeSpriteAdd
+func bridgeSpriteAdd(sprite uintptr)
+//go:linkname bridgeSpriteRemove bridgeSpriteRemove
+func bridgeSpriteRemove(sprite uintptr)
+//go:linkname bridgeUpdateAndDrawSprites bridgeUpdateAndDrawSprites
+func bridgeUpdateAndDrawSprites()
 
 func float32FromBits(bits uint32) float32 { return *(*float32)(unsafe.Pointer(&bits)) }
 
@@ -663,6 +683,21 @@ func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, sca
 	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
 	bridgeDrawScaledBitmapBits(handle, int32(x), int32(y), *(*uint32)(unsafe.Pointer(&scaleX)), *(*uint32)(unsafe.Pointer(&scaleY))); return nil
 }
+
+func float32Bits(value float32) uint32 { return *(*uint32)(unsafe.Pointer(&value)) }
+var spriteDriver = sdkRuntime.SpriteDriver{
+	SetBitmap: bridgeSpriteSetBitmap,
+	MoveTo: func(sprite uintptr, x, y float32) { bridgeSpriteMoveToBits(sprite, float32Bits(x), float32Bits(y)) },
+	MoveBy: func(sprite uintptr, dx, dy float32) { bridgeSpriteMoveByBits(sprite, float32Bits(dx), float32Bits(dy)) },
+	SetVisible: func(sprite uintptr, visible bool) { value := int32(0); if visible { value = 1 }; bridgeSpriteSetVisible(sprite, value) },
+	SetZIndex: func(sprite uintptr, z int) { bridgeSpriteSetZIndex(sprite, int32(z)) },
+	Add: bridgeSpriteAdd, Remove: bridgeSpriteRemove, Free: bridgeFreeSprite,
+}
+func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
+	handle := bridgeNewSprite(); if handle == 0 { return nil, sdkPlaydate.ErrSpriteCreate }
+	return sdkRuntime.NewOwnedSprite(handle, spriteDriver), nil
+}
+func (playdateContext) UpdateAndDrawSprites() { bridgeUpdateAndDrawSprites() }
 
 var gameContext playdateContext
 var application = mustApplication()
@@ -809,6 +844,16 @@ static LCDColor bridgeBitmapColor(int32_t color) { return color == 1 ? kColorWhi
 void bridgeFillBitmap(uintptr_t bitmap, int32_t color) { activePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
 void bridgeDrawBitmap(uintptr_t bitmap, int32_t x, int32_t y) { activePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmapBits(uintptr_t bitmap, int32_t x, int32_t y, uint32_t scaleX, uint32_t scaleY) { union { uint32_t bits; float value; } sx = { .bits = scaleX }, sy = { .bits = scaleY }; activePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, sx.value, sy.value); }
+uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
+void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
+void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
+void bridgeSpriteMoveToBits(uintptr_t sprite, uint32_t x, uint32_t y) { union { uint32_t bits; float value; } px = { .bits = x }, py = { .bits = y }; activePlaydate->sprite->moveTo((LCDSprite*)sprite, px.value, py.value); }
+void bridgeSpriteMoveByBits(uintptr_t sprite, uint32_t dx, uint32_t dy) { union { uint32_t bits; float value; } px = { .bits = dx }, py = { .bits = dy }; activePlaydate->sprite->moveBy((LCDSprite*)sprite, px.value, py.value); }
+void bridgeSpriteSetVisible(uintptr_t sprite, int32_t visible) { activePlaydate->sprite->setVisible((LCDSprite*)sprite, visible); }
+void bridgeSpriteSetZIndex(uintptr_t sprite, int32_t z) { activePlaydate->sprite->setZIndex((LCDSprite*)sprite, z); }
+void bridgeSpriteAdd(uintptr_t sprite) { activePlaydate->sprite->addSprite((LCDSprite*)sprite); }
+void bridgeSpriteRemove(uintptr_t sprite) { activePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
+void bridgeUpdateAndDrawSprites(void) { activePlaydate->sprite->updateAndDrawSprites(); }
 `
 
 const conservativeBootstrapSource = `#include "pd_api.h"
@@ -894,6 +939,16 @@ static LCDColor bridgeBitmapColor(int32_t color) { return color == 1 ? kColorWhi
 void bridgeFillBitmap(uintptr_t bitmap, int32_t color) { activePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
 void bridgeDrawBitmap(uintptr_t bitmap, int32_t x, int32_t y) { activePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmapBits(uintptr_t bitmap, int32_t x, int32_t y, uint32_t scaleX, uint32_t scaleY) { union { uint32_t bits; float value; } sx = { .bits = scaleX }, sy = { .bits = scaleY }; activePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, sx.value, sy.value); }
+uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
+void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
+void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
+void bridgeSpriteMoveToBits(uintptr_t sprite, uint32_t x, uint32_t y) { union { uint32_t bits; float value; } px = { .bits = x }, py = { .bits = y }; activePlaydate->sprite->moveTo((LCDSprite*)sprite, px.value, py.value); }
+void bridgeSpriteMoveByBits(uintptr_t sprite, uint32_t dx, uint32_t dy) { union { uint32_t bits; float value; } px = { .bits = dx }, py = { .bits = dy }; activePlaydate->sprite->moveBy((LCDSprite*)sprite, px.value, py.value); }
+void bridgeSpriteSetVisible(uintptr_t sprite, int32_t visible) { activePlaydate->sprite->setVisible((LCDSprite*)sprite, visible); }
+void bridgeSpriteSetZIndex(uintptr_t sprite, int32_t z) { activePlaydate->sprite->setZIndex((LCDSprite*)sprite, z); }
+void bridgeSpriteAdd(uintptr_t sprite) { activePlaydate->sprite->addSprite((LCDSprite*)sprite); }
+void bridgeSpriteRemove(uintptr_t sprite) { activePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
+void bridgeUpdateAndDrawSprites(void) { activePlaydate->sprite->updateAndDrawSprites(); }
 `
 
 const targetSource = `{

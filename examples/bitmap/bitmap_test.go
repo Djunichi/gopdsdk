@@ -38,10 +38,12 @@ func newTestContext() *testContext {
 	return context
 }
 
-func (*testContext) Clear()                          {}
-func (*testContext) DrawText(string, int, int)       {}
-func (*testContext) CurrentTimeMilliseconds() uint32 { return 0 }
-func (*testContext) Input() playdate.Input           { return playdate.Input{} }
+func (*testContext) Clear()                              {}
+func (*testContext) DrawText(string, int, int)           {}
+func (*testContext) CurrentTimeMilliseconds() uint32     { return 0 }
+func (*testContext) Input() playdate.Input               { return playdate.Input{} }
+func (*testContext) NewSprite() (playdate.Sprite, error) { return nil, nil }
+func (*testContext) UpdateAndDrawSprites()               {}
 func (c *testContext) LoadBitmap(path string) (playdate.Bitmap, error) {
 	c.operations = append(c.operations, "load:"+path)
 	return c.loaded, nil

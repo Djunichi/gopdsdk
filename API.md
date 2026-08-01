@@ -33,6 +33,8 @@ resources already acquired when a later acquisition fails.
 - `System` provides the wrapping monotonic millisecond clock.
 - `InputReader` provides one immutable frame snapshot.
 - `Graphics` provides clear/text and the accepted bitmap operations.
+- `Sprites` creates explicitly owned sprites and runs the shared display-list
+  update/draw pass.
 
 Helpers should accept the narrowest interface they need. This keeps pure game
 logic independent from runtime callbacks and makes deterministic testing
@@ -59,6 +61,18 @@ Invalid sizes, colors, and scales use the exported sentinel errors. A failed
 resource load returns `BitmapLoadError`, which retains the Playdate diagnostic.
 Callers should use `errors.Is` for sentinels and `errors.As` for the typed load
 error rather than matching error text.
+
+## Sprites and display list
+
+`NewSprite` returns an owned sprite. Configure its bitmap, position, visibility,
+and z-index, then call `Add`. `Add` and `Remove` are idempotent. Each frame,
+move game objects and call `UpdateAndDrawSprites` once to update and render the
+global Playdate display list.
+
+`Close` removes an added sprite before freeing it and is always explicit; close
+sprites before closing bitmaps referenced by them. If initialization fails,
+close every sprite already created, followed by its bitmap. Sprite movement and
+crank input use the same float32 contract in Simulator and device adapters.
 
 Source resources live below `resources/`; that directory becomes the PDX root.
 For example, load `resources/images/player.png` as `images/player`.
