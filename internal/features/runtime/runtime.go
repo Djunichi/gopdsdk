@@ -3,6 +3,8 @@ package runtime
 
 import (
 	"errors"
+
+	"github.com/Djunichi/gopdsdk/playdate"
 )
 
 // Event identifies an event delivered by the Playdate runtime.
@@ -46,6 +48,43 @@ type Runtime struct {
 	callbacks   Callbacks
 	initialized bool
 	failed      bool
+}
+
+// Application is the platform-independent entry point shared by Simulator and
+// device ABI adapters.
+type Application struct {
+	runtime *Runtime
+}
+
+// NewApplication composes a public game with its platform context. beforeInit
+// runs immediately before the game's initialization callback when a platform
+// adapter needs to prepare callback state.
+func NewApplication(game playdate.Game, context playdate.Context, beforeInit func()) (*Application, error) {
+	runtime, err := New(Callbacks{
+		Init: func() error {
+			if beforeInit != nil {
+				beforeInit()
+			}
+			return game.Init(context)
+		},
+		Update: func() (bool, error) {
+			return game.Update(context)
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &Application{runtime: runtime}, nil
+}
+
+// Handle delivers a Playdate system event to the application lifecycle.
+func (a *Application) Handle(event Event, arg uint32) error {
+	return a.runtime.Handle(event, arg)
+}
+
+// Update invokes the application's frame callback.
+func (a *Application) Update() (int32, error) {
+	return a.runtime.Update()
 }
 
 // New validates callbacks and returns an uninitialized runtime.

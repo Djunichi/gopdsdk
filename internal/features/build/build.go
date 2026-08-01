@@ -144,7 +144,6 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 
 	sources, err := simabi.Render(simabi.Config{
 		APIHeader:         apiHeader,
-		PublicAPIImport:   sdkModule + "/playdate",
 		RuntimeImport:     sdkModule + "/internal/features/runtime",
 		ApplicationImport: app.ImportPath,
 	})

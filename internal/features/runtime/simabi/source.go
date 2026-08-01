@@ -16,7 +16,6 @@ const (
 // Config identifies the paths and import used by generated bridge sources.
 type Config struct {
 	APIHeader         string
-	PublicAPIImport   string
 	RuntimeImport     string
 	ApplicationImport string
 }
@@ -34,7 +33,6 @@ func Render(config Config) (Sources, error) {
 		value string
 	}{
 		{name: "APIHeader", value: config.APIHeader},
-		{name: "PublicAPIImport", value: config.PublicAPIImport},
 		{name: "RuntimeImport", value: config.RuntimeImport},
 		{name: "ApplicationImport", value: config.ApplicationImport},
 	} {
@@ -63,31 +61,23 @@ import "C"
 import (
 	"unsafe"
 
-	sdk %q
 	sdkRuntime %q
 	app %q
 )
 
 var activePlaydate *C.PlaydateAPI
-var game sdk.Game = app.New()
 var gameContext playdateContext
 
-var gameRuntime = mustRuntime()
+var application = mustApplication()
 
-func mustRuntime() *sdkRuntime.Runtime {
-	runtime, err := sdkRuntime.New(sdkRuntime.Callbacks{
-		Init: func() error {
-			C.bridgeRegisterUpdate(activePlaydate)
-			return game.Init(gameContext)
-		},
-		Update: func() (bool, error) {
-			return game.Update(gameContext)
-		},
+func mustApplication() *sdkRuntime.Application {
+	application, err := sdkRuntime.NewApplication(app.New(), gameContext, func() {
+		C.bridgeRegisterUpdate(activePlaydate)
 	})
 	if err != nil {
 		panic(err)
 	}
-	return runtime
+	return application
 }
 
 //export eventHandler
@@ -97,7 +87,7 @@ func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t
 	} else if activePlaydate == nil {
 		return -1
 	}
-	if err := gameRuntime.Handle(sdkRuntime.Event(event), uint32(arg)); err != nil {
+	if err := application.Handle(sdkRuntime.Event(event), uint32(arg)); err != nil {
 		return -1
 	}
 	return 0
@@ -105,7 +95,7 @@ func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t
 
 //export goUpdate
 func goUpdate() C.int {
-	refresh, err := gameRuntime.Update()
+	refresh, err := application.Update()
 	if err != nil {
 		return 0
 	}
@@ -125,7 +115,6 @@ func (playdateContext) DrawText(text string, x, y int) {
 func main() {}
 `,
 		filepath.ToSlash(config.APIHeader),
-		config.PublicAPIImport,
 		config.RuntimeImport,
 		config.ApplicationImport,
 	)
