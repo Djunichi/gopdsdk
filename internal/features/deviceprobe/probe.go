@@ -17,6 +17,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
 	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
+	"github.com/Djunichi/gopdsdk/internal/shared/pdxsource"
 )
 
 // Result records the verified device toolchain stage.
@@ -237,6 +238,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create device package source: %w", err)
+	}
+	if err := pdxsource.Stage(app.Dir, sourceDir); err != nil {
+		return Result{}, err
 	}
 	packagedELFSource := filepath.Join(sourceDir, "pdex.elf")
 	if err := copyFile(elfPath, packagedELFSource); err != nil {
@@ -602,6 +606,21 @@ func bridgeCrankDocked() int32
 //go:linkname bridgeFrameDeltaBits bridgeFrameDeltaBits
 func bridgeFrameDeltaBits() uint32
 
+//go:linkname bridgeLoadBitmap bridgeLoadBitmap
+func bridgeLoadBitmap(path *byte, message *uintptr) uintptr
+//go:linkname bridgeNewBitmap bridgeNewBitmap
+func bridgeNewBitmap(width, height int32) uintptr
+//go:linkname bridgeFreeBitmap bridgeFreeBitmap
+func bridgeFreeBitmap(bitmap uintptr)
+//go:linkname bridgeBitmapSize bridgeBitmapSize
+func bridgeBitmapSize(bitmap uintptr, width, height *int32)
+//go:linkname bridgeFillBitmap bridgeFillBitmap
+func bridgeFillBitmap(bitmap uintptr, color int32)
+//go:linkname bridgeDrawBitmap bridgeDrawBitmap
+func bridgeDrawBitmap(bitmap uintptr, x, y int32)
+//go:linkname bridgeDrawScaledBitmapBits bridgeDrawScaledBitmapBits
+func bridgeDrawScaledBitmapBits(bitmap uintptr, x, y int32, scaleX, scaleY uint32)
+
 func float32FromBits(bits uint32) float32 { return *(*float32)(unsafe.Pointer(&bits)) }
 
 type playdateContext struct{}
@@ -617,6 +636,33 @@ func (playdateContext) CurrentTimeMilliseconds() uint32 {
 }
 
 func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
+
+var bitmapDriver = sdkRuntime.BitmapDriver{
+	Dimensions: func(handle uintptr) (int, int) { var width, height int32; bridgeBitmapSize(handle, &width, &height); return int(width), int(height) },
+	Fill: func(handle uintptr, color sdkPlaydate.Color) { bridgeFillBitmap(handle, int32(color)) },
+	Free: bridgeFreeBitmap,
+}
+
+func (playdateContext) LoadBitmap(path string) (sdkPlaydate.Bitmap, error) {
+	terminated := path + "\x00"; var message uintptr
+	handle := bridgeLoadBitmap(unsafe.StringData(terminated), &message)
+	if handle == 0 { if message != 0 { return nil, sdkPlaydate.BitmapLoadError(cString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func cString(pointer uintptr) string { length := 0; for *(*byte)(unsafe.Pointer(pointer + uintptr(length))) != 0 { length++ }; return unsafe.String((*byte)(unsafe.Pointer(pointer)), length) }
+func (playdateContext) NewBitmap(width, height int) (sdkPlaydate.Bitmap, error) {
+	if err := sdkRuntime.ValidateBitmapSize(width, height); err != nil { return nil, err }
+	handle := bridgeNewBitmap(int32(width), int32(height)); if handle == 0 { return nil, sdkPlaydate.ErrBitmapCreate }
+	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) DrawBitmap(bitmap sdkPlaydate.Bitmap, x, y int) error {
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }; bridgeDrawBitmap(handle, int32(x), int32(y)); return nil
+}
+func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, scaleX, scaleY float32) error {
+	if err := sdkRuntime.ValidateBitmapScale(scaleX, scaleY); err != nil { return err }
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
+	bridgeDrawScaledBitmapBits(handle, int32(x), int32(y), *(*uint32)(unsafe.Pointer(&scaleX)), *(*uint32)(unsafe.Pointer(&scaleY))); return nil
+}
 
 var gameContext playdateContext
 var application = mustApplication()
@@ -755,6 +801,14 @@ uint32_t bridgeCrankAngleBits(void) { return bridgeFloatBits(activePlaydate->sys
 uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankChange()); }
 int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
 uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
+uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmap(path, error); }
+uintptr_t bridgeNewBitmap(int32_t width, int32_t height) { return (uintptr_t)activePlaydate->graphics->newBitmap(width, height, kColorClear); }
+void bridgeFreeBitmap(uintptr_t bitmap) { activePlaydate->graphics->freeBitmap((LCDBitmap*)bitmap); }
+void bridgeBitmapSize(uintptr_t bitmap, int32_t* width, int32_t* height) { int nativeWidth, nativeHeight; activePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, &nativeWidth, &nativeHeight, NULL, NULL, NULL); *width = nativeWidth; *height = nativeHeight; }
+static LCDColor bridgeBitmapColor(int32_t color) { return color == 1 ? kColorWhite : color == 2 ? kColorBlack : kColorClear; }
+void bridgeFillBitmap(uintptr_t bitmap, int32_t color) { activePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
+void bridgeDrawBitmap(uintptr_t bitmap, int32_t x, int32_t y) { activePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
+void bridgeDrawScaledBitmapBits(uintptr_t bitmap, int32_t x, int32_t y, uint32_t scaleX, uint32_t scaleY) { union { uint32_t bits; float value; } sx = { .bits = scaleX }, sy = { .bits = scaleY }; activePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, sx.value, sy.value); }
 `
 
 const conservativeBootstrapSource = `#include "pd_api.h"
@@ -832,6 +886,14 @@ uint32_t bridgeCrankAngleBits(void) { return bridgeFloatBits(activePlaydate->sys
 uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankChange()); }
 int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
 uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
+uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmap(path, error); }
+uintptr_t bridgeNewBitmap(int32_t width, int32_t height) { return (uintptr_t)activePlaydate->graphics->newBitmap(width, height, kColorClear); }
+void bridgeFreeBitmap(uintptr_t bitmap) { activePlaydate->graphics->freeBitmap((LCDBitmap*)bitmap); }
+void bridgeBitmapSize(uintptr_t bitmap, int32_t* width, int32_t* height) { int nativeWidth, nativeHeight; activePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, &nativeWidth, &nativeHeight, NULL, NULL, NULL); *width = nativeWidth; *height = nativeHeight; }
+static LCDColor bridgeBitmapColor(int32_t color) { return color == 1 ? kColorWhite : color == 2 ? kColorBlack : kColorClear; }
+void bridgeFillBitmap(uintptr_t bitmap, int32_t color) { activePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
+void bridgeDrawBitmap(uintptr_t bitmap, int32_t x, int32_t y) { activePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
+void bridgeDrawScaledBitmapBits(uintptr_t bitmap, int32_t x, int32_t y, uint32_t scaleX, uint32_t scaleY) { union { uint32_t bits; float value; } sx = { .bits = scaleX }, sy = { .bits = scaleY }; activePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, sx.value, sy.value); }
 `
 
 const targetSource = `{

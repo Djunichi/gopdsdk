@@ -32,6 +32,13 @@ func TestRender(t *testing.T) {
 		"C.bridgeClear",
 		"C.bridgeDrawText",
 		"C.bridgeCurrentTimeMilliseconds",
+		"C.bridgeLoadBitmap",
+		"C.bridgeNewBitmap",
+		"C.bridgeFreeBitmap",
+		"C.bridgeBitmapSize",
+		"C.bridgeFillBitmap",
+		"C.bridgeDrawBitmap",
+		"C.bridgeDrawScaledBitmap",
 	} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q:\n%s", want, sources.Go)
@@ -49,6 +56,13 @@ func TestRender(t *testing.T) {
 		"system->isCrankDocked",
 		"system->getElapsedTime",
 		"system->resetElapsedTime",
+		"graphics->loadBitmap",
+		"graphics->newBitmap",
+		"graphics->freeBitmap",
+		"graphics->getBitmapData",
+		"graphics->clearBitmap",
+		"graphics->drawBitmap",
+		"graphics->drawScaledBitmap",
 	} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("C source does not contain %q:\n%s", want, sources.C)

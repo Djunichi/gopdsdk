@@ -15,8 +15,12 @@ func (*testContext) Clear() {}
 func (context *testContext) DrawText(text string, _, _ int) {
 	context.lines = append(context.lines, text)
 }
-func (*testContext) CurrentTimeMilliseconds() uint32 { return 0 }
-func (context *testContext) Input() playdate.Input   { return context.input }
+func (*testContext) CurrentTimeMilliseconds() uint32                                    { return 0 }
+func (context *testContext) Input() playdate.Input                                      { return context.input }
+func (*testContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
+func (*testContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
+func (*testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
+func (*testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 
 func TestGameDisplaysPortableSnapshot(t *testing.T) {
 	probe := New().(*game)
