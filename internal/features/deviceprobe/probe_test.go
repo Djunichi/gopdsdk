@@ -159,10 +159,31 @@ func TestStrongUndefinedSymbolsIgnoresWeakReferences(t *testing.T) {
 	}
 }
 
-func TestUnsupportedRuntimeSymbolsRejectsDeferRuntime(t *testing.T) {
-	output := "00003ae0 t runtime.setupDeferFrame\n000056b8 t runtime._recover\n00003298 t runtime/interrupt.In\n"
+func TestDirectoryFileSizeSumsNestedRegularFiles(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested")
+	if err := os.Mkdir(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "one.bin"), []byte("1234"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "two.bin"), []byte("567"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := directoryFileSize(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 7 {
+		t.Fatalf("directoryFileSize() = %d, want 7", got)
+	}
+}
+
+func TestUnsupportedRuntimeSymbolsRejectsUnsupportedSubset(t *testing.T) {
+	output := "00003ae0 t runtime.setupDeferFrame\n000056b8 t runtime._recover\n00006000 t runtime.chanSend\n00006100 t runtime.SetFinalizer\n00006200 t reflect.Value.Call\n00003298 t runtime/interrupt.In\n"
 	got := unsupportedRuntimeSymbols(output, buildplan.DeviceMemoryNone)
-	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime/interrupt.In"}
+	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime.chan", "runtime.SetFinalizer", "reflect.", "runtime/interrupt.In"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("unsupportedRuntimeSymbols() = %v, want %v", got, want)
 	}
@@ -171,6 +192,9 @@ func TestUnsupportedRuntimeSymbolsRejectsDeferRuntime(t *testing.T) {
 	}
 	if got := unsupportedRuntimeSymbols("00000100 t runtime/interrupt.In\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
 		t.Fatalf("unsupportedRuntimeSymbols(adapted interrupt query) = %v, want none", got)
+	}
+	if got := unsupportedRuntimeSymbols("00000100 t internal/reflectlite.Value.Kind\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
+		t.Fatalf("unsupportedRuntimeSymbols(internal reflectlite) = %v, want none", got)
 	}
 }
 

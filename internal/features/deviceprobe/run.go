@@ -27,7 +27,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	output := flags.String("output", "", "output .pdx path")
 	force := flags.Bool("force", false, "replace an existing .pdx output")
 	dryRun := flags.Bool("dry-run", false, "print the build plan without executing tools")
-	memory := flags.String("memory", string(buildplan.DeviceMemoryNone), "device memory strategy: none or conservative (experimental)")
+	memory := flags.String("memory", string(buildplan.DeviceMemoryConservative), "device memory strategy: conservative (default) or none (legacy diagnostic)")
 	if err := flags.Parse(args[2:]); err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(stdout, "Device package stage: READY\nTinyGo:              %s\nCompiler:            %s\nELF:                 %s\nExport:              %s\nPackage:             %s\nOutput:              %s\nDeployment:          %s\nExecution:           %s\nStill unverified:    %s\n",
-		result.TinyGo, result.GCC, result.Format, result.Export, result.Package, result.Output, result.Deploy, result.Run, result.Pending)
+	_, err = fmt.Fprintf(stdout, "Device package stage: READY\nTinyGo:              %s\nCompiler:            %s\nELF:                 %s\nStatic RAM:          %d bytes\nELF size:            %d bytes\nPDX size:            %d bytes\nExport:              %s\nPackage:             %s\nOutput:              %s\nDeployment:          %s\nExecution:           %s\nStill unverified:    %s\n",
+		result.TinyGo, result.GCC, result.Format, result.Metrics.StaticRAM, result.Metrics.ELF, result.Metrics.PDX, result.Export, result.Package, result.Output, result.Deploy, result.Run, result.Pending)
 	return err
 }

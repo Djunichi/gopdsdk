@@ -20,9 +20,9 @@ const (
 	Simulator Target = "simulator"
 	// Device targets physical Playdate hardware.
 	Device Target = "device"
-	// DeviceMemoryNone preserves the P0 externally supplied non-collecting allocator.
+	// DeviceMemoryNone selects the legacy P0 non-collecting allocator for diagnostics.
 	DeviceMemoryNone DeviceMemoryStrategy = "none"
-	// DeviceMemoryConservative selects the experimental bounded TinyGo collector.
+	// DeviceMemoryConservative selects the supported bounded TinyGo collector.
 	DeviceMemoryConservative DeviceMemoryStrategy = "conservative"
 
 	deviceBaseLinkerFlags = "-Wl,--gc-sections,--emit-relocs," +
@@ -87,7 +87,7 @@ func New(target Target, application, sdkPath, output string) (Plan, error) {
 	case Simulator:
 		plan.Commands = simulatorCommands(sdkPath, output)
 	case Device:
-		plan.Commands = deviceCommands(sdkPath, output, DeviceMemoryNone)
+		plan.Commands = deviceCommands(sdkPath, output, DeviceMemoryConservative)
 	default:
 		return Plan{}, fmt.Errorf("unknown build target %q", target)
 	}

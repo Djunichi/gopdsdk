@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
+	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
 )
 
 type sdkCandidate struct {
@@ -158,13 +159,14 @@ func hostCompilerCandidates(goos string) []string {
 }
 
 func assess(report Report, sdkErr error, goos string) []Capability {
+	profile := toolchainprofile.Accepted()
 	capabilities := make([]Capability, 0, 5)
 	if sdkErr != nil {
 		capabilities = append(capabilities, Capability{"sdk", StatusMissing, sdkErr.Error()})
 	} else if _, pdc := report.tool("pdc"); !pdc {
 		capabilities = append(capabilities, Capability{"sdk", StatusIncompatible, "SDK is missing pdc"})
-	} else if report.SDKVersion != verifiedSDKVersion {
-		capabilities = append(capabilities, Capability{"sdk", StatusUnverified, "Playdate SDK " + report.SDKVersion + "; verified profile uses " + verifiedSDKVersion})
+	} else if report.SDKVersion != profile.PlaydateSDK {
+		capabilities = append(capabilities, Capability{"sdk", StatusUnverified, "Playdate SDK " + report.SDKVersion + "; verified profile uses " + profile.PlaydateSDK})
 	} else {
 		capabilities = append(capabilities, Capability{"sdk", StatusReady, "Playdate SDK " + report.SDKVersion})
 	}
@@ -177,7 +179,7 @@ func assess(report Report, sdkErr error, goos string) []Capability {
 		status := StatusReady
 		if tool.Version != "" && !matchesVerifiedTool("go", tool.Version) {
 			status = StatusUnverified
-			summary += "; verified profile uses " + verifiedGoVersion
+			summary += "; verified profile uses go" + profile.Go
 		}
 		capabilities = append(capabilities, Capability{"develop", status, summary})
 	} else {
@@ -206,7 +208,7 @@ func assess(report Report, sdkErr error, goos string) []Capability {
 	default:
 		summary := "toolchain found; probe build has not run"
 		if detected := detectedToolchainSummary(report); detected != "" {
-			summary = detected + "; verified profile: TinyGo " + verifiedTinyGoVersion + ", Arm GCC " + verifiedArmGCCVersion + "; probe build has not run"
+			summary = detected + "; verified profile: TinyGo " + profile.TinyGo + ", Arm GCC " + profile.ArmGCC + "; probe build has not run"
 		}
 		capabilities = append(capabilities, Capability{"device-build", StatusUnverified, summary})
 	}

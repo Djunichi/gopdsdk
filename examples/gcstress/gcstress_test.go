@@ -3,6 +3,8 @@ package gcstress
 import (
 	"runtime"
 	"testing"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
 )
 
 type testContext struct{ milliseconds uint32 }
@@ -110,5 +112,39 @@ func TestTimingHandlesMillisecondCounterWrap(t *testing.T) {
 	}
 	if game.maxUpdateMS != 2 || game.timingFailed {
 		t.Fatalf("maxUpdateMS/timingFailed = %d/%v, want 2/false", game.maxUpdateMS, game.timingFailed)
+	}
+}
+
+func TestStatusReportsExactTimingMaxima(t *testing.T) {
+	game := &game{bounded: true, heartbeat: true, maxUpdateMS: 7, maxGCMS: 3, elapsedMS: 4 * 1000}
+	if got, want := game.statusText(), "GC ok U:7 G:3 S:4 +"; got != want {
+		t.Fatalf("statusText() = %q, want %q", got, want)
+	}
+}
+
+func TestRequiredSoakCompletesAfterSixtySecondsAcrossClockWrap(t *testing.T) {
+	game := &game{bounded: true}
+	start := ^uint32(0) - 100
+	game.observeElapsed(start)
+	game.observeElapsed(start + soakDurationMS - 1)
+	if game.soakComplete {
+		t.Fatal("soak completed before duration elapsed")
+	}
+	game.observeElapsed(start + soakDurationMS)
+	if !game.soakComplete || game.elapsedMS != soakDurationMS {
+		t.Fatalf("soakComplete/elapsedMS = %v/%d, want true/%d", game.soakComplete, game.elapsedMS, soakDurationMS)
+	}
+	if got := game.statusText(); got != "GC SOAK OK U:0 G:0 S:60 -" {
+		t.Fatalf("statusText() = %q", got)
+	}
+}
+
+func TestAcceptanceBudgetsMatchToolchainProfile(t *testing.T) {
+	profile := toolchainprofile.Accepted()
+	if frameBudgetMS != profile.Device.FrameBudgetMS {
+		t.Fatalf("frame budget = %d, profile = %d", frameBudgetMS, profile.Device.FrameBudgetMS)
+	}
+	if soakDurationMS != profile.Device.RequiredSoakSeconds*1000 {
+		t.Fatalf("required soak = %dms, profile = %ds", soakDurationMS, profile.Device.RequiredSoakSeconds)
 	}
 }

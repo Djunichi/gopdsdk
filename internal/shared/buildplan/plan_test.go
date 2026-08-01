@@ -19,10 +19,17 @@ func TestDevicePlanIsDeterministicAndStructured(t *testing.T) {
 		t.Fatalf("TinyGo command = %#v", plan.Commands[1])
 	}
 	compile := strings.Join(plan.Commands[1].Args, " ")
-	for _, want := range []string{"-gc none", "-scheduler none", "-panic trap"} {
+	for _, want := range []string{"-gc conservative", "-scheduler none", "-panic trap"} {
 		if !strings.Contains(compile, want) {
 			t.Errorf("TinyGo command does not contain %q: %s", want, compile)
 		}
+	}
+	legacy, err := NewDevice("./game", `C:\Playdate SDK`, `build\game.pdx`, DeviceMemoryNone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacyCompile := strings.Join(legacy.Commands[1].Args, " "); !strings.Contains(legacyCompile, "-gc none") {
+		t.Errorf("legacy TinyGo command does not contain non-collecting GC: %s", legacyCompile)
 	}
 	conservative, err := NewDevice("./game", `C:\Playdate SDK`, `build\game.pdx`, DeviceMemoryConservative)
 	if err != nil {

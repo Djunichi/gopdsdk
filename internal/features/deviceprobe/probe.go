@@ -3,6 +3,7 @@ package deviceprobe
 
 import (
 	"context"
+	"debug/elf"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -29,6 +30,14 @@ type Result struct {
 	Deploy  string
 	Run     string
 	Pending string
+	Metrics Metrics
+}
+
+// Metrics records reproducible linked and packaged device sizes in bytes.
+type Metrics struct {
+	StaticRAM uint64
+	ELF       int64
+	PDX       int64
 }
 
 // Config identifies the official Playdate SDK used for the link stage.
@@ -114,7 +123,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	pdxName := app.Name + ".pdx"
 	pdxPath := filepath.Join(workDir, pdxName)
 	if config.Memory == "" {
-		config.Memory = buildplan.DeviceMemoryNone
+		config.Memory = buildplan.DeviceMemoryConservative
 	}
 	plan, err := buildplan.NewDevice(config.Application, sdkPath, config.Output, config.Memory)
 	if err != nil {
@@ -246,6 +255,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if info, statErr := os.Stat(filepath.Join(pdxPath, "pdxinfo")); statErr != nil || info.IsDir() {
 		return Result{}, fmt.Errorf("verify packaged pdxinfo: pdc did not create a file")
 	}
+	metrics, err := measureDeviceArtifact(elfPath, pdxPath)
+	if err != nil {
+		return Result{}, err
+	}
 	if config.ArtifactsDir != "" {
 		artifactsDir, err := filepath.Abs(filepath.Clean(config.ArtifactsDir))
 		if err != nil {
@@ -328,7 +341,49 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		Deploy:  deployment,
 		Run:     execution,
 		Pending: pending,
+		Metrics: metrics,
 	}, nil
+}
+
+func measureDeviceArtifact(elfPath, pdxPath string) (Metrics, error) {
+	elfInfo, err := os.Stat(elfPath)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("measure device ELF: %w", err)
+	}
+	image, err := elf.Open(elfPath)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("measure static RAM: %w", err)
+	}
+	defer image.Close()
+	var staticRAM uint64
+	for _, section := range image.Sections {
+		if section.Flags&elf.SHF_ALLOC != 0 && section.Flags&elf.SHF_WRITE != 0 {
+			staticRAM += section.Size
+		}
+	}
+	pdxSize, err := directoryFileSize(pdxPath)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("measure device PDX: %w", err)
+	}
+	return Metrics{StaticRAM: staticRAM, ELF: elfInfo.Size(), PDX: pdxSize}, nil
+}
+
+func directoryFileSize(path string) (int64, error) {
+	var total int64
+	err := filepath.WalkDir(path, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() {
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			total += info.Size()
+		}
+		return nil
+	})
+	return total, err
 }
 
 func cleanupArtifacts(paths []string) {
@@ -436,9 +491,16 @@ func strongUndefinedSymbols(output string) []string {
 
 func unsupportedRuntimeSymbols(output string, memory buildplan.DeviceMemoryStrategy) []string {
 	var symbols []string
-	for _, forbidden := range []string{"runtime.setupDeferFrame", "runtime._recover"} {
+	for _, forbidden := range []string{
+		"runtime.setupDeferFrame",
+		"runtime._recover",
+		"runtime.chan",
+		"runtime.SetFinalizer",
+		"runtime.setFinalizer",
+		" reflect.",
+	} {
 		if strings.Contains(output, forbidden) {
-			symbols = append(symbols, forbidden)
+			symbols = append(symbols, strings.TrimSpace(forbidden))
 		}
 	}
 	if memory != buildplan.DeviceMemoryConservative && strings.Contains(output, "runtime/interrupt.In") {

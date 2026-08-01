@@ -3,6 +3,7 @@ package gcstress
 
 import (
 	"runtime"
+	"strconv"
 
 	"github.com/Djunichi/gopdsdk/playdate"
 )
@@ -15,6 +16,7 @@ const (
 	heapSize       = 256 * 1024
 	maxLiveHeap    = heapSize * 3 / 4
 	frameBudgetMS  = 33
+	soakDurationMS = 60 * 1000
 )
 
 type game struct {
@@ -30,6 +32,11 @@ type game struct {
 	stats        runtime.MemStats
 	collect      func()
 	readStats    func(*runtime.MemStats)
+	status       string
+	started      bool
+	startMS      uint32
+	elapsedMS    uint32
+	soakComplete bool
 }
 
 // New creates a game that continuously replaces a bounded set of heap blocks.
@@ -43,6 +50,7 @@ func (g *game) Init(playdate.Context) error { return nil }
 
 func (g *game) Update(context playdate.Context) (bool, error) {
 	frameStart := context.CurrentTimeMilliseconds()
+	g.observeElapsed(frameStart)
 	block := make([]byte, blockSize)
 	for index := 0; index < len(block); index += 256 {
 		value := byte(g.frame) ^ byte(index>>8)
@@ -67,23 +75,42 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 
 	context.Clear()
-	if g.failed {
-		context.DrawText("GC stress: FAILED", 16, 16)
-	} else if g.timingFailed {
-		context.DrawText("GC stress: FRAME FAIL", 16, 16)
-	} else if g.bounded && g.heartbeat {
-		context.DrawText("GC stress: timing ok +", 16, 16)
-	} else if g.bounded {
-		context.DrawText("GC stress: timing ok -", 16, 16)
-	} else if g.heartbeat {
-		context.DrawText("GC stress: warming +", 16, 16)
-	} else {
-		context.DrawText("GC stress: warming -", 16, 16)
+	if g.status == "" || g.frame%heartbeatRate == 0 || g.failed || g.timingFailed {
+		g.status = g.statusText()
 	}
+	context.DrawText(g.status, 16, 16)
 	updateDuration := context.CurrentTimeMilliseconds() - frameStart
 	if updateDuration > g.maxUpdateMS {
 		g.maxUpdateMS = updateDuration
 	}
 	g.timingFailed = g.timingFailed || updateDuration > frameBudgetMS || g.maxGCMS > frameBudgetMS
 	return true, nil
+}
+
+func (g *game) statusText() string {
+	state := "warm"
+	if g.failed {
+		state = "HEAP FAIL"
+	} else if g.timingFailed {
+		state = "TIME FAIL"
+	} else if g.soakComplete && g.bounded {
+		state = "SOAK OK"
+	} else if g.bounded {
+		state = "ok"
+	}
+	heartbeat := "-"
+	if g.heartbeat {
+		heartbeat = "+"
+	}
+	seconds := g.elapsedMS / 1000
+	return "GC " + state + " U:" + strconv.FormatUint(uint64(g.maxUpdateMS), 10) + " G:" + strconv.FormatUint(uint64(g.maxGCMS), 10) + " S:" + strconv.FormatUint(uint64(seconds), 10) + " " + heartbeat
+}
+
+func (g *game) observeElapsed(now uint32) {
+	if !g.started {
+		g.started = true
+		g.startMS = now
+	}
+	g.elapsedMS = now - g.startMS
+	g.soakComplete = g.elapsedMS >= soakDurationMS
 }
