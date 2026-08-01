@@ -4,6 +4,10 @@ type bitmapError string
 
 func (message bitmapError) Error() string { return string(message) }
 
+type spriteError string
+
+func (message spriteError) Error() string { return string(message) }
+
 // BitmapLoadError contains the diagnostic returned by the Playdate API.
 type BitmapLoadError string
 
@@ -22,4 +26,8 @@ var (
 	ErrBitmapScale error = bitmapError("bitmap scale must be positive and finite")
 	// ErrBitmapCreate indicates that Playdate could not allocate a bitmap.
 	ErrBitmapCreate error = bitmapError("create bitmap failed")
+	// ErrSpriteClosed indicates an operation on an already closed sprite.
+	ErrSpriteClosed error = spriteError("sprite is closed")
+	// ErrSpriteCreate indicates that Playdate could not allocate a sprite.
+	ErrSpriteCreate error = spriteError("create sprite failed")
 )

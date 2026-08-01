@@ -118,6 +118,119 @@ func BitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
 	return value.nativeHandle()
 }
 
+// SpriteDriver contains platform operations for one native sprite handle.
+type SpriteDriver struct {
+	SetBitmap  func(sprite, bitmap uintptr)
+	MoveTo     func(uintptr, float32, float32)
+	MoveBy     func(uintptr, float32, float32)
+	SetVisible func(uintptr, bool)
+	SetZIndex  func(uintptr, int)
+	Add        func(uintptr)
+	Remove     func(uintptr)
+	Free       func(uintptr)
+}
+
+// Sprite owns a native Playdate sprite.
+type Sprite struct {
+	handle uintptr
+	driver SpriteDriver
+	added  bool
+	closed bool
+}
+
+// NewOwnedSprite wraps a sprite that must be explicitly closed.
+func NewOwnedSprite(handle uintptr, driver SpriteDriver) *Sprite {
+	return &Sprite{handle: handle, driver: driver}
+}
+
+func (s *Sprite) nativeHandle() (uintptr, error) {
+	if s == nil || s.closed || s.handle == 0 {
+		return 0, playdate.ErrSpriteClosed
+	}
+	return s.handle, nil
+}
+
+func (s *Sprite) SetBitmap(bitmap playdate.Bitmap) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	bitmapHandle, err := BitmapHandle(bitmap)
+	if err != nil {
+		return err
+	}
+	s.driver.SetBitmap(handle, bitmapHandle)
+	return nil
+}
+func (s *Sprite) SetPosition(x, y float32) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.MoveTo(handle, x, y)
+	return nil
+}
+func (s *Sprite) MoveBy(dx, dy float32) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.MoveBy(handle, dx, dy)
+	return nil
+}
+func (s *Sprite) SetVisible(visible bool) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.SetVisible(handle, visible)
+	return nil
+}
+func (s *Sprite) SetZIndex(z int) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.SetZIndex(handle, z)
+	return nil
+}
+func (s *Sprite) Add() error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !s.added {
+		s.driver.Add(handle)
+		s.added = true
+	}
+	return nil
+}
+func (s *Sprite) Remove() error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if s.added {
+		s.driver.Remove(handle)
+		s.added = false
+	}
+	return nil
+}
+func (s *Sprite) Close() error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if s.added {
+		s.driver.Remove(handle)
+		s.added = false
+	}
+	s.driver.Free(handle)
+	s.closed = true
+	s.handle = 0
+	return nil
+}
+
 // ValidateBitmapSize applies the common Simulator/device creation contract.
 func ValidateBitmapSize(width, height int) error {
 	if width <= 0 || height <= 0 || width > 2147483647 || height > 2147483647 {

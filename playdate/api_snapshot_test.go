@@ -139,13 +139,15 @@ type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() 
 type BitmapLoadError string
 type Buttons uint8
 type Color uint8
-type Context interface{System; Graphics; InputReader}
+type Context interface{System; Graphics; InputReader; Sprites}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); NewBitmap(width int, height int) (Bitmap, error)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
+type Sprite interface{Add() error; Close() error; MoveBy(dx float32, dy float32) error; Remove() error; SetBitmap(Bitmap) error; SetPosition(x float32, y float32) error; SetVisible(bool) error; SetZIndex(int) error}
+type Sprites interface{NewSprite() (Sprite, error); UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
 var ErrBitmapBorrowed error
 var ErrBitmapClosed error
@@ -153,4 +155,6 @@ var ErrBitmapColor error
 var ErrBitmapCreate error
 var ErrBitmapScale error
 var ErrBitmapSize error
+var ErrSpriteClosed error
+var ErrSpriteCreate error
 `
