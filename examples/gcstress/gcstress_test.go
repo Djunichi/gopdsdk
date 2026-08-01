@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
+	"github.com/Djunichi/gopdsdk/playdate"
 )
 
 type testContext struct{ milliseconds uint32 }
@@ -15,6 +16,7 @@ func (context *testContext) CurrentTimeMilliseconds() uint32 {
 	context.milliseconds++
 	return context.milliseconds
 }
+func (*testContext) Input() playdate.Input { return playdate.Input{} }
 
 type timingContext struct {
 	milliseconds uint32
@@ -28,6 +30,7 @@ func (context *timingContext) CurrentTimeMilliseconds() uint32 {
 	context.milliseconds += context.step
 	return current
 }
+func (*timingContext) Input() playdate.Input { return playdate.Input{} }
 
 func TestUpdateKeepsBoundedLiveWindow(t *testing.T) {
 	game := newGame(func() {}, func(*runtime.MemStats) {})

@@ -2,8 +2,8 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1.0 device-runtime milestone are complete**. No public API is
-stable yet. The official Playdate C API is the
+The **P0 foundation, P1.0 device runtime, and P1.1 lifecycle/input milestones
+are complete**. No public API is stable yet. The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
 references. Their implementation is not copied.
@@ -199,6 +199,30 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/hello
 The command leaves the Simulator process running. `Process.Kill` is used only by
 the automated probe command.
 
+## P1.1 lifecycle and input parity
+
+P1.1 is complete on the verified Windows profile. The same game code received
+matching button transitions, crank state, dock state, frame delta, and ordered
+pause/resume and lock/unlock callbacks in Simulator and on a physical Playdate.
+The device reported an approximately 33.40 ms frame delta and completed the
+required 60-second regression soak. Low-power and terminate routing are covered
+by deterministic pure-Go tests and the common ABI event path; those two events
+were not separately induced during physical acceptance.
+
+The `examples/lifecycleinput` game exercises the same public lifecycle and
+per-frame input snapshots on Simulator and device. Build or run that single
+package on both targets:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/lifecycleinput
+go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK ./examples/lifecycleinput
+```
+
+The display reports an ordered lifecycle trace and counters; current, pressed,
+released, held, and latched edge button masks; crank angle and change; dock
+transitions; frame delta; and the soak marker. Pure-Go tests supply fixed input
+and lifecycle sequences to this same game implementation.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -230,4 +254,5 @@ toolchain without pretending to verify GUI or USB behavior.
 - Device `defer`/`recover` is rejected because TinyGo 0.41.1 accesses an ARM
   system register unavailable to Playdate applications through that path.
 - macOS and Linux official SDK integration remains unverified.
-- The public API contains only the hello-world lifecycle and graphics nucleus.
+- Lifecycle and input are available through the P1.1 public model; graphics are
+  still limited to the hello-world clear/text nucleus.

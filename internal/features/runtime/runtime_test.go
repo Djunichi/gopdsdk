@@ -13,6 +13,7 @@ type testContext struct{}
 func (testContext) Clear()                          {}
 func (testContext) DrawText(string, int, int)       {}
 func (testContext) CurrentTimeMilliseconds() uint32 { return 0 }
+func (testContext) Input() playdate.Input           { return playdate.Input{} }
 
 type testGame struct {
 	init   func(playdate.Context) error
@@ -47,7 +48,7 @@ func TestRuntimeLifecycle(t *testing.T) {
 			initCalls++
 			return nil
 		},
-		Update: func() (bool, error) {
+		Update: func(playdate.Input) (bool, error) {
 			updateCalls++
 			return true, nil
 		},
@@ -55,13 +56,13 @@ func TestRuntimeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.Update(); !errors.Is(err, ErrNotInitialized) {
+	if _, err := runtime.Update(RawInput{}); !errors.Is(err, ErrNotInitialized) {
 		t.Fatalf("Update() before init error = %v, want ErrNotInitialized", err)
 	}
 	if err := runtime.Handle(EventInit, 0); err != nil {
 		t.Fatal(err)
 	}
-	refresh, err := runtime.Update()
+	refresh, err := runtime.Update(RawInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,12 +78,12 @@ func TestRuntimeRefreshAndErrors(t *testing.T) {
 	updateErr := errors.New("update failed")
 	tests := []struct {
 		name        string
-		update      func() (bool, error)
+		update      func(playdate.Input) (bool, error)
 		wantRefresh int32
 		wantErr     error
 	}{
-		{"no refresh", func() (bool, error) { return false, nil }, 0, nil},
-		{"update error", func() (bool, error) { return true, updateErr }, 0, updateErr},
+		{"no refresh", func(playdate.Input) (bool, error) { return false, nil }, 0, nil},
+		{"update error", func(playdate.Input) (bool, error) { return true, updateErr }, 0, updateErr},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -93,7 +94,7 @@ func TestRuntimeRefreshAndErrors(t *testing.T) {
 			if err := runtime.Handle(EventInit, 0); err != nil {
 				t.Fatal(err)
 			}
-			refresh, err := runtime.Update()
+			refresh, err := runtime.Update(RawInput{})
 			if refresh != test.wantRefresh || !errors.Is(err, test.wantErr) {
 				t.Fatalf("Update() = %d, %v; want %d, %v", refresh, err, test.wantRefresh, test.wantErr)
 			}
@@ -105,7 +106,7 @@ func TestRuntimeFailedInitializationCannotUpdate(t *testing.T) {
 	initErr := errors.New("init failed")
 	runtime, err := New(Callbacks{
 		Init:   func() error { return initErr },
-		Update: func() (bool, error) { return true, nil },
+		Update: func(playdate.Input) (bool, error) { return true, nil },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -113,8 +114,8 @@ func TestRuntimeFailedInitializationCannotUpdate(t *testing.T) {
 	if err := runtime.Handle(EventInit, 0); !errors.Is(err, initErr) {
 		t.Fatalf("Handle() error = %v, want init error", err)
 	}
-	if _, err := runtime.Update(); !errors.Is(err, ErrNotInitialized) {
-		t.Fatalf("Update() error = %v, want ErrNotInitialized", err)
+	if _, err := runtime.Update(RawInput{}); !errors.Is(err, ErrFailed) {
+		t.Fatalf("Update() error = %v, want ErrFailed", err)
 	}
 }
 
@@ -123,16 +124,10 @@ func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 	context := testContext{}
 	application, err := NewApplication(testGame{
 		init: func(got playdate.Context) error {
-			if got != context {
-				t.Fatalf("Init() context = %T, want testContext", got)
-			}
 			calls = append(calls, "init")
 			return nil
 		},
 		update: func(got playdate.Context) (bool, error) {
-			if got != context {
-				t.Fatalf("Update() context = %T, want testContext", got)
-			}
 			calls = append(calls, "update")
 			return true, nil
 		},
@@ -143,7 +138,7 @@ func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 	if err := application.Handle(EventInit, 0); err != nil {
 		t.Fatal(err)
 	}
-	refresh, err := application.Update()
+	refresh, err := application.Update(RawInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,5 +153,98 @@ func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 		if calls[index] != wantCalls[index] {
 			t.Fatalf("calls = %v, want %v", calls, wantCalls)
 		}
+	}
+}
+
+func TestLifecycleEventsPreservePlatformOrder(t *testing.T) {
+	var got []playdate.LifecycleEvent
+	runtime, err := New(Callbacks{
+		Init: func() error { return nil },
+		Lifecycle: func(event playdate.LifecycleEvent) error {
+			got = append(got, event)
+			return nil
+		},
+		Update: func(playdate.Input) (bool, error) { return false, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	events := []Event{EventPause, EventLock, EventLowPower, EventUnlock, EventResume, EventTerminate}
+	for _, event := range events {
+		if err := runtime.Handle(event, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := runtime.Update(RawInput{}); !errors.Is(err, ErrTerminated) {
+		t.Fatalf("Update() after terminate error = %v, want ErrTerminated", err)
+	}
+	want := []playdate.LifecycleEvent{playdate.LifecyclePause, playdate.LifecycleLock, playdate.LifecycleLowPower, playdate.LifecycleUnlock, playdate.LifecycleResume, playdate.LifecycleTerminate}
+	if len(got) != len(want) {
+		t.Fatalf("events = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("events = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestLifecycleErrorIsFailStop(t *testing.T) {
+	wantErr := errors.New("pause failed")
+	runtime, err := New(Callbacks{
+		Init:      func() error { return nil },
+		Lifecycle: func(playdate.LifecycleEvent) error { return wantErr },
+		Update:    func(playdate.Input) (bool, error) { return true, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Handle(EventPause, 0); !errors.Is(err, wantErr) {
+		t.Fatalf("pause error = %v, want %v", err, wantErr)
+	}
+	if _, err := runtime.Update(RawInput{}); !errors.Is(err, ErrFailed) {
+		t.Fatalf("Update() error = %v, want ErrFailed", err)
+	}
+}
+
+func TestInputTransitionsBetweenFrames(t *testing.T) {
+	var snapshots []playdate.Input
+	runtime, err := New(Callbacks{
+		Init: func() error { return nil },
+		Update: func(input playdate.Input) (bool, error) {
+			snapshots = append(snapshots, input)
+			return false, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	frames := []RawInput{
+		{Buttons: playdate.ButtonA, CrankAngle: 10, CrankDelta: 2, CrankDocked: true, DeltaSeconds: 0.016},
+		{Buttons: playdate.ButtonA | playdate.ButtonLeft, CrankAngle: 15, CrankDelta: 5, CrankDocked: false, DeltaSeconds: 0.017},
+		{Buttons: playdate.ButtonLeft, CrankAngle: 15, CrankDocked: true, DeltaSeconds: 0.018},
+	}
+	for _, frame := range frames {
+		if _, err := runtime.Update(frame); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := snapshots[0]; got.Pressed != playdate.ButtonA || got.Held != 0 || got.Released != 0 || got.CrankDockedThisFrame || got.CrankUndocked {
+		t.Fatalf("first snapshot transitions = %+v", got)
+	}
+	if got := snapshots[1]; got.Pressed != playdate.ButtonLeft || got.Held != playdate.ButtonA || got.Released != 0 || !got.CrankUndocked || got.DeltaSeconds != 0.017 {
+		t.Fatalf("second snapshot transitions = %+v", got)
+	}
+	if got := snapshots[2]; got.Pressed != 0 || got.Held != playdate.ButtonLeft || got.Released != playdate.ButtonA || !got.CrankDockedThisFrame {
+		t.Fatalf("third snapshot transitions = %+v", got)
 	}
 }

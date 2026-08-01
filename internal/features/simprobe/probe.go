@@ -83,6 +83,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	sources, err := simabi.Render(simabi.Config{
 		APIHeader:         apiHeader,
 		RuntimeImport:     runtimeImport,
+		PlaydateImport:    module.Path + "/playdate",
 		ApplicationImport: module.Path + "/probe/app",
 	})
 	if err != nil {
