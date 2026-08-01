@@ -1,33 +1,25 @@
 ---
 name: review
-description: Review gopdsdk Go code, diffs, or proposed changes for correctness, regressions, architecture, portability, test coverage, and independent-implementation risks. Use when Codex is asked to review code, audit a change before commit, assess a refactor, or provide actionable findings without implementing fixes.
+description: Review gopdsdk Go changes for correctness, architecture, portability, tests, provenance, and readiness risks without fixing them.
 ---
 
 # Review
 
-Follow `AGENTS.md`. Review read-only unless the user explicitly requests fixes.
+Follow `AGENTS.md`. Remain read-only unless fixes are requested.
 
 ## Workflow
 
-1. Establish scope from the request, `git status`, and the relevant diff.
-2. Read complete changed functions and their callers, not only diff fragments.
-3. Run focused tests or read-only diagnostics to confirm suspected problems.
-4. Check, in order:
-   - behavior, errors, cleanup, and exit semantics;
-   - Windows, macOS, and Linux path, executable, and process differences;
-   - feature cohesion and premature `internal/shared` extraction;
-   - required package comments in primary implementation files and no
-     comment-only `doc.go` files;
-   - deterministic tests and capability probe integrity;
-   - whether CI evidence is overstated as SDK, Simulator, or hardware
-     verification;
-   - whether external-module behavior is covered when module resolution or CLI
-     composition changes;
-   - accidental copying or structural imitation of third-party implementation;
-   - security, destructive behavior, and secret exposure.
-5. Report actionable findings ordered by severity, with precise file and line
-   references. Explain the failing scenario and impact.
-6. If no findings remain, say so and list material verification gaps briefly.
+1. Scope from the request, `git status`, and diff; read complete changed
+   functions and callers.
+2. Use focused tests or read-only diagnostics to confirm suspected defects.
+3. Check behavior/errors/cleanup; exit semantics; Windows/macOS/Linux process
+   and path differences; feature cohesion; package comments; deterministic
+   tests; probe integrity; external-module coverage for CLI/module changes;
+   third-party provenance; security and destructive behavior.
+4. Reject readiness claims that promote CI, Docker, cross-compilation, or
+   dry-runs to SDK, Simulator, USB, or hardware evidence.
+5. Report actionable findings by severity with precise lines, failing scenario,
+   and impact. If none, say so and list material verification gaps.
 
 Do not report ungrounded style preferences. Do not claim a defect without a
 concrete execution path or violated invariant.
