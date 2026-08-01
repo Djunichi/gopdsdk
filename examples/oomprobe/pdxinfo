@@ -1,0 +1,5 @@
+name=gopdsdk OOM Probe
+author=gopdsdk contributors
+bundleID=sdk.gopdsdk.oomprobe
+version=0.0.1
+buildNumber=1

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "go": "1.26.5",
+  "playdate_sdk": "3.1.1",
+  "tinygo": "0.41.1",
+  "llvm": "20.1.1",
+  "arm_gcc": "15.3.1",
+  "device": {
+    "memory": "conservative",
+    "heap_bytes": 262144,
+    "scheduler": "none",
+    "panic": "trap",
+    "frame_budget_ms": 33,
+    "required_soak_seconds": 60,
+    "optional_extended_soak_minutes": 30
+  }
+}

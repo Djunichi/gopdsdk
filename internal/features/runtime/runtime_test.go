@@ -10,8 +10,9 @@ import (
 
 type testContext struct{}
 
-func (testContext) Clear()                    {}
-func (testContext) DrawText(string, int, int) {}
+func (testContext) Clear()                          {}
+func (testContext) DrawText(string, int, int)       {}
+func (testContext) CurrentTimeMilliseconds() uint32 { return 0 }
 
 type testGame struct {
 	init   func(playdate.Context) error

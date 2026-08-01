@@ -56,6 +56,7 @@ func renderGo(config Config) string {
 void bridgeRegisterUpdate(PlaydateAPI* playdate);
 void bridgeClear(void);
 void bridgeDrawText(const char* text, size_t length, int x, int y);
+uint32_t bridgeCurrentTimeMilliseconds(void);
 */
 import "C"
 import (
@@ -112,6 +113,10 @@ func (playdateContext) DrawText(text string, x, y int) {
 	C.bridgeDrawText(cText, C.size_t(len(text)), C.int(x), C.int(y))
 }
 
+func (playdateContext) CurrentTimeMilliseconds() uint32 {
+	return uint32(C.bridgeCurrentTimeMilliseconds())
+}
+
 func main() {}
 `,
 		filepath.ToSlash(config.APIHeader),
@@ -154,6 +159,11 @@ void bridgeDrawText(const char* text, size_t length, int x, int y)
 void bridgeClear(void)
 {
 	bridgePlaydate->graphics->clear(kColorWhite);
+}
+
+uint32_t bridgeCurrentTimeMilliseconds(void)
+{
+	return bridgePlaydate->system->getCurrentTimeMilliseconds();
 }
 `, filepath.ToSlash(apiHeader))
 }

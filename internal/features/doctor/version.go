@@ -1,22 +1,20 @@
 package doctor
 
-import "strings"
+import (
+	"strings"
 
-const (
-	verifiedGoVersion     = "go1.26.5"
-	verifiedSDKVersion    = "3.1.1"
-	verifiedTinyGoVersion = "0.41.1"
-	verifiedArmGCCVersion = "15.3.1"
+	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
 )
 
 func matchesVerifiedTool(name, version string) bool {
+	profile := toolchainprofile.Accepted()
 	switch name {
 	case "go":
-		return strings.Contains(version, "go version "+verifiedGoVersion+" ")
+		return strings.Contains(version, "go version go"+profile.Go+" ")
 	case "tinygo":
-		return strings.Contains(version, "tinygo version "+verifiedTinyGoVersion+" ")
+		return strings.Contains(version, "tinygo version "+profile.TinyGo+" ")
 	case "arm-none-eabi-gcc":
-		return strings.Contains(version, ") "+verifiedArmGCCVersion+" ") || strings.HasSuffix(version, ") "+verifiedArmGCCVersion)
+		return strings.Contains(version, ") "+profile.ArmGCC+" ") || strings.HasSuffix(version, ") "+profile.ArmGCC)
 	default:
 		return false
 	}

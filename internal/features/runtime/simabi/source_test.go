@@ -25,6 +25,7 @@ func TestRender(t *testing.T) {
 		"application.Update",
 		"C.bridgeClear",
 		"C.bridgeDrawText",
+		"C.bridgeCurrentTimeMilliseconds",
 	} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q:\n%s", want, sources.Go)
@@ -35,6 +36,7 @@ func TestRender(t *testing.T) {
 		"setUpdateCallback(bridgeUpdate, NULL)",
 		"graphics->clear(kColorWhite)",
 		"drawText(text, length, kUTF8Encoding, x, y)",
+		"system->getCurrentTimeMilliseconds()",
 	} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("C source does not contain %q:\n%s", want, sources.C)

@@ -2,7 +2,7 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and feasibility milestone is complete**. No public API is
+The **P0 foundation and P1.0 device-runtime milestone are complete**. No public API is
 stable yet. The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
@@ -15,7 +15,7 @@ external-consumer CLI suite natively on all three hosts. Windows is additionally
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
 
-The exact P0 verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+The exact P1.0 verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
 TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
 solely by version number: `doctor` reports them as `UNVERIFIED` until the
 relevant probe succeeds.
@@ -37,7 +37,7 @@ deployment works on that host.
 - Go 1.26.x for development, CLI use, tests, and Simulator compilation.
 - The official Playdate SDK for packaging, Simulator runs, and device tools.
 - A native C compiler supported by `doctor` for Simulator builds.
-- TinyGo 0.41.1 and GNU Arm Embedded 15.3.1 for the verified P0 device build.
+- TinyGo 0.41.1 and GNU Arm Embedded 15.3.1 for the verified P1.0 device build.
 
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
@@ -99,8 +99,9 @@ This currently proves a hard-float Cortex-M7 TinyGo object, the official
 Playdate `setup.c` and `link_map.ld` link, an ELF32/ARM executable with
 `eventHandlerShim`, a one-time TinyGo runtime bootstrap, no unresolved symbols,
 and conversion of `pdex.elf` into a packaged `pdex.bin` with the official `pdc`.
-Allocation uses `playdate->system->realloc` in a non-collecting P0 mode.
-Deployment and physical-device execution are proven on the Windows P0 setup.
+Device builds default to TinyGo conservative GC with a checked 256 KiB heap,
+bounded-memory validation, and deterministic fail-stop OOM behavior.
+Deployment and physical-device execution are proven on the Windows P1.0 setup.
 The marker was rendered after the Go event handler returned.
 
 Build an importable application package for a physical Playdate with:
@@ -174,7 +175,8 @@ go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
 
 The default output is `build/hello.pdx`. Use `--output` to select another path.
 The build command does not overwrite an existing artifact. Simulator execution
-on macOS and Linux remains unverified; device builds use the P0 TinyGo runtime.
+on macOS and Linux remains unverified; device builds use the accepted P1.0
+TinyGo conservative runtime.
 
 Inspect either build without running compilers or SDK tools:
 
@@ -220,9 +222,11 @@ not Windows or macOS semantics. A pinned Linux image becomes useful when it can
 legally receive the official SDK and exercise the real Simulator/device build
 toolchain without pretending to verify GUI or USB behavior.
 
-## P0 limitations
+## Current limitations
 
-- The device allocator is non-collecting and has no out-of-memory contract.
+- Device execution uses a single-threaded TinyGo subset: goroutines, channels,
+  `select`, public reflection, and finalizers are rejected.
+- OOM and panic are deterministic fail-stop traps, not recoverable errors.
 - Device `defer`/`recover` is rejected because TinyGo 0.41.1 accesses an ARM
   system register unavailable to Playdate applications through that path.
 - macOS and Linux official SDK integration remains unverified.

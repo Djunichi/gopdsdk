@@ -3,6 +3,7 @@ package deviceprobe
 
 import (
 	"context"
+	"debug/elf"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -29,6 +30,14 @@ type Result struct {
 	Deploy  string
 	Run     string
 	Pending string
+	Metrics Metrics
+}
+
+// Metrics records reproducible linked and packaged device sizes in bytes.
+type Metrics struct {
+	StaticRAM uint64
+	ELF       int64
+	PDX       int64
 }
 
 // Config identifies the official Playdate SDK used for the link stage.
@@ -41,6 +50,7 @@ type Config struct {
 	Install      bool
 	Run          bool
 	ArtifactsDir string
+	Memory       buildplan.DeviceMemoryStrategy
 }
 
 // Probe compiles and links a structural Playdate device ELF.
@@ -112,7 +122,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	elfPath := filepath.Join(workDir, "pdex.elf")
 	pdxName := app.Name + ".pdx"
 	pdxPath := filepath.Join(workDir, pdxName)
-	plan, err := buildplan.New(buildplan.Device, config.Application, sdkPath, config.Output)
+	if config.Memory == "" {
+		config.Memory = buildplan.DeviceMemoryConservative
+	}
+	plan, err := buildplan.NewDevice(config.Application, sdkPath, config.Output, config.Memory)
 	if err != nil {
 		_ = os.RemoveAll(workDir)
 		return Result{}, err
@@ -146,7 +159,11 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, err
 		}
 		if index == 2 {
-			if err := os.WriteFile(filepath.Join(workDir, "bootstrap.c"), []byte(bootstrapSource), 0o644); err != nil {
+			bootstrap := bootstrapSource
+			if config.Memory == buildplan.DeviceMemoryConservative {
+				bootstrap = conservativeBootstrapSource
+			}
+			if err := os.WriteFile(filepath.Join(workDir, "bootstrap.c"), []byte(bootstrap), 0o644); err != nil {
 				return Result{}, fmt.Errorf("write bootstrap.c: %w", err)
 			}
 		}
@@ -174,6 +191,19 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("inspect ARM object: %s was not verified", check.description)
 		}
 	}
+	if config.Memory == buildplan.DeviceMemoryConservative {
+		for _, check := range []struct{ description, required string }{
+			{description: "bounded TinyGo heap", required: "playdateRuntimeHeap"},
+			{description: "heap start", required: "_heap_start"},
+			{description: "heap end", required: "_heap_end"},
+			{description: "runtime stack boundary", required: "runtime.stackTop"},
+			{description: "shadowed Cortex-M system control pointer", required: "playdateRuntimeSCB"},
+		} {
+			if !strings.Contains(inspection, check.required) {
+				return Result{}, fmt.Errorf("inspect ARM object: %s was not verified", check.description)
+			}
+		}
+	}
 	for _, forbidden := range []string{"R_ARM_THM_MOVW_AB", "R_ARM_THM_MOVT_AB"} {
 		if strings.Contains(inspection, forbidden) {
 			return Result{}, fmt.Errorf("inspect ARM object: unsupported Playdate relocation %s remains", forbidden)
@@ -196,8 +226,13 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("inspect linked ELF symbols: board-specific symbol %q remains", forbidden)
 		}
 	}
-	if unsupported := unsupportedRuntimeSymbols(symbolOutput); len(unsupported) != 0 {
+	if unsupported := unsupportedRuntimeSymbols(symbolOutput, config.Memory); len(unsupported) != 0 {
 		return Result{}, fmt.Errorf("inspect linked ELF symbols: unsupported TinyGo runtime symbols remain: %s", strings.Join(unsupported, ", "))
+	}
+	if config.Memory == buildplan.DeviceMemoryConservative {
+		if err := validateConservativeHeapSymbols(symbolOutput); err != nil {
+			return Result{}, fmt.Errorf("inspect conservative GC heap: %w", err)
+		}
 	}
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
@@ -219,6 +254,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	if info, statErr := os.Stat(filepath.Join(pdxPath, "pdxinfo")); statErr != nil || info.IsDir() {
 		return Result{}, fmt.Errorf("verify packaged pdxinfo: pdc did not create a file")
+	}
+	metrics, err := measureDeviceArtifact(elfPath, pdxPath)
+	if err != nil {
+		return Result{}, err
 	}
 	if config.ArtifactsDir != "" {
 		artifactsDir, err := filepath.Abs(filepath.Clean(config.ArtifactsDir))
@@ -259,6 +298,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	deployment := "not requested"
 	execution := "not requested"
 	pending := "device deployment and hardware execution; allocator is non-collecting"
+	if config.Memory == buildplan.DeviceMemoryConservative {
+		pending = "device deployment, hardware execution, and conservative-GC soak"
+	}
 	if config.Install || config.Run {
 		pdutilName := "pdutil"
 		if runtime.GOOS == "windows" {
@@ -274,6 +316,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		}
 		deployment = summarizeOutput(installOutput)
 		pending = "hardware execution; allocator is non-collecting"
+		if config.Memory == buildplan.DeviceMemoryConservative {
+			pending = "hardware execution and conservative-GC soak"
+		}
 		if config.Run {
 			runOutput, err := runDeviceProbe(ctx, workDir, pdutil, "/Games/"+pdxName)
 			if err != nil {
@@ -281,6 +326,9 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			}
 			execution = summarizeRunOutput(runOutput)
 			pending = "allocator is non-collecting"
+			if config.Memory == buildplan.DeviceMemoryConservative {
+				pending = "conservative-GC soak and memory-growth measurement"
+			}
 		}
 	}
 	return Result{
@@ -293,7 +341,49 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		Deploy:  deployment,
 		Run:     execution,
 		Pending: pending,
+		Metrics: metrics,
 	}, nil
+}
+
+func measureDeviceArtifact(elfPath, pdxPath string) (Metrics, error) {
+	elfInfo, err := os.Stat(elfPath)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("measure device ELF: %w", err)
+	}
+	image, err := elf.Open(elfPath)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("measure static RAM: %w", err)
+	}
+	defer image.Close()
+	var staticRAM uint64
+	for _, section := range image.Sections {
+		if section.Flags&elf.SHF_ALLOC != 0 && section.Flags&elf.SHF_WRITE != 0 {
+			staticRAM += section.Size
+		}
+	}
+	pdxSize, err := directoryFileSize(pdxPath)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("measure device PDX: %w", err)
+	}
+	return Metrics{StaticRAM: staticRAM, ELF: elfInfo.Size(), PDX: pdxSize}, nil
+}
+
+func directoryFileSize(path string) (int64, error) {
+	var total int64
+	err := filepath.WalkDir(path, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() {
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			total += info.Size()
+		}
+		return nil
+	})
+	return total, err
 }
 
 func cleanupArtifacts(paths []string) {
@@ -399,14 +489,61 @@ func strongUndefinedSymbols(output string) []string {
 	return symbols
 }
 
-func unsupportedRuntimeSymbols(output string) []string {
+func unsupportedRuntimeSymbols(output string, memory buildplan.DeviceMemoryStrategy) []string {
 	var symbols []string
-	for _, forbidden := range []string{"runtime.setupDeferFrame", "runtime._recover", "runtime/interrupt.In"} {
+	for _, forbidden := range []string{
+		"runtime.setupDeferFrame",
+		"runtime._recover",
+		"runtime.chan",
+		"runtime.SetFinalizer",
+		"runtime.setFinalizer",
+		" reflect.",
+	} {
 		if strings.Contains(output, forbidden) {
-			symbols = append(symbols, forbidden)
+			symbols = append(symbols, strings.TrimSpace(forbidden))
 		}
 	}
+	if memory != buildplan.DeviceMemoryConservative && strings.Contains(output, "runtime/interrupt.In") {
+		symbols = append(symbols, "runtime/interrupt.In")
+	}
 	return symbols
+}
+
+const conservativeHeapSize = uint64(256 * 1024)
+
+func validateConservativeHeapSymbols(output string) error {
+	addresses := make(map[string]uint64)
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		address, err := strconv.ParseUint(fields[0], 16, 64)
+		if err == nil {
+			addresses[fields[len(fields)-1]] = address
+		}
+	}
+	required := []string{"_globals_end", "_heap_start", "_heap_end", "__bss_end__", "playdateRuntimeHeap", "playdateRuntimeSCB", "runtime.stackTop", "runtime.runtimePanicAt", "runtime/interrupt.In", "tinygo_scanCurrentStack"}
+	for _, name := range required {
+		if _, ok := addresses[name]; !ok {
+			return fmt.Errorf("required symbol %s is missing", name)
+		}
+	}
+	start := addresses["_heap_start"]
+	end := addresses["_heap_end"]
+	if start != addresses["_globals_end"] || start != addresses["playdateRuntimeHeap"] {
+		return fmt.Errorf("heap start %#x does not match globals end %#x and storage %#x", start, addresses["_globals_end"], addresses["playdateRuntimeHeap"])
+	}
+	if start%16 != 0 {
+		return fmt.Errorf("heap start %#x is not 16-byte aligned", start)
+	}
+	if end < start || end-start != conservativeHeapSize {
+		return fmt.Errorf("heap range %#x..%#x is %d bytes, want %d", start, end, end-start, conservativeHeapSize)
+	}
+	if end > addresses["__bss_end__"] {
+		return fmt.Errorf("heap end %#x exceeds BSS end %#x", end, addresses["__bss_end__"])
+	}
+	return nil
 }
 
 func runVersion(ctx context.Context, executable, argument string) string {
@@ -446,12 +583,19 @@ func bridgeClear()
 //go:linkname bridgeDrawText bridgeDrawText
 func bridgeDrawText(text *byte, length uintptr, x, y int32)
 
+//go:linkname bridgeCurrentTimeMilliseconds bridgeCurrentTimeMilliseconds
+func bridgeCurrentTimeMilliseconds() uint32
+
 type playdateContext struct{}
 
 func (playdateContext) Clear() { bridgeClear() }
 
 func (playdateContext) DrawText(text string, x, y int) {
 	bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y))
+}
+
+func (playdateContext) CurrentTimeMilliseconds() uint32 {
+	return bridgeCurrentTimeMilliseconds()
 }
 
 var gameContext playdateContext
@@ -571,6 +715,77 @@ void bridgeDrawText(const char* text, uintptr_t length, int32_t x, int32_t y)
 {
 	activePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
 }
+
+uint32_t bridgeCurrentTimeMilliseconds(void)
+{
+	return activePlaydate->system->getCurrentTimeMilliseconds();
+}
+`
+
+const conservativeBootstrapSource = `#include "pd_api.h"
+
+_Static_assert(sizeof(PDSystemEvent) <= 4, "PDSystemEvent must fit a 32-bit call slot");
+_Static_assert(kEventMirrorEnded <= INT32_MAX, "PDSystemEvent values must fit int32_t");
+_Static_assert(sizeof(uint32_t) == 4, "event argument must be 32-bit");
+_Static_assert(sizeof(uintptr_t) == 4, "device pointers must be 32-bit");
+_Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
+
+extern void runtimeRun(void) __asm__("runtime.run");
+extern uintptr_t runtimeStackTop __asm__("runtime.stackTop");
+extern void* runtimeSCB __asm__("playdateRuntimeSCB");
+extern int goEventHandler(PlaydateAPI*, PDSystemEvent, uint32_t);
+extern int goUpdate(void);
+
+static int booted;
+static PlaydateAPI* activePlaydate;
+static uint32_t runtimeSCBShadow[2];
+__attribute__((section(".bss.playdate_runtime_heap"), aligned(16), used))
+unsigned char playdateRuntimeHeap[256 * 1024];
+static int bridgeUpdate(void* userdata);
+
+static void prepareRuntimeBoundary(void)
+{
+	register uintptr_t stackPointer __asm__("sp");
+	runtimeStackTop = stackPointer;
+}
+
+int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
+{
+	int result;
+    if (event == kEventInit && !booted) {
+		activePlaydate = playdate;
+		runtimeSCB = runtimeSCBShadow;
+		prepareRuntimeBoundary();
+        runtimeRun();
+        booted = 1;
+    }
+	result = goEventHandler(playdate, event, arg);
+	if (event == kEventInit && result == 0)
+		playdate->system->setUpdateCallback(bridgeUpdate, playdate);
+	return result;
+}
+
+static int bridgeUpdate(void* userdata)
+{
+	(void)userdata;
+	prepareRuntimeBoundary();
+	return goUpdate();
+}
+
+void bridgeClear(void)
+{
+	activePlaydate->graphics->clear(kColorWhite);
+}
+
+void bridgeDrawText(const char* text, uintptr_t length, int32_t x, int32_t y)
+{
+	activePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
+}
+
+uint32_t bridgeCurrentTimeMilliseconds(void)
+{
+	return activePlaydate->system->getCurrentTimeMilliseconds();
+}
 `
 
 const targetSource = `{
@@ -585,6 +800,18 @@ const targetSource = `{
 
 const adapterSource = `.syntax unified
 .thumb
+
+.section .text.tinygo_scanCurrentStack,"ax",%progbits
+.global tinygo_scanCurrentStack
+.type tinygo_scanCurrentStack, %function
+.thumb_func
+tinygo_scanCurrentStack:
+    push {r4-r11, lr}
+    mov r0, sp
+    bl tinygo_scanstack
+    add sp, #32
+    pop {pc}
+.size tinygo_scanCurrentStack, .-tinygo_scanCurrentStack
 
 .section .text.DisableInterrupts,"ax",%progbits
 .global DisableInterrupts
