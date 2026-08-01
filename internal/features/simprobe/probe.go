@@ -82,7 +82,6 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	runtimeImport := module.Path + "/internal/features/runtime"
 	sources, err := simabi.Render(simabi.Config{
 		APIHeader:         apiHeader,
-		PublicAPIImport:   module.Path + "/playdate",
 		RuntimeImport:     runtimeImport,
 		ApplicationImport: module.Path + "/probe/app",
 	})

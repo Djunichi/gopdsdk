@@ -2,15 +2,15 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The project is finalizing the **P0 foundation and feasibility release
-candidate**. No public API is stable yet. The official Playdate C API is the
+The **P0 foundation and feasibility milestone is complete**. No public API is
+stable yet. The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
 references. Their implementation is not copied.
 
 The target matrix is Windows, macOS, and Linux. Host policy selects `.dll`,
 `.dylib`, or `.so`, official SDK tool names, native compiler candidates, and
-Simulator layout. GitHub Actions is configured to execute the pure Go and
+Simulator layout. GitHub Actions executes the pure Go and
 external-consumer CLI suite natively on all three hosts. Windows is additionally verified with the
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
@@ -24,9 +24,9 @@ relevant probe succeeds.
 
 | Host | Native CI | Official SDK/Simulator | Device build/deploy |
 | --- | --- | --- | --- |
-| Windows | configured; awaiting expanded CI run | verified with SDK 3.1.1 | verified on physical hardware |
-| macOS | configured; awaiting expanded CI run | unverified | unverified |
-| Linux | configured; awaiting expanded CI run | unverified | unverified |
+| Windows | passing | verified with SDK 3.1.1 | verified on physical hardware |
+| macOS | passing | unverified | unverified |
+| Linux | passing | unverified | unverified |
 
 Native CI proves Go behavior, path policy, CLI composition, and external-module
 consumption. It does not prove that an official Simulator starts or that USB

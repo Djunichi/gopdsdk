@@ -436,7 +436,6 @@ func renderProbeSource(modulePath, applicationImport string) string {
 import (
 	"unsafe"
 
-	sdk %q
 	sdkRuntime %q
 	app %q
 )
@@ -455,24 +454,20 @@ func (playdateContext) DrawText(text string, x, y int) {
 	bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y))
 }
 
-var game sdk.Game = app.New()
 var gameContext playdateContext
-var gameRuntime = mustRuntime()
+var application = mustApplication()
 
-func mustRuntime() *sdkRuntime.Runtime {
-	runtime, err := sdkRuntime.New(sdkRuntime.Callbacks{
-		Init: func() error { return game.Init(gameContext) },
-		Update: func() (bool, error) { return game.Update(gameContext) },
-	})
+func mustApplication() *sdkRuntime.Application {
+	application, err := sdkRuntime.NewApplication(app.New(), gameContext, nil)
 	if err != nil {
 		panic(err)
 	}
-	return runtime
+	return application
 }
 
 //export goEventHandler
 func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
-	if err := gameRuntime.Handle(sdkRuntime.Event(event), arg); err != nil {
+	if err := application.Handle(sdkRuntime.Event(event), arg); err != nil {
 		return -1
 	}
 	return 0
@@ -480,7 +475,7 @@ func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
 
 //export goUpdate
 func goUpdate() int32 {
-	refresh, err := gameRuntime.Update()
+	refresh, err := application.Update()
 	if err != nil {
 		return 0
 	}
@@ -488,7 +483,7 @@ func goUpdate() int32 {
 }
 
 func main() {}
-`, modulePath+"/playdate", modulePath+"/internal/features/runtime", applicationImport)
+`, modulePath+"/internal/features/runtime", applicationImport)
 }
 
 type applicationInfo struct {

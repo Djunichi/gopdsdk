@@ -4,7 +4,24 @@ import (
 	"errors"
 	"testing"
 	"unsafe"
+
+	"github.com/Djunichi/gopdsdk/playdate"
 )
+
+type testContext struct{}
+
+func (testContext) Clear()                    {}
+func (testContext) DrawText(string, int, int) {}
+
+type testGame struct {
+	init   func(playdate.Context) error
+	update func(playdate.Context) (bool, error)
+}
+
+func (g testGame) Init(context playdate.Context) error { return g.init(context) }
+func (g testGame) Update(context playdate.Context) (bool, error) {
+	return g.update(context)
+}
 
 func TestABIFixedWidthTypes(t *testing.T) {
 	if got := unsafe.Sizeof(Event(0)); got != 4 {
@@ -97,5 +114,48 @@ func TestRuntimeFailedInitializationCannotUpdate(t *testing.T) {
 	}
 	if _, err := runtime.Update(); !errors.Is(err, ErrNotInitialized) {
 		t.Fatalf("Update() error = %v, want ErrNotInitialized", err)
+	}
+}
+
+func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
+	var calls []string
+	context := testContext{}
+	application, err := NewApplication(testGame{
+		init: func(got playdate.Context) error {
+			if got != context {
+				t.Fatalf("Init() context = %T, want testContext", got)
+			}
+			calls = append(calls, "init")
+			return nil
+		},
+		update: func(got playdate.Context) (bool, error) {
+			if got != context {
+				t.Fatalf("Update() context = %T, want testContext", got)
+			}
+			calls = append(calls, "update")
+			return true, nil
+		},
+	}, context, func() { calls = append(calls, "before-init") })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err := application.Update()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := refresh, int32(1); got != want {
+		t.Fatalf("Update() refresh = %d, want %d", got, want)
+	}
+	wantCalls := []string{"before-init", "init", "update"}
+	if len(calls) != len(wantCalls) {
+		t.Fatalf("calls = %v, want %v", calls, wantCalls)
+	}
+	for index := range wantCalls {
+		if calls[index] != wantCalls[index] {
+			t.Fatalf("calls = %v, want %v", calls, wantCalls)
+		}
 	}
 }

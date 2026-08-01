@@ -11,7 +11,6 @@ func TestRender(t *testing.T) {
 	header := filepath.Join(t.TempDir(), "SDK with spaces", "C_API", "pd_api.h")
 	sources, err := Render(Config{
 		APIHeader:         header,
-		PublicAPIImport:   "github.com/Djunichi/gopdsdk/playdate",
 		RuntimeImport:     "github.com/Djunichi/gopdsdk/internal/features/runtime",
 		ApplicationImport: "github.com/Djunichi/gopdsdk/probe/app",
 	})
@@ -21,12 +20,9 @@ func TestRender(t *testing.T) {
 	for _, want := range []string{
 		"#include " + strconv.Quote(filepath.ToSlash(header)),
 		`github.com/Djunichi/gopdsdk/probe/app`,
-		`github.com/Djunichi/gopdsdk/playdate`,
-		"var game sdk.Game = app.New()",
-		"gameRuntime.Handle",
-		"gameRuntime.Update",
-		"game.Init(gameContext)",
-		"game.Update(gameContext)",
+		"sdkRuntime.NewApplication(app.New(), gameContext",
+		"application.Handle",
+		"application.Update",
 		"C.bridgeClear",
 		"C.bridgeDrawText",
 	} {
