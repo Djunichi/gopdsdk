@@ -17,7 +17,12 @@ func (testContext) NewBitmap(int, int) (playdate.Bitmap, error)                 
 func (testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 func (testContext) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
-func (testContext) UpdateAndDrawSprites()                                              {}
+func (testContext) QuerySpritesAtPoint(float32, float32) []playdate.Sprite             { return nil }
+func (testContext) QuerySpritesInRect(playdate.Rect) []playdate.Sprite                 { return nil }
+func (testContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) {
+	return nil, nil
+}
+func (testContext) UpdateAndDrawSprites() {}
 
 func TestUpdateRetainsEveryAllocatedBlock(t *testing.T) {
 	game := &game{}
