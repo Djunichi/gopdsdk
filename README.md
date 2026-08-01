@@ -50,6 +50,8 @@ After the `v0.1.0` tag is published, run the CLI directly at that version:
 ```sh
 go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.1.0 doctor
 go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.1.0 init --module example.com/my-game ./my-game
+cd my-game
+go mod tidy
 ```
 
 The tagged CLI creates a project requiring the same module version without a
@@ -180,7 +182,8 @@ go run ./cmd/gopdsdk init --module example.com/my-game --author "Your Name" --bu
 
 When run from a development checkout, the generated `go.mod` uses a local
 `replace` directive. A tagged CLI uses its own published module version without
-`replace`. The command never overwrites an existing path.
+`replace`. Run `go mod tidy` once to resolve that dependency and create
+`go.sum` before the first build. The command never overwrites an existing path.
 
 An application is an importable Go package that provides
 `New() playdate.Game` and an official Playdate `pdxinfo` file in the same

@@ -42,7 +42,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(stdout, "Created %s\nModule: %s\n", result.Path, result.Module)
+	_, err = fmt.Fprintf(stdout, "Created %s\nModule: %s\nNext: run \"go mod tidy\" in %s\n", result.Path, result.Module, result.Path)
 	return err
 }
 

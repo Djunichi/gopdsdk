@@ -21,10 +21,18 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 		binaryName += ".exe"
 	}
 	binary := filepath.Join(t.TempDir(), binaryName)
-	runTestCommand(t, repository, "go", "build", "-o", binary, "./cmd/gopdsdk")
+	runTestCommand(t, repository, "go", "build", "-buildvcs=false", "-o", binary, "./cmd/gopdsdk")
 
 	project := filepath.Join(t.TempDir(), "external game")
 	runTestCommand(t, repository, binary, "init", "--module", "example.com/acceptance", "--author", "CI", "--bundle-id", "com.example.acceptance", project)
+	goMod, err := os.ReadFile(filepath.Join(project, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(goMod), "replace github.com/Djunichi/gopdsdk =>") {
+		t.Fatalf("checkout acceptance go.mod does not contain a local replace:\n%s", goMod)
+	}
+	runTestCommand(t, project, "go", "mod", "tidy")
 	runTestCommand(t, project, "go", "test", "./...")
 
 	for _, test := range []struct {
@@ -53,7 +61,7 @@ func TestCLIPlayableExternalConsumerWorkflow(t *testing.T) {
 		binaryName += ".exe"
 	}
 	binary := filepath.Join(t.TempDir(), binaryName)
-	runTestCommand(t, repository, "go", "build", "-o", binary, "./cmd/gopdsdk")
+	runTestCommand(t, repository, "go", "build", "-buildvcs=false", "-o", binary, "./cmd/gopdsdk")
 
 	project := filepath.Join(t.TempDir(), "p1.3 playable consumer")
 	copyTestTree(t, filepath.Join(repository, "cmd", "gopdsdk", "testdata", "playable"), project)
