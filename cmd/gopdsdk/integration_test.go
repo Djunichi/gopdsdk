@@ -57,7 +57,7 @@ func TestCLIPlayableExternalConsumerWorkflow(t *testing.T) {
 
 	project := filepath.Join(t.TempDir(), "p1.3 playable consumer")
 	copyTestTree(t, filepath.Join(repository, "cmd", "gopdsdk", "testdata", "playable"), project)
-	module := fmt.Sprintf("module example.com/p13-playable\n\ngo 1.26.5\n\nrequire github.com/Djunichi/gopdsdk v0.0.0\n\nreplace github.com/Djunichi/gopdsdk => %q\n", filepath.ToSlash(repository))
+	module := fmt.Sprintf("module example.com/p13-playable\n\ngo 1.26.5\n\nrequire github.com/Djunichi/gopdsdk v0.1.0\n\nreplace github.com/Djunichi/gopdsdk => %q\n", filepath.ToSlash(repository))
 	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte(module), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,6 @@ func copyFile(source, destination string) error {
 	}
 	return os.WriteFile(destination, contents, 0o644)
 }
-
 func runTestCommand(t *testing.T, directory, executable string, arguments ...string) string {
 	t.Helper()
 	command := exec.Command(executable, arguments...)

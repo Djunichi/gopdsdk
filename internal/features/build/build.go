@@ -11,11 +11,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
 	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
+	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
 	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 	"github.com/Djunichi/gopdsdk/internal/shared/pdxsource"
 )
@@ -39,6 +39,7 @@ type Result struct {
 type module struct {
 	Path      string
 	Dir       string
+	Version   string
 	GoVersion string
 }
 
@@ -246,14 +247,18 @@ func renderGoMod(sdk, app module) string {
 	if goVersion == "" {
 		goVersion = app.GoVersion
 	}
+	sdkVersion := sdk.Version
+	if sdkVersion == "" {
+		sdkVersion = "v0.0.0"
+	}
 	var builder strings.Builder
-	fmt.Fprintf(&builder, "module %s/build\n\ngo %s\n\nrequire %s v0.0.0\n", sdkModule, goVersion, sdkModule)
+	fmt.Fprintf(&builder, "module %s/build\n\ngo %s\n\nrequire %s %s\n", sdkModule, goVersion, sdkModule, sdkVersion)
 	if app.Path != sdk.Path {
 		fmt.Fprintf(&builder, "require %s v0.0.0\n", app.Path)
 	}
-	fmt.Fprintf(&builder, "\nreplace %s => %s\n", sdkModule, strconv.Quote(filepath.ToSlash(sdk.Dir)))
+	fmt.Fprintf(&builder, "\nreplace %s => %s\n", sdkModule, gomodule.FormatPath(sdk.Dir))
 	if app.Path != sdk.Path {
-		fmt.Fprintf(&builder, "replace %s => %s\n", app.Path, strconv.Quote(filepath.ToSlash(app.Dir)))
+		fmt.Fprintf(&builder, "replace %s => %s\n", app.Path, gomodule.FormatPath(app.Dir))
 	}
 	return builder.String()
 }

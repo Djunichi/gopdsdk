@@ -5,22 +5,29 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
 )
 
 const sdkModule = "github.com/Djunichi/gopdsdk"
 
+var releaseVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+
 // Config describes a new application project.
 type Config struct {
-	Path      string
-	Module    string
-	Name      string
-	Author    string
-	BundleID  string
-	SDKDir    string
-	GoVersion string
+	Path     string
+	Module   string
+	Name     string
+	Author   string
+	BundleID string
+	SDKDir   string
+	// SDKVersion selects a published gopdsdk module. SDKDir selects a local
+	// development checkout. Exactly one must be set.
+	SDKVersion string
+	GoVersion  string
 }
 
 // Result identifies the created project.
@@ -63,8 +70,11 @@ func Create(config Config) (result Result, err error) {
 	if config.GoVersion == "" {
 		return Result{}, fmt.Errorf("Go version is required")
 	}
-	if config.SDKDir == "" {
-		return Result{}, fmt.Errorf("gopdsdk module directory is required")
+	if (config.SDKDir == "") == (config.SDKVersion == "") {
+		return Result{}, fmt.Errorf("exactly one gopdsdk module directory or version is required")
+	}
+	if config.SDKVersion != "" && !releaseVersionPattern.MatchString(config.SDKVersion) {
+		return Result{}, fmt.Errorf("gopdsdk module version must be a stable vMAJOR.MINOR.PATCH release")
 	}
 	for _, field := range []struct {
 		name  string
@@ -128,8 +138,12 @@ func projectSlug(name string) string {
 }
 
 func renderGoMod(config Config) string {
+	if config.SDKVersion != "" {
+		return fmt.Sprintf("module %s\n\ngo %s\n\nrequire %s %s\n",
+			config.Module, config.GoVersion, sdkModule, config.SDKVersion)
+	}
 	return fmt.Sprintf("module %s\n\ngo %s\n\nrequire %s v0.0.0\n\nreplace %s => %s\n",
-		config.Module, config.GoVersion, sdkModule, sdkModule, strconv.Quote(filepath.ToSlash(config.SDKDir)))
+		config.Module, config.GoVersion, sdkModule, sdkModule, gomodule.FormatPath(config.SDKDir))
 }
 
 func renderGame() string {

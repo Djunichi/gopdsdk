@@ -36,6 +36,24 @@ func TestCreateWritesBuildableProjectContract(t *testing.T) {
 	}
 }
 
+func TestCreateWritesPublishedModuleContract(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Versioned Game")
+	if _, err := Create(Config{Path: path, SDKVersion: "v0.1.0", GoVersion: "1.26.5"}); err != nil {
+		t.Fatal(err)
+	}
+	contents, err := os.ReadFile(filepath.Join(path, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(contents)
+	if !strings.Contains(got, "require github.com/Djunichi/gopdsdk v0.1.0") {
+		t.Fatalf("go.mod = %q", got)
+	}
+	if strings.Contains(got, "replace ") {
+		t.Fatalf("published go.mod contains replace: %q", got)
+	}
+}
+
 func TestCreateDoesNotModifyExistingPath(t *testing.T) {
 	path := t.TempDir()
 	marker := filepath.Join(path, "keep")

@@ -40,6 +40,9 @@ type Frame struct {
 
 // Step advances gameplay without runtime or graphics dependencies.
 func Step(state State, frame Frame) State {
+	if frame.Pressed.Has(playdate.ButtonB) {
+		return initialState()
+	}
 	if state.Phase != playing {
 		return state
 	}
@@ -104,7 +107,7 @@ func DrawPlan(state State) []DrawCommand {
 	}
 	return []DrawCommand{
 		{Kind: drawText, Text: "P1.3 CRANK CATCH", X: 12, Y: 8},
-		{Kind: drawText, Text: "A:catch  d-pad:nudge", X: 12, Y: 30},
+		{Kind: drawText, Text: "A:catch B:reset d-pad:nudge", X: 12, Y: 30},
 		{Kind: drawText, Text: "Score:" + strconv.Itoa(state.Score) + "  " + status + " " + seconds(state.Elapsed) + "/60s", X: 12, Y: 52},
 		{Kind: drawTarget, X: state.TargetX, Y: 112},
 		{Kind: drawPlayer, X: int(state.PlayerX), Y: 184},
@@ -120,7 +123,9 @@ type game struct {
 }
 
 // New creates the playable consumer entry point expected by gopdsdk.
-func New() playdate.Game { return &game{state: State{PlayerX: 184, TargetX: 184}} }
+func New() playdate.Game { return &game{state: initialState()} }
+
+func initialState() State { return State{PlayerX: 184, TargetX: 184} }
 
 func (g *game) Init(context playdate.Context) error {
 	player, err := context.LoadBitmap(playerAsset)

@@ -28,9 +28,16 @@ func TestStepClampsAndCompletesSixtySecondSoak(t *testing.T) {
 
 func TestDrawPlanIsDeterministic(t *testing.T) {
 	state := State{PlayerX: 42.9, TargetX: 123, Score: 2, Elapsed: 60, Phase: complete}
-	want := []DrawCommand{{drawText, "P1.3 CRANK CATCH", 12, 8}, {drawText, "A:catch  d-pad:nudge", 12, 30}, {drawText, "Score:2  PASS 60.0/60s", 12, 52}, {drawTarget, "", 123, 112}, {drawPlayer, "", 42, 184}}
+	want := []DrawCommand{{drawText, "P1.3 CRANK CATCH", 12, 8}, {drawText, "A:catch B:reset d-pad:nudge", 12, 30}, {drawText, "Score:2  PASS 60.0/60s", 12, 52}, {drawTarget, "", 123, 112}, {drawPlayer, "", 42, 184}}
 	if got := DrawPlan(state); !reflect.DeepEqual(got, want) {
 		t.Fatalf("DrawPlan() = %#v, want %#v", got, want)
+	}
+}
+
+func TestButtonBResetsState(t *testing.T) {
+	changed := State{PlayerX: 42, TargetX: 99, Score: 7, Elapsed: 12}
+	if got := Step(changed, Frame{Pressed: playdate.ButtonB}); got != initialState() {
+		t.Fatalf("reset = %+v", got)
 	}
 }
 
@@ -90,7 +97,7 @@ func TestGameExecutesPlanAndClosesOnce(t *testing.T) {
 	if err := g.HandleLifecycle(c, playdate.LifecycleTerminate); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"load:images/player", "load:images/target", "clear", "text:P1.3 CRANK CATCH", "text:A:catch  d-pad:nudge", "text:Score:0  PLAY 1.0/60s", "draw:images/target", "draw:images/player", "close:images/player", "close:images/target"}
+	want := []string{"load:images/player", "load:images/target", "clear", "text:P1.3 CRANK CATCH", "text:A:catch B:reset d-pad:nudge", "text:Score:0  PLAY 1.0/60s", "draw:images/target", "draw:images/player", "close:images/player", "close:images/target"}
 	if !reflect.DeepEqual(c.operations, want) {
 		t.Fatalf("operations = %v, want %v", c.operations, want)
 	}
