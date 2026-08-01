@@ -1,0 +1,6 @@
+name=P2.3 Animation
+author=gopdsdk
+description=Bitmap table animation acceptance
+bundleID=dev.gopdsdk.animation
+version=1.0.0
+buildNumber=1

@@ -53,8 +53,60 @@ type BitmapDriver struct {
 type Bitmap struct {
 	handle uintptr
 	driver BitmapDriver
+	table  *BitmapTable
 	owned  bool
 	closed bool
+}
+
+// BitmapTableDriver contains platform operations for one native bitmap table.
+type BitmapTableDriver struct {
+	Frame func(table uintptr, index int) uintptr
+	Free  func(uintptr)
+}
+
+// BitmapTable owns or borrows a native Playdate bitmap table.
+type BitmapTable struct {
+	handle        uintptr
+	driver        BitmapTableDriver
+	bitmapDriver  BitmapDriver
+	owned, closed bool
+}
+
+// NewOwnedBitmapTable wraps a table and its borrowed frames.
+func NewOwnedBitmapTable(handle uintptr, driver BitmapTableDriver, bitmapDriver BitmapDriver) *BitmapTable {
+	return &BitmapTable{handle: handle, driver: driver, bitmapDriver: bitmapDriver, owned: true}
+}
+
+// NewBorrowedBitmapTable wraps a table controlled by Playdate.
+func NewBorrowedBitmapTable(handle uintptr, driver BitmapTableDriver, bitmapDriver BitmapDriver) *BitmapTable {
+	return &BitmapTable{handle: handle, driver: driver, bitmapDriver: bitmapDriver}
+}
+
+func (t *BitmapTable) Frame(index int) (playdate.Bitmap, error) {
+	if t == nil || t.closed || t.handle == 0 {
+		return nil, playdate.ErrBitmapTableClosed
+	}
+	if index < 0 {
+		return nil, playdate.ErrBitmapFrameRange
+	}
+	handle := t.driver.Frame(t.handle, index)
+	if handle == 0 {
+		return nil, playdate.ErrBitmapFrameRange
+	}
+	return &Bitmap{handle: handle, driver: t.bitmapDriver, table: t}, nil
+}
+
+func (t *BitmapTable) Close() error {
+	if t == nil || t.closed || t.handle == 0 {
+		return playdate.ErrBitmapTableClosed
+	}
+	if !t.owned {
+		return playdate.ErrBitmapTableBorrowed
+	}
+	t.driver.Free(t.handle)
+	t.closed = true
+	t.handle = 0
+	return nil
 }
 
 // NewOwnedBitmap wraps a bitmap that must be explicitly closed.
@@ -68,7 +120,7 @@ func NewBorrowedBitmap(handle uintptr, driver BitmapDriver) *Bitmap {
 }
 
 func (b *Bitmap) nativeHandle() (uintptr, error) {
-	if b == nil || b.closed || b.handle == 0 {
+	if b == nil || b.closed || b.handle == 0 || b.table != nil && b.table.closed {
 		return 0, playdate.ErrBitmapClosed
 	}
 	return b.handle, nil

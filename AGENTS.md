@@ -33,8 +33,9 @@ worktree. Do not publish or commit unless explicitly requested.
 - Native CI runs unit and CLI acceptance tests on Windows, macOS, and Linux.
 - SDK integration requires the official SDK and executes `doctor --probe` or a
   target-specific probe.
-- Hardware acceptance requires a connected Playdate and a post-run crashlog
-  check. CI, cross-compilation, and Docker do not substitute for it.
+- Hardware acceptance requires a connected Playdate. Check the post-run
+  crashlog only when the user explicitly requests it. CI, cross-compilation,
+  and Docker do not substitute for physical-device verification.
 
 Never promote native CI evidence to Simulator, SDK-tool, or device readiness.
 Docker may add reproducible Linux coverage, but it does not verify Windows,

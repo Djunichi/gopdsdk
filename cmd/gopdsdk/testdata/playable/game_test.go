@@ -75,7 +75,8 @@ func (c *context) LoadBitmap(path string) (playdate.Bitmap, error) {
 	}
 	return &bitmap{name: path, operations: &c.operations}, nil
 }
-func (*context) NewBitmap(int, int) (playdate.Bitmap, error) { return nil, nil }
+func (*context) LoadBitmapTable(string) (playdate.BitmapTable, error) { return nil, nil }
+func (*context) NewBitmap(int, int) (playdate.Bitmap, error)          { return nil, nil }
 func (c *context) DrawBitmap(value playdate.Bitmap, x, y int) error {
 	c.operations = append(c.operations, "draw:"+value.(*bitmap).name)
 	return nil

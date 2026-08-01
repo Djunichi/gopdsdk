@@ -65,6 +65,9 @@ float bridgeCrankDelta(void);
 int bridgeCrankDocked(void);
 float bridgeFrameDelta(void);
 uintptr_t bridgeLoadBitmap(const char* path, const char** error);
+uintptr_t bridgeLoadBitmapTable(const char* path, const char** error);
+uintptr_t bridgeBitmapTableFrame(uintptr_t table, int index);
+void bridgeFreeBitmapTable(uintptr_t table);
 uintptr_t bridgeNewBitmap(int width, int height);
 void bridgeFreeBitmap(uintptr_t bitmap);
 void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height);
@@ -164,6 +167,10 @@ var bitmapDriver = sdkRuntime.BitmapDriver{
 	Fill: func(handle uintptr, color sdkPlaydate.Color) { C.bridgeFillBitmap(C.uintptr_t(handle), C.int(color)) },
 	Free: func(handle uintptr) { C.bridgeFreeBitmap(C.uintptr_t(handle)) },
 }
+var bitmapTableDriver = sdkRuntime.BitmapTableDriver{
+	Frame: func(table uintptr, index int) uintptr { return uintptr(C.bridgeBitmapTableFrame(C.uintptr_t(table), C.int(index))) },
+	Free: func(table uintptr) { C.bridgeFreeBitmapTable(C.uintptr_t(table)) },
+}
 
 func (playdateContext) LoadBitmap(path string) (sdkPlaydate.Bitmap, error) {
 	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath))
@@ -171,6 +178,12 @@ func (playdateContext) LoadBitmap(path string) (sdkPlaydate.Bitmap, error) {
 	handle := uintptr(C.bridgeLoadBitmap(cPath, (**C.char)(unsafe.Pointer(&message))))
 	if handle == 0 { if message != nil { return nil, sdkPlaydate.BitmapLoadError(C.GoString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
 	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) LoadBitmapTable(path string) (sdkPlaydate.BitmapTable, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); var message *C.char
+	handle := uintptr(C.bridgeLoadBitmapTable(cPath, (**C.char)(unsafe.Pointer(&message))))
+	if handle == 0 { if message != nil { return nil, sdkPlaydate.BitmapLoadError(C.GoString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmapTable(handle, bitmapTableDriver, bitmapDriver), nil
 }
 func (playdateContext) NewBitmap(width, height int) (sdkPlaydate.Bitmap, error) {
 	if err := sdkRuntime.ValidateBitmapSize(width, height); err != nil { return nil, err }
@@ -290,6 +303,9 @@ float bridgeFrameDelta(void)
 }
 
 uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)bridgePlaydate->graphics->loadBitmap(path, error); }
+uintptr_t bridgeLoadBitmapTable(const char* path, const char** error) { return (uintptr_t)bridgePlaydate->graphics->loadBitmapTable(path, error); }
+uintptr_t bridgeBitmapTableFrame(uintptr_t table, int index) { return (uintptr_t)bridgePlaydate->graphics->getTableBitmap((LCDBitmapTable*)table, index); }
+void bridgeFreeBitmapTable(uintptr_t table) { bridgePlaydate->graphics->freeBitmapTable((LCDBitmapTable*)table); }
 uintptr_t bridgeNewBitmap(int width, int height) { return (uintptr_t)bridgePlaydate->graphics->newBitmap(width, height, kColorClear); }
 void bridgeFreeBitmap(uintptr_t bitmap) { bridgePlaydate->graphics->freeBitmap((LCDBitmap*)bitmap); }
 void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height) { bridgePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, width, height, NULL, NULL, NULL); }

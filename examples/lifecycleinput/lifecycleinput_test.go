@@ -18,6 +18,7 @@ func (context *testContext) DrawText(text string, _, _ int) {
 func (*testContext) CurrentTimeMilliseconds() uint32                                    { return 0 }
 func (context *testContext) Input() playdate.Input                                      { return context.input }
 func (*testContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
+func (*testContext) LoadBitmapTable(string) (playdate.BitmapTable, error)               { return nil, nil }
 func (*testContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
 func (*testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (*testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }

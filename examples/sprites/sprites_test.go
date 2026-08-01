@@ -50,11 +50,12 @@ type testContext struct {
 	failAt     int
 }
 
-func (*testContext) Clear()                                       {}
-func (*testContext) DrawText(string, int, int)                    {}
-func (*testContext) CurrentTimeMilliseconds() uint32              { return 0 }
-func (c *testContext) Input() playdate.Input                      { return c.input }
-func (c *testContext) LoadBitmap(string) (playdate.Bitmap, error) { return nil, nil }
+func (*testContext) Clear()                                               {}
+func (*testContext) DrawText(string, int, int)                            {}
+func (*testContext) CurrentTimeMilliseconds() uint32                      { return 0 }
+func (c *testContext) Input() playdate.Input                              { return c.input }
+func (c *testContext) LoadBitmap(string) (playdate.Bitmap, error)         { return nil, nil }
+func (*testContext) LoadBitmapTable(string) (playdate.BitmapTable, error) { return nil, nil }
 func (c *testContext) NewBitmap(int, int) (playdate.Bitmap, error) {
 	return &testBitmap{&c.operations}, nil
 }

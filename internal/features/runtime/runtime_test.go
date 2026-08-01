@@ -15,6 +15,7 @@ func (testContext) DrawText(string, int, int)                                   
 func (testContext) CurrentTimeMilliseconds() uint32                                    { return 0 }
 func (testContext) Input() playdate.Input                                              { return playdate.Input{} }
 func (testContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
+func (testContext) LoadBitmapTable(string) (playdate.BitmapTable, error)               { return nil, nil }
 func (testContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
 func (testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
@@ -74,6 +75,38 @@ func TestBitmapOwnershipLifecycle(t *testing.T) {
 	}
 	if _, err := BitmapHandle(borrowed); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestBitmapTableOwnershipAndBorrowedFrames(t *testing.T) {
+	freed := uintptr(0)
+	table := NewOwnedBitmapTable(11, BitmapTableDriver{Frame: func(_ uintptr, index int) uintptr {
+		if index == 2 {
+			return 22
+		}
+		return 0
+	}, Free: func(handle uintptr) { freed = handle }}, BitmapDriver{})
+	frame, err := table.Frame(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := frame.Close(); !errors.Is(err, playdate.ErrBitmapBorrowed) {
+		t.Fatalf("frame close = %v", err)
+	}
+	if _, err := table.Frame(1); !errors.Is(err, playdate.ErrBitmapFrameRange) {
+		t.Fatalf("range error = %v", err)
+	}
+	if err := table.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if freed != 11 {
+		t.Fatalf("freed = %d", freed)
+	}
+	if _, err := frame.Width(); !errors.Is(err, playdate.ErrBitmapClosed) {
+		t.Fatalf("frame after table close = %v", err)
+	}
+	if _, err := table.Frame(2); !errors.Is(err, playdate.ErrBitmapTableClosed) {
+		t.Fatalf("closed error = %v", err)
 	}
 }
 

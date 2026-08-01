@@ -18,6 +18,7 @@ func (context *testContext) CurrentTimeMilliseconds() uint32 {
 }
 func (*testContext) Input() playdate.Input                                              { return playdate.Input{} }
 func (*testContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
+func (*testContext) LoadBitmapTable(string) (playdate.BitmapTable, error)               { return nil, nil }
 func (*testContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
 func (*testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (*testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
@@ -43,6 +44,7 @@ func (context *timingContext) CurrentTimeMilliseconds() uint32 {
 }
 func (*timingContext) Input() playdate.Input                                              { return playdate.Input{} }
 func (*timingContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
+func (*timingContext) LoadBitmapTable(string) (playdate.BitmapTable, error)               { return nil, nil }
 func (*timingContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
 func (*timingContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (*timingContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }

@@ -8,6 +8,10 @@ type spriteError string
 
 func (message spriteError) Error() string { return string(message) }
 
+type animationError string
+
+func (message animationError) Error() string { return string(message) }
+
 // BitmapLoadError contains the diagnostic returned by the Playdate API.
 type BitmapLoadError string
 
@@ -26,6 +30,14 @@ var (
 	ErrBitmapScale error = bitmapError("bitmap scale must be positive and finite")
 	// ErrBitmapCreate indicates that Playdate could not allocate a bitmap.
 	ErrBitmapCreate error = bitmapError("create bitmap failed")
+	// ErrBitmapTableClosed indicates access to a closed bitmap table.
+	ErrBitmapTableClosed error = bitmapError("bitmap table is closed")
+	// ErrBitmapTableBorrowed indicates an attempt to close a borrowed table.
+	ErrBitmapTableBorrowed error = bitmapError("borrowed bitmap table cannot be closed")
+	// ErrBitmapFrameRange indicates a negative or missing table frame.
+	ErrBitmapFrameRange error = bitmapError("bitmap table frame is out of range")
+	// ErrAnimationConfig indicates invalid animation timing or frame bounds.
+	ErrAnimationConfig error = animationError("invalid animation configuration")
 	// ErrSpriteClosed indicates an operation on an already closed sprite.
 	ErrSpriteClosed error = spriteError("sprite is closed")
 	// ErrSpriteBorrowed indicates an attempt to close a borrowed query result.
