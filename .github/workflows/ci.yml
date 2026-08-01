@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -18,42 +19,91 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os:
+          - windows-latest
+          - macos-latest
+          - ubuntu-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
+
       - name: Format
         run: gofmt -w cmd examples internal playdate
+
       - name: Verify formatting
         run: git diff --exit-code
+
       - name: Verify pinned toolchain and memory contract
-        run: go test -count=1 ./internal/shared/toolchainprofile ./internal/shared/buildplan ./internal/features/deviceprobe ./examples/gcstress
+        run: >-
+          go test -count=1
+          ./internal/shared/toolchainprofile
+          ./internal/shared/buildplan
+          ./internal/features/deviceprobe
+          ./examples/gcstress
+
       - name: Test, including external consumer acceptance
         run: go test -count=1 -shuffle=on ./...
+
       - name: Vet
         run: go vet ./...
+
       - name: Build CLI
         run: go build ./cmd/gopdsdk
+
       - name: Diagnose environment without an installed SDK
         run: go run ./cmd/gopdsdk doctor
+
       - name: Verify Simulator plan through CLI
-        run: go run ./cmd/gopdsdk build --dry-run --sdk "${{ runner.temp }}/Playdate SDK" ./examples/hello
+        run: >-
+          go run ./cmd/gopdsdk build
+          --dry-run
+          --sdk "${{ runner.temp }}/Playdate SDK"
+          ./examples/hello
+
       - name: Verify device plan through CLI
-        run: go run ./cmd/gopdsdk build device --dry-run --sdk "${{ runner.temp }}/Playdate SDK" ./examples/hello
+        run: >-
+          go run ./cmd/gopdsdk build device
+          --dry-run
+          --sdk "${{ runner.temp }}/Playdate SDK"
+          ./examples/hello
 
   race:
     name: Race detector (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
-      - run: go test -race ./...
+
+      - name: Run race detector
+        run: go test -race ./...
+
+  ci-success:
+    name: CI success
+    if: ${{ always() }}
+    needs:
+      - native
+      - race
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify all required jobs
+        env:
+          NATIVE_RESULT: ${{ needs.native.result }}
+          RACE_RESULT: ${{ needs.race.result }}
+        run: |
+          test "$NATIVE_RESULT" = "success"
+          test "$RACE_RESULT" = "success"
