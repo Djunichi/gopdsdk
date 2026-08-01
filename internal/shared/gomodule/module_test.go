@@ -16,3 +16,12 @@ func TestRenderProbe(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatPath(t *testing.T) {
+	if got := FormatPath("C:/Work/gopdsdk"); got != "C:/Work/gopdsdk" {
+		t.Fatalf("FormatPath(no spaces) = %q", got)
+	}
+	if got := FormatPath("C:/My Work/gopdsdk"); got != strconv.Quote("C:/My Work/gopdsdk") {
+		t.Fatalf("FormatPath(spaces) = %q", got)
+	}
+}

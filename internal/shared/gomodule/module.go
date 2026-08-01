@@ -41,5 +41,14 @@ func Locate(ctx context.Context) (Info, error) {
 func RenderProbe(info Info, suffix string) string {
 	return fmt.Sprintf("module %s/%s\n\ngo %s\n\nrequire %s v0.0.0\n\nreplace %s => %s\n",
 		info.Path, suffix, info.GoVersion, info.Path, info.Path,
-		strconv.Quote(filepath.ToSlash(info.Root)))
+		FormatPath(info.Root))
+}
+
+// FormatPath returns the canonical go.mod spelling of a local replacement.
+func FormatPath(path string) string {
+	path = filepath.ToSlash(path)
+	if strings.ContainsAny(path, " \t\r\n\"") {
+		return strconv.Quote(path)
+	}
+	return path
 }

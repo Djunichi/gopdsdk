@@ -2,9 +2,9 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation, P1.0 device runtime, P1.1 lifecycle/input, and P1.2 bitmap
-graphics milestones are complete** on the accepted Windows profile. No public
-API is stable yet. The official Playdate C API is the
+The **P0 foundation and P1.0 through P1.3 playable vertical slices are
+complete** on the accepted Windows profile. P1.4 is the `v0.1.0` release
+candidate: its public API is reviewed and documented, but remains pre-v1. The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
 references. Their implementation is not copied.
@@ -42,6 +42,21 @@ deployment works on that host.
 
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
+
+## Install the release candidate
+
+After the `v0.1.0` tag is published, run the CLI directly at that version:
+
+```sh
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.1.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.1.0 init --module example.com/my-game ./my-game
+```
+
+The tagged CLI creates a project requiring the same module version without a
+local `replace`. A development CLI built from a checkout intentionally writes a
+local replacement instead. Until the tag exists, use the checkout workflow
+below. See [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md), and
+[RELEASING.md](RELEASING.md).
 
 ## Environment diagnostics
 
@@ -163,8 +178,9 @@ Create an independent starter project during P0 with:
 go run ./cmd/gopdsdk init --module example.com/my-game --author "Your Name" --bundle-id com.example.my-game ./my-game
 ```
 
-The generated `go.mod` uses a local `replace` directive until gopdsdk has a
-versioned module release. The command never overwrites an existing path.
+When run from a development checkout, the generated `go.mod` uses a local
+`replace` directive. A tagged CLI uses its own published module version without
+`replace`. The command never overwrites an existing path.
 
 An application is an importable Go package that provides
 `New() playdate.Game` and an official Playdate `pdxinfo` file in the same
@@ -273,13 +289,28 @@ domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, and
 `InputReader` capabilities so application helpers can depend on only the API
 surface they use.
 
-## P1.3 direction
+## P1.3 external playable consumer
 
-P1.3 will prove the combined SDK through a crank-controlled application in a
-separate Go module. It will use the documented `resources/` layout and only the
-accepted lifecycle, input, timing, text, and bitmap APIs. The slice will add no
-sprite, audio, collision, animation, font, framebuffer, or resource-manager API
-unless the external application demonstrates a blocking requirement.
+P1.3 is complete on the accepted Windows profile. Its crank-controlled catch
+game is copied outside the SDK tree, compiled as an independent module, and
+uses only the public lifecycle, input, timing, text, and bitmap APIs. Gameplay
+is a pure-Go state machine with a deterministic draw plan. Tests cover the
+60-second completion state, partial-initialization rollback, and exactly-once
+resource cleanup.
+
+The same consumer built and launched in the official Simulator and built,
+installed, and launched on a physical Playdate. A 65-second conservative-GC
+hardware soak produced no new `errorlog.txt` or `crashlog.txt` entry.
+
+## P1.4 release candidate
+
+P1.4 prepares `v0.1.0`: a version-aware `init` workflow, reviewed public API
+contract, compatibility/evidence matrix, and reproducible release gates. It
+does not add sprites, audio, collision, animation, fonts, framebuffer access,
+or a resource manager. The version becomes consumable without `replace` only
+after the reviewed commit is tagged and the tag is published. The candidate
+passed Windows Simulator/device-build probes and a repeated 65-second physical
+device soak without changing either device log.
 
 ## Development and CI
 

@@ -33,3 +33,7 @@ Describe the official SDK version/source used, the independently stated
 requirement, and the verification level reached. Distinguish unit/CI evidence
 from official SDK, Simulator, and physical-device evidence. Do not include
 generated build artifacts or internal `docs/` notes in a pull request.
+
+Public API and compatibility changes must update [API.md](API.md) and
+[COMPATIBILITY.md](COMPATIBILITY.md). Release candidates follow
+[RELEASING.md](RELEASING.md); tagging and publishing require explicit approval.

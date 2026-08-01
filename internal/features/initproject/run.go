@@ -7,6 +7,7 @@ import (
 	"io"
 	"os/exec"
 	"runtime"
+	"runtime/debug"
 	"strings"
 )
 
@@ -24,18 +25,19 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if flags.NArg() != 1 {
 		return fmt.Errorf("expected one project directory")
 	}
-	sdkDir, err := discoverSDKDir(ctx)
+	sdkDir, sdkVersion, err := discoverSDKDependency(ctx)
 	if err != nil {
 		return err
 	}
 	result, err := Create(Config{
-		Path:      flags.Arg(0),
-		Module:    *modulePath,
-		Name:      *name,
-		Author:    *author,
-		BundleID:  *bundleID,
-		SDKDir:    sdkDir,
-		GoVersion: strings.TrimPrefix(runtime.Version(), "go"),
+		Path:       flags.Arg(0),
+		Module:     *modulePath,
+		Name:       *name,
+		Author:     *author,
+		BundleID:   *bundleID,
+		SDKDir:     sdkDir,
+		SDKVersion: sdkVersion,
+		GoVersion:  strings.TrimPrefix(runtime.Version(), "go"),
 	})
 	if err != nil {
 		return err
@@ -44,15 +46,32 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	return err
 }
 
-func discoverSDKDir(ctx context.Context) (string, error) {
+func discoverSDKDependency(ctx context.Context) (directory, version string, err error) {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if version := publishedSDKVersion(info); version != "" {
+			return "", version, nil
+		}
+	}
 	command := exec.CommandContext(ctx, "go", "list", "-m", "-f", "{{.Dir}}", sdkModule)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("locate local gopdsdk module: %w: %s", err, strings.TrimSpace(string(output)))
+		return "", "", fmt.Errorf("locate local gopdsdk module: %w: %s", err, strings.TrimSpace(string(output)))
 	}
-	directory := strings.TrimSpace(string(output))
+	directory = strings.TrimSpace(string(output))
 	if directory == "" {
-		return "", fmt.Errorf("locate local gopdsdk module: module directory is empty")
+		return "", "", fmt.Errorf("locate local gopdsdk module: module directory is empty")
 	}
-	return directory, nil
+	return directory, "", nil
+}
+
+func publishedSDKVersion(info *debug.BuildInfo) string {
+	if info.Main.Path != sdkModule || !releaseVersionPattern.MatchString(info.Main.Version) {
+		return ""
+	}
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.modified" && setting.Value == "true" {
+			return ""
+		}
+	}
+	return info.Main.Version
 }
