@@ -1,0 +1,6 @@
+name=P1.2 Bitmap Acceptance
+author=gopdsdk
+description=Bitmap graphics and ownership acceptance probe
+bundleID=dev.gopdsdk.bitmap
+version=1.0.0
+buildNumber=1

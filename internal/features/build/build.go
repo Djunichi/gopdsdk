@@ -17,6 +17,7 @@ import (
 	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
 	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
 	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
+	"github.com/Djunichi/gopdsdk/internal/shared/pdxsource"
 )
 
 const sdkModule = "github.com/Djunichi/gopdsdk"
@@ -140,6 +141,9 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create Source directory: %w", err)
+	}
+	if err := pdxsource.Stage(app.Dir, sourceDir); err != nil {
+		return Result{}, err
 	}
 
 	sources, err := simabi.Render(simabi.Config{

@@ -1,6 +1,42 @@
 // Package playdate defines the public application contract exposed by gopdsdk.
 package playdate
 
+type bitmapError string
+
+func (message bitmapError) Error() string { return string(message) }
+
+// BitmapLoadError contains the diagnostic returned by the Playdate API.
+type BitmapLoadError string
+
+func (message BitmapLoadError) Error() string { return "load bitmap: " + string(message) }
+
+var (
+	ErrBitmapClosed   error = bitmapError("bitmap is closed")
+	ErrBitmapBorrowed error = bitmapError("borrowed bitmap cannot be closed")
+	ErrBitmapColor    error = bitmapError("invalid bitmap color")
+	ErrBitmapSize     error = bitmapError("bitmap dimensions must be positive")
+	ErrBitmapScale    error = bitmapError("bitmap scale must be positive and finite")
+	ErrBitmapCreate   error = bitmapError("create bitmap failed")
+)
+
+// Color identifies a solid Playdate bitmap color.
+type Color uint8
+
+const (
+	ColorClear Color = iota
+	ColorWhite
+	ColorBlack
+)
+
+// Bitmap is a Playdate bitmap handle. Only owned handles may be closed.
+type Bitmap interface {
+	Width() (int, error)
+	Height() (int, error)
+	Clear() error
+	Fill(Color) error
+	Close() error
+}
+
 // Game receives lifecycle callbacks from the Playdate runtime.
 type Game interface {
 	Init(Context) error
@@ -62,4 +98,8 @@ type Context interface {
 	CurrentTimeMilliseconds() uint32
 	// Input returns the snapshot captured at the start of the current frame.
 	Input() Input
+	LoadBitmap(path string) (Bitmap, error)
+	NewBitmap(width, height int) (Bitmap, error)
+	DrawBitmap(bitmap Bitmap, x, y int) error
+	DrawScaledBitmap(bitmap Bitmap, x, y int, scaleX, scaleY float32) error
 }

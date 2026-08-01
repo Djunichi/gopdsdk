@@ -10,10 +10,77 @@ import (
 
 type testContext struct{}
 
-func (testContext) Clear()                          {}
-func (testContext) DrawText(string, int, int)       {}
-func (testContext) CurrentTimeMilliseconds() uint32 { return 0 }
-func (testContext) Input() playdate.Input           { return playdate.Input{} }
+func (testContext) Clear()                                                             {}
+func (testContext) DrawText(string, int, int)                                          {}
+func (testContext) CurrentTimeMilliseconds() uint32                                    { return 0 }
+func (testContext) Input() playdate.Input                                              { return playdate.Input{} }
+func (testContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
+func (testContext) NewBitmap(int, int) (playdate.Bitmap, error)                        { return nil, nil }
+func (testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
+func (testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
+
+func TestBitmapOwnershipLifecycle(t *testing.T) {
+	var freed []uintptr
+	var fills []playdate.Color
+	driver := BitmapDriver{
+		Dimensions: func(uintptr) (int, int) { return 400, 240 },
+		Fill:       func(_ uintptr, color playdate.Color) { fills = append(fills, color) },
+		Free:       func(handle uintptr) { freed = append(freed, handle) },
+	}
+	owned := NewOwnedBitmap(7, driver)
+	if width, err := owned.Width(); err != nil || width != 400 {
+		t.Fatalf("Width() = %d, %v", width, err)
+	}
+	if height, err := owned.Height(); err != nil || height != 240 {
+		t.Fatalf("Height() = %d, %v", height, err)
+	}
+	if err := owned.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	if err := owned.Fill(playdate.ColorBlack); err != nil {
+		t.Fatal(err)
+	}
+	if err := owned.Fill(playdate.Color(99)); !errors.Is(err, playdate.ErrBitmapColor) {
+		t.Fatalf("invalid Fill() error = %v", err)
+	}
+	if err := owned.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(freed) != 1 || freed[0] != 7 {
+		t.Fatalf("freed = %v", freed)
+	}
+	if len(fills) != 2 || fills[0] != playdate.ColorClear || fills[1] != playdate.ColorBlack {
+		t.Fatalf("fills = %v", fills)
+	}
+	for name, operation := range map[string]func() error{
+		"double close":           owned.Close,
+		"fill after close":       func() error { return owned.Fill(playdate.ColorWhite) },
+		"dimensions after close": func() error { _, err := owned.Width(); return err },
+	} {
+		if err := operation(); !errors.Is(err, playdate.ErrBitmapClosed) {
+			t.Fatalf("%s error = %v", name, err)
+		}
+	}
+	borrowed := NewBorrowedBitmap(8, driver)
+	if err := borrowed.Close(); !errors.Is(err, playdate.ErrBitmapBorrowed) {
+		t.Fatalf("borrowed Close() = %v", err)
+	}
+	if _, err := BitmapHandle(borrowed); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBitmapArgumentValidation(t *testing.T) {
+	if err := ValidateBitmapSize(0, 1); !errors.Is(err, playdate.ErrBitmapSize) {
+		t.Fatalf("size error = %v", err)
+	}
+	if err := ValidateBitmapScale(1, 0); !errors.Is(err, playdate.ErrBitmapScale) {
+		t.Fatalf("scale error = %v", err)
+	}
+	if err := ValidateBitmapScale(1, *(*float32)(unsafe.Pointer(&[]uint32{0x7fc00000}[0]))); !errors.Is(err, playdate.ErrBitmapScale) {
+		t.Fatalf("NaN scale error = %v", err)
+	}
+}
 
 type testGame struct {
 	init   func(playdate.Context) error

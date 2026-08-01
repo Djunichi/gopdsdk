@@ -38,8 +38,102 @@ var (
 	// ErrFailed indicates that an earlier callback permanently stopped runtime.
 	ErrFailed = errors.New("runtime callback previously failed")
 	// ErrTerminated indicates a callback after successful termination.
-	ErrTerminated = errors.New("runtime is terminated")
+	ErrTerminated    = errors.New("runtime is terminated")
+	ErrInvalidBitmap = errors.New("bitmap handle was not created by this runtime")
 )
+
+// BitmapDriver contains platform operations for one native bitmap handle.
+type BitmapDriver struct {
+	Dimensions func(uintptr) (width, height int)
+	Fill       func(uintptr, playdate.Color)
+	Free       func(uintptr)
+}
+
+// Bitmap owns or borrows a native Playdate bitmap.
+type Bitmap struct {
+	handle uintptr
+	driver BitmapDriver
+	owned  bool
+	closed bool
+}
+
+// NewOwnedBitmap wraps a bitmap that must be explicitly closed.
+func NewOwnedBitmap(handle uintptr, driver BitmapDriver) *Bitmap {
+	return &Bitmap{handle: handle, driver: driver, owned: true}
+}
+
+// NewBorrowedBitmap wraps a bitmap whose lifetime is controlled by Playdate.
+func NewBorrowedBitmap(handle uintptr, driver BitmapDriver) *Bitmap {
+	return &Bitmap{handle: handle, driver: driver}
+}
+
+func (b *Bitmap) nativeHandle() (uintptr, error) {
+	if b == nil || b.closed || b.handle == 0 {
+		return 0, playdate.ErrBitmapClosed
+	}
+	return b.handle, nil
+}
+
+func (b *Bitmap) Width() (int, error)  { width, _, err := b.dimensions(); return width, err }
+func (b *Bitmap) Height() (int, error) { _, height, err := b.dimensions(); return height, err }
+func (b *Bitmap) dimensions() (int, int, error) {
+	handle, err := b.nativeHandle()
+	if err != nil {
+		return 0, 0, err
+	}
+	w, h := b.driver.Dimensions(handle)
+	return w, h, nil
+}
+func (b *Bitmap) Clear() error { return b.Fill(playdate.ColorClear) }
+func (b *Bitmap) Fill(color playdate.Color) error {
+	handle, err := b.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if color > playdate.ColorBlack {
+		return playdate.ErrBitmapColor
+	}
+	b.driver.Fill(handle, color)
+	return nil
+}
+func (b *Bitmap) Close() error {
+	if b == nil || b.closed || b.handle == 0 {
+		return playdate.ErrBitmapClosed
+	}
+	if !b.owned {
+		return playdate.ErrBitmapBorrowed
+	}
+	b.driver.Free(b.handle)
+	b.closed = true
+	b.handle = 0
+	return nil
+}
+
+// BitmapHandle validates and extracts a runtime bitmap for platform drawing.
+func BitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
+	value, ok := bitmap.(*Bitmap)
+	if !ok {
+		return 0, ErrInvalidBitmap
+	}
+	return value.nativeHandle()
+}
+
+// ValidateBitmapSize applies the common Simulator/device creation contract.
+func ValidateBitmapSize(width, height int) error {
+	if width <= 0 || height <= 0 || width > 2147483647 || height > 2147483647 {
+		return playdate.ErrBitmapSize
+	}
+	return nil
+}
+
+// ValidateBitmapScale applies the common Simulator/device drawing contract.
+func ValidateBitmapScale(scaleX, scaleY float32) error {
+	const maxFloat32 = 3.4028235e38
+	if scaleX <= 0 || scaleY <= 0 || scaleX != scaleX || scaleY != scaleY || scaleX > maxFloat32 || scaleY > maxFloat32 {
+		return playdate.ErrBitmapScale
+	}
+	return nil
+}
 
 // RawInput contains one platform input sample. Both platform adapters provide
 // this same representation before the runtime derives frame transitions.

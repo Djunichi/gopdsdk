@@ -223,6 +223,22 @@ released, held, and latched edge button masks; crank angle and change; dock
 transitions; frame delta; and the soak marker. Pure-Go tests supply fixed input
 and lifecycle sequences to this same game implementation.
 
+## P1.2 bitmap acceptance
+
+The `examples/bitmap` game loads a packaged 64x64 bitmap, creates and fills an
+owned bitmap, draws both bitmaps, draws a scaled copy, reports the loaded
+dimensions, and closes both resources on termination. Run the same package on
+both targets:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/bitmap
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/bitmap
+```
+
+The expected display contains `PDX: 64x64`, a PASS line, the packaged icon at
+two scales, and a solid square created at runtime. Pure-Go tests verify the
+operation order and one-time ownership cleanup.
+
 ## Development and CI
 
 Run the repository checks with:
