@@ -2,8 +2,9 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation, P1.0 device runtime, and P1.1 lifecycle/input milestones
-are complete**. No public API is stable yet. The official Playdate C API is the
+The **P0 foundation, P1.0 device runtime, P1.1 lifecycle/input, and P1.2 bitmap
+graphics milestones are complete** on the accepted Windows profile. No public
+API is stable yet. The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
 references. Their implementation is not copied.
@@ -167,7 +168,8 @@ versioned module release. The command never overwrites an existing path.
 
 An application is an importable Go package that provides
 `New() playdate.Game` and an official Playdate `pdxinfo` file in the same
-directory. Build the included Hello World example on Windows with:
+directory. Source assets live only below `resources/`; its contents become the
+root of the packaged PDX. Build the included Hello World example on Windows with:
 
 ```sh
 go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
@@ -225,6 +227,13 @@ and lifecycle sequences to this same game implementation.
 
 ## P1.2 bitmap acceptance
 
+P1.2 is complete on the verified Windows profile. The same public bitmap API
+loaded, created, filled, measured, drew, scaled, and explicitly closed native
+resources in Simulator and on a physical Playdate. Owned and borrowed handles,
+double-close, use-after-close, invalid arguments, and platform-independent
+errors have deterministic pure-Go coverage. Device acceptance used the
+hard-float bridge and produced no new `errorlog.txt` or crashlog entry.
+
 Application packages keep source assets below a dedicated `resources`
 directory. Its contents become the PDX resource root:
 
@@ -254,9 +263,23 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/bitmap
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/bitmap
 ```
 
-The expected display contains `PDX: 64x64`, a PASS line, the packaged icon at
+The accepted display contains `PDX: 64x64`, a PASS line, the packaged icon at
 two scales, and a solid square created at runtime. Pure-Go tests verify the
 operation order and one-time ownership cleanup.
+
+The public package remains a single `playdate` import but is organized by
+domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, and
+`errors`). `playdate.Context` composes the narrower `System`, `Graphics`, and
+`InputReader` capabilities so application helpers can depend on only the API
+surface they use.
+
+## P1.3 direction
+
+P1.3 will prove the combined SDK through a crank-controlled application in a
+separate Go module. It will use the documented `resources/` layout and only the
+accepted lifecycle, input, timing, text, and bitmap APIs. The slice will add no
+sprite, audio, collision, animation, font, framebuffer, or resource-manager API
+unless the external application demonstrates a blocking requirement.
 
 ## Development and CI
 
@@ -289,5 +312,5 @@ toolchain without pretending to verify GUI or USB behavior.
 - Device `defer`/`recover` is rejected because TinyGo 0.41.1 accesses an ARM
   system register unavailable to Playdate applications through that path.
 - macOS and Linux official SDK integration remains unverified.
-- Lifecycle and input are available through the P1.1 public model; graphics are
-  still limited to the hello-world clear/text nucleus.
+- Graphics currently cover clear/text and the P1.2 bitmap slice. Sprites,
+  animation, fonts, arbitrary framebuffer access, and audio remain unavailable.
