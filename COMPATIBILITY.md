@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The proposed `v0.1.0` release supports one exact verified toolchain profile.
+The proposed `v0.2.0` release supports one exact verified toolchain profile.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -38,6 +38,16 @@ physical hardware work on that host. Docker does not promote those levels.
 - P1.4 candidate: Windows `doctor --probe` promoted Simulator and device-build
   to `READY`; the versioned external consumer repeated physical deployment and
   a 65-second soak with both device logs unchanged.
+- P2.1 candidate: sprite creation, display-list membership, bitmap assignment,
+  movement, visibility, z-index, explicit close, and rollback are unit-tested
+  through both generated adapters. Simulator/device acceptance remains
+  unverified for this release candidate.
+- P2.2 candidate: collision rectangles, response modes, resolved movement, and
+  point/rectangle/overlap queries are unit-tested. Simulator/device collision
+  parity remains unverified for this release candidate.
+- P2.3 candidate: owned bitmap tables, borrowed frames, delta-time animation,
+  fixed frames, pause/resume, validation, and cleanup are unit-tested.
+  Simulator/device animation parity remains unverified for this candidate.
 - P2.4 candidate: portable sound-effect and single-file-player ownership,
   repeated playback, state, volume, lifecycle pause/resume, rollback, and close
   are unit-tested. Simulator/device parity and the 10-minute physical-device
