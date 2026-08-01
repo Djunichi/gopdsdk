@@ -12,18 +12,23 @@ import (
 // Target identifies a Playdate artifact target.
 type Target string
 
+// DeviceMemoryStrategy selects the TinyGo device allocator/collector contract.
+type DeviceMemoryStrategy string
+
 const (
 	// Simulator targets the host Playdate Simulator.
 	Simulator Target = "simulator"
 	// Device targets physical Playdate hardware.
 	Device Target = "device"
+	// DeviceMemoryNone preserves the P0 externally supplied non-collecting allocator.
+	DeviceMemoryNone DeviceMemoryStrategy = "none"
+	// DeviceMemoryConservative selects the experimental bounded TinyGo collector.
+	DeviceMemoryConservative DeviceMemoryStrategy = "conservative"
 
-	deviceLinkerFlags = "-Wl,--gc-sections,--emit-relocs," +
+	deviceBaseLinkerFlags = "-Wl,--gc-sections,--emit-relocs," +
 		"--defsym,__exidx_start=0,--defsym,__exidx_end=0," +
 		"--defsym,_sbss=__bss_start__,--defsym,_ebss=__bss_end__," +
-		"--defsym,_sdata=__data_start__,--defsym,_edata=__data_end__,--defsym,_sidata=__etext," +
-		"--defsym,_heap_start=__bss_end__,--defsym,_heap_end=__bss_end__," +
-		"--defsym,_globals_start=__data_start__,--defsym,_globals_end=__bss_end__,--defsym,_stack_top=__bss_end__"
+		"--defsym,_sdata=__data_start__,--defsym,_edata=__data_end__,--defsym,_sidata=__etext,"
 )
 
 // Command is one process invocation with structured arguments.
@@ -82,10 +87,23 @@ func New(target Target, application, sdkPath, output string) (Plan, error) {
 	case Simulator:
 		plan.Commands = simulatorCommands(sdkPath, output)
 	case Device:
-		plan.Commands = deviceCommands(sdkPath, output)
+		plan.Commands = deviceCommands(sdkPath, output, DeviceMemoryNone)
 	default:
 		return Plan{}, fmt.Errorf("unknown build target %q", target)
 	}
+	return plan, nil
+}
+
+// NewDevice returns a device plan with an explicit memory strategy.
+func NewDevice(application, sdkPath, output string, memory DeviceMemoryStrategy) (Plan, error) {
+	if memory != DeviceMemoryNone && memory != DeviceMemoryConservative {
+		return Plan{}, fmt.Errorf("unknown device memory strategy %q", memory)
+	}
+	plan, err := New(Device, application, sdkPath, output)
+	if err != nil {
+		return Plan{}, err
+	}
+	plan.Commands = deviceCommands(plan.SDKPath, plan.Output, memory)
 	return plan, nil
 }
 
@@ -158,18 +176,27 @@ func resolveValue(value string, tokens map[string]string) string {
 	return value
 }
 
-func deviceCommands(sdkPath, output string) []Command {
+func deviceCommands(sdkPath, output string, memory DeviceMemoryStrategy) []Command {
 	compileFlags := []string{"-c", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-O2", "-ffunction-sections", "-fdata-sections"}
 	apiFlags := []string{"-DTARGET_PLAYDATE=1", "-DTARGET_EXTENSION=1", "-I", sdkFile(sdkPath, "C_API")}
+	gc := string(memory)
+	objcopyArgs := []string{"--globalize-symbol=runtime.run", "${WORK}/probe.o"}
+	linkerFlags := deviceBaseLinkerFlags + "--defsym,_heap_start=__bss_end__,--defsym,_heap_end=__bss_end__," +
+		"--defsym,_globals_start=__data_start__,--defsym,_globals_end=__bss_end__,--defsym,_stack_top=__bss_end__"
+	if memory == DeviceMemoryConservative {
+		objcopyArgs = []string{"--globalize-symbol=runtime.run", "--globalize-symbol=runtime.stackTop", "--redefine-sym=device/arm.SCB=playdateRuntimeSCB", "--globalize-symbol=playdateRuntimeSCB", "${WORK}/probe.o"}
+		linkerFlags = deviceBaseLinkerFlags + "--defsym,_heap_start=playdateRuntimeHeap,--defsym,_heap_end=playdateRuntimeHeap+262144," +
+			"--defsym,_globals_start=__data_start__,--defsym,_globals_end=playdateRuntimeHeap,--defsym,_stack_top=__bss_end__"
+	}
 	return []Command{
 		{Purpose: "resolve Go module graph", Executable: "go", Args: []string{"mod", "tidy"}, Directory: "${WORK}"},
-		{Purpose: "compile TinyGo PIC object", Executable: "tinygo", Args: []string{"build", "-target", "${WORK}/playdate.json", "-scheduler", "none", "-gc", "none", "-panic", "trap", "-opt", "0", "-o", "${WORK}/probe.o", "."}, Directory: "${WORK}"},
-		{Purpose: "expose TinyGo runtime bootstrap symbol", Executable: "arm-none-eabi-objcopy", Args: []string{"--globalize-symbol=runtime.run", "${WORK}/probe.o"}, Directory: "${WORK}"},
+		{Purpose: "compile TinyGo PIC object", Executable: "tinygo", Args: []string{"build", "-target", "${WORK}/playdate.json", "-scheduler", "none", "-gc", gc, "-panic", "trap", "-opt", "0", "-o", "${WORK}/probe.o", "."}, Directory: "${WORK}"},
+		{Purpose: "expose TinyGo runtime adapter symbols", Executable: "arm-none-eabi-objcopy", Args: objcopyArgs, Directory: "${WORK}"},
 		{Purpose: "compile official Playdate setup", Executable: "arm-none-eabi-gcc", Args: append(append(append([]string{}, compileFlags...), apiFlags...), sdkFile(sdkPath, "C_API", "buildsupport", "setup.c"), "-o", "${WORK}/setup.o"), Directory: "${WORK}"},
 		{Purpose: "compile TinyGo runtime adapter", Executable: "arm-none-eabi-gcc", Args: append(append([]string{}, compileFlags...), "${WORK}/adapter.S", "-o", "${WORK}/adapter.o"), Directory: "${WORK}"},
 		{Purpose: "compile TinyGo runtime bootstrap", Executable: "arm-none-eabi-gcc", Args: append(append(append([]string{}, compileFlags...), apiFlags...), "${WORK}/bootstrap.c", "-o", "${WORK}/bootstrap.o"), Directory: "${WORK}"},
-		{Purpose: "link Playdate device ELF", Executable: "arm-none-eabi-gcc", Args: []string{"${WORK}/probe.o", "${WORK}/setup.o", "${WORK}/adapter.o", "${WORK}/bootstrap.o", "-nostartfiles", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-T", sdkFile(sdkPath, "C_API", "buildsupport", "link_map.ld"), deviceLinkerFlags, "-o", "${WORK}/pdex.elf"}, Directory: "${WORK}"},
-		{Purpose: "inspect ARM object", Executable: "arm-none-eabi-readelf", Args: []string{"-h", "-A", "-s", "-r", "${WORK}/pdex.elf"}, Directory: "${WORK}"},
+		{Purpose: "link Playdate device ELF", Executable: "arm-none-eabi-gcc", Args: []string{"${WORK}/probe.o", "${WORK}/setup.o", "${WORK}/adapter.o", "${WORK}/bootstrap.o", "-nostartfiles", "-mthumb", "-mcpu=cortex-m7", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16", "-T", sdkFile(sdkPath, "C_API", "buildsupport", "link_map.ld"), linkerFlags, "-o", "${WORK}/pdex.elf"}, Directory: "${WORK}"},
+		{Purpose: "inspect ARM object", Executable: "arm-none-eabi-readelf", Args: []string{"-h", "-A", "-S", "-s", "-r", "${WORK}/pdex.elf"}, Directory: "${WORK}"},
 		{Purpose: "inspect unresolved ELF symbols", Executable: "arm-none-eabi-nm", Args: []string{"-u", "${WORK}/pdex.elf"}, Directory: "${WORK}"},
 		{Purpose: "inspect linked ELF symbols", Executable: "arm-none-eabi-nm", Args: []string{"${WORK}/pdex.elf"}, Directory: "${WORK}"},
 		{Purpose: "package device application", Executable: sdkTool(sdkPath, "pdc"), Args: []string{"-sdkpath", sdkPath, "-q", "${WORK}/Source", "${PACKAGE_OUTPUT}"}, Directory: "${WORK}"},

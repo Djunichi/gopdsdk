@@ -1,0 +1,5 @@
+name=gopdsdk GC Stress
+author=gopdsdk contributors
+bundleID=sdk.gopdsdk.gcstress
+version=0.0.1
+buildNumber=1

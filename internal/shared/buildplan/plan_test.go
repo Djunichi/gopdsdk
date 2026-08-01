@@ -18,6 +18,32 @@ func TestDevicePlanIsDeterministicAndStructured(t *testing.T) {
 	if plan.Commands[1].Executable != "tinygo" || plan.Commands[1].Args[0] != "build" {
 		t.Fatalf("TinyGo command = %#v", plan.Commands[1])
 	}
+	compile := strings.Join(plan.Commands[1].Args, " ")
+	for _, want := range []string{"-gc none", "-scheduler none", "-panic trap"} {
+		if !strings.Contains(compile, want) {
+			t.Errorf("TinyGo command does not contain %q: %s", want, compile)
+		}
+	}
+	conservative, err := NewDevice("./game", `C:\Playdate SDK`, `build\game.pdx`, DeviceMemoryConservative)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compile = strings.Join(conservative.Commands[1].Args, " ")
+	if !strings.Contains(compile, "-gc conservative") {
+		t.Errorf("TinyGo command does not contain conservative GC: %s", compile)
+	}
+	adapter := strings.Join(conservative.Commands[2].Args, " ")
+	for _, want := range []string{"runtime.run", "runtime.stackTop", "device/arm.SCB", "playdateRuntimeSCB"} {
+		if !strings.Contains(adapter, want) {
+			t.Errorf("runtime adapter command does not contain %q: %s", want, adapter)
+		}
+	}
+	link := strings.Join(conservative.Commands[6].Args, " ")
+	for _, want := range []string{"_heap_start=playdateRuntimeHeap", "_heap_end=playdateRuntimeHeap+262144", "_globals_end=playdateRuntimeHeap"} {
+		if !strings.Contains(link, want) {
+			t.Errorf("link command does not contain %q: %s", want, link)
+		}
+	}
 	var output bytes.Buffer
 	if err := Write(&output, plan); err != nil {
 		t.Fatal(err)
@@ -26,6 +52,12 @@ func TestDevicePlanIsDeterministicAndStructured(t *testing.T) {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("plan does not contain %q:\n%s", want, output.String())
 		}
+	}
+}
+
+func TestNewDeviceRejectsUnknownMemoryStrategy(t *testing.T) {
+	if _, err := NewDevice(".", "sdk", "out", DeviceMemoryStrategy("unknown")); err == nil {
+		t.Fatal("NewDevice() error = nil, want unknown memory strategy")
 	}
 }
 
