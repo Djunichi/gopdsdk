@@ -1,34 +1,39 @@
 ---
 name: implement
-description: Implement or refactor scoped changes in the gopdsdk Go repository. Use when Codex is asked to add a feature, fix a bug, change package structure, add tests, or otherwise modify project code while preserving the feature-first architecture and cross-platform toolchain contract.
+description: Implement scoped gopdsdk Go features, fixes, refactors, and tests under the repository architecture and portability contract.
 ---
 
 # Implement
 
-Follow `AGENTS.md`; it is the repository contract.
+Follow `AGENTS.md`.
 
 ## Workflow
 
-1. Inspect `git status`, the target feature, its tests, and package comments.
-2. Classify each component:
-   - keep feature-specific code in `internal/features/<feature>`;
-   - move code to `internal/shared/<component>` only after a second real feature
-     consumer exists;
-   - keep `cmd/<binary>` limited to composition and process concerns.
-3. State assumptions and the package boundary before editing.
-4. Implement the smallest complete behavior, including error paths.
-5. Add a `// Package <name>` comment to the package's primary implementation
-   file. Do not create a separate `doc.go` solely for this comment.
-6. Add deterministic tests. Abstract filesystem or process behavior only where
-   tests or platform boundaries require it.
-7. Format and run the checks from `AGENTS.md` plus the relevant end-to-end path.
-8. Inspect the diff for unrelated edits, platform assumptions, missing
-   provenance, and false readiness claims.
-
-Choose the lowest sufficient verification level and name it in the handoff:
-unit, external-consumer CLI acceptance, native-host CI, SDK integration, or
-physical-device acceptance. Do not treat Docker or a dry-run as native SDK
-integration on another operating system.
+1. Inspect `git status`, relevant code, callers, tests, and package comment.
+2. State the feature/package boundary; keep `cmd` compositional and extract to
+   `internal/shared` only for a second real consumer.
+3. Implement the smallest complete behavior and error paths.
+4. Add deterministic tests; abstract I/O or processes only at test/platform
+   boundaries.
+5. Run proportional checks and inspect the diff for unrelated edits,
+   portability, provenance, and overstated readiness.
 
 Do not add dependencies, generated bindings, public API, or shared packages
-speculatively. Do not copy implementation material from pdgo.
+speculatively.
+
+## Checks
+
+Use workspace-local `.cache` for `GOCACHE` and `GOMODCACHE` when needed. Run
+proportionally; report skipped/failed capabilities and every earlier failure:
+
+```powershell
+gofmt -w cmd internal
+go test ./...
+go vet ./...
+git diff --check
+go run ./cmd/gopdsdk doctor
+```
+
+For a P0 release candidate, also run host external-consumer acceptance and
+inspect the CI matrix. Run `doctor --probe` only with the official SDK installed;
+otherwise report `CI-tested, SDK integration unverified`.
