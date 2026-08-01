@@ -2,9 +2,10 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1.0 through P1.3 playable vertical slices are
-complete** on the accepted Windows profile. P1.4 is the `v0.1.0` release
-candidate: its public API is reviewed and documented, but remains pre-v1. The official Playdate C API is the
+The **P0 foundation, P1, and P2.0 through P2.5 scopes are complete**. `v0.2.0`
+is the current release candidate: its public API is snapshot-tested and
+documented, but remains pre-v1. Hardware evidence varies by feature and is
+reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
 references. Their implementation is not copied.
@@ -43,13 +44,13 @@ deployment works on that host.
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
-## Install the release candidate
+## Install v0.2.0
 
-After the `v0.1.0` tag is published, run the CLI directly at that version:
+After the `v0.2.0` tag is published, run the CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.1.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.1.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.2.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.2.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -329,7 +330,42 @@ after the reviewed commit is tagged and the tag is published. The candidate
 passed Windows Simulator/device-build probes and a repeated 65-second physical
 device soak without changing either device log.
 
-## P2.4 audio candidate
+## P2.1 sprites
+
+`examples/sprites` exercises explicitly owned sprites, bitmap assignment,
+position and relative movement, visibility, z-index, idempotent display-list
+membership, and the shared update/draw pass. Sprites must be closed before the
+bitmaps they reference.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/sprites
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/sprites
+```
+
+## P2.2 collisions
+
+`examples/collision` is a deterministic collision scene using collide
+rectangles, slide/freeze/overlap/bounce responses, resolved movement, and
+point/rectangle/overlap queries. The portable result contains the actual
+position and ordered collision geometry without exposing native pointers.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/collision
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/collision
+```
+
+## P2.3 bitmap-table animation
+
+`examples/animation` loads a packaged bitmap table and selects borrowed frames
+with the allocation-free `Animation` helper. It supports delta-time looping,
+fixed frames, and pause/resume while retaining partial-frame time.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/animation
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/animation
+```
+
+## P2.4 audio
 
 `examples/audio` uses two deliberately narrow vertical APIs: a memory-backed
 short sound effect and one streaming file/music player. A repeats the same
@@ -350,7 +386,7 @@ repeated A playback, pause/resume, and a 10-minute physical-device soak with
 stable memory and no new device log entries. Synthesis, microphone input, and
 the full Playdate sound binding remain out of scope.
 
-## P2.5 fonts and game UI candidate
+## P2.5 fonts and game UI
 
 `examples/fontsui` loads `resources/fonts/gopdsdk-ui.fnt` as `fonts/gopdsdk-ui`, draws
 all UI text with that selected font, and centers overlays from native text

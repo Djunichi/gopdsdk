@@ -1,6 +1,6 @@
 # Public API
 
-This document describes the public contract proposed for gopdsdk `v0.1.0`.
+This document describes the public contract proposed for gopdsdk `v0.2.0`.
 The module is still pre-v1: minor releases may make intentional breaking
 changes, which must be called out in release notes. Patch releases preserve the
 documented API and behavior.
@@ -78,6 +78,26 @@ crank input use the same float32 contract in Simulator and device adapters.
 
 Source resources live below `resources/`; that directory becomes the PDX root.
 For example, load `resources/images/player.png` as `images/player`.
+
+## Collision queries
+
+Sprite collision rectangles opt an owned sprite into collision queries.
+`MoveWithCollisions` resolves a goal position and returns the actual position
+plus ordered contacts using slide, freeze, overlap, or bounce responses.
+Point, rectangle, and overlap queries expose only sprites owned by the current
+runtime; a foreign or closed sprite passed to an operation returns the
+corresponding sprite error.
+
+## Bitmap tables and animation
+
+`LoadBitmapTable` returns an owned table whose `Frame` method returns borrowed
+bitmap handles. Close the table only after its animations and sprites no longer
+use those frames; borrowed frames cannot be closed independently.
+
+`NewAnimation` creates a looping, allocation-free frame selector over a bounded
+table range. Advance it with `Input.DeltaSeconds`, or select a fixed frame.
+Pause and resume retain partial-frame time. Invalid construction returns
+`ErrAnimationConfig`; an invalid table frame returns `ErrBitmapFrameRange`.
 
 ## Audio ownership and lifecycle
 
