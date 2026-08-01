@@ -34,10 +34,13 @@ func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 
 func TestProbeSourceContainsCollisionBridge(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "sdkRuntime.NativeCollision"} {
+	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "sdkRuntime.NativeCollision", "bridgeFreeList(list)"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
+	}
+	if strings.Contains(source, "defer bridgeFreeList") {
+		t.Fatal("probe source retains unsupported TinyGo defer runtime for native sprite lists")
 	}
 }
 
