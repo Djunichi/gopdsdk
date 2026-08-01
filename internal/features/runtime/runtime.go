@@ -120,14 +120,28 @@ func BitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
 
 // SpriteDriver contains platform operations for one native sprite handle.
 type SpriteDriver struct {
-	SetBitmap  func(sprite, bitmap uintptr)
-	MoveTo     func(uintptr, float32, float32)
-	MoveBy     func(uintptr, float32, float32)
-	SetVisible func(uintptr, bool)
-	SetZIndex  func(uintptr, int)
-	Add        func(uintptr)
-	Remove     func(uintptr)
-	Free       func(uintptr)
+	SetBitmap          func(sprite, bitmap uintptr)
+	MoveTo             func(uintptr, float32, float32)
+	MoveBy             func(uintptr, float32, float32)
+	SetVisible         func(uintptr, bool)
+	SetZIndex          func(uintptr, int)
+	SetCollideRect     func(uintptr, playdate.Rect)
+	ClearCollideRect   func(uintptr)
+	SetTag             func(uintptr, uint8)
+	MoveWithCollisions func(uintptr, float32, float32) (float32, float32, []NativeCollision)
+	Add                func(uintptr)
+	Remove             func(uintptr)
+	Free               func(uintptr)
+}
+
+// NativeCollision is the adapter-facing representation of SpriteCollisionInfo.
+type NativeCollision struct {
+	Other                 uintptr
+	ResponseType          playdate.CollisionResponse
+	Overlaps              bool
+	Time                  float32
+	Move, Normal, Touch   playdate.Point
+	SpriteRect, OtherRect playdate.Rect
 }
 
 // Sprite owns a native Playdate sprite.
@@ -136,11 +150,26 @@ type Sprite struct {
 	driver SpriteDriver
 	added  bool
 	closed bool
+	owned  bool
 }
 
 // NewOwnedSprite wraps a sprite that must be explicitly closed.
 func NewOwnedSprite(handle uintptr, driver SpriteDriver) *Sprite {
+	return &Sprite{handle: handle, driver: driver, owned: true}
+}
+
+// NewBorrowedSprite wraps a query result owned by the Playdate display list.
+func NewBorrowedSprite(handle uintptr, driver SpriteDriver) *Sprite {
 	return &Sprite{handle: handle, driver: driver}
+}
+
+// SpriteHandle validates and extracts a runtime sprite for platform queries.
+func SpriteHandle(sprite playdate.Sprite) (uintptr, error) {
+	value, ok := sprite.(*Sprite)
+	if !ok {
+		return 0, playdate.ErrSpriteClosed
+	}
+	return value.nativeHandle()
 }
 
 func (s *Sprite) nativeHandle() (uintptr, error) {
@@ -194,6 +223,42 @@ func (s *Sprite) SetZIndex(z int) error {
 	s.driver.SetZIndex(handle, z)
 	return nil
 }
+func (s *Sprite) SetCollideRect(rect playdate.Rect) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.SetCollideRect(handle, rect)
+	return nil
+}
+func (s *Sprite) ClearCollideRect() error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.ClearCollideRect(handle)
+	return nil
+}
+func (s *Sprite) SetTag(tag uint8) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.SetTag(handle, tag)
+	return nil
+}
+func (s *Sprite) MoveWithCollisions(x, y float32) (playdate.MoveResult, error) {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return playdate.MoveResult{}, err
+	}
+	actualX, actualY, native := s.driver.MoveWithCollisions(handle, x, y)
+	result := playdate.MoveResult{ActualX: actualX, ActualY: actualY, Collisions: make([]playdate.Collision, len(native))}
+	for index, collision := range native {
+		result.Collisions[index] = playdate.Collision{Other: NewBorrowedSprite(collision.Other, s.driver), ResponseType: collision.ResponseType, Overlaps: collision.Overlaps, Time: collision.Time, Move: collision.Move, Normal: collision.Normal, Touch: collision.Touch, SpriteRect: collision.SpriteRect, OtherRect: collision.OtherRect}
+	}
+	return result, nil
+}
 func (s *Sprite) Add() error {
 	handle, err := s.nativeHandle()
 	if err != nil {
@@ -221,6 +286,9 @@ func (s *Sprite) Close() error {
 	if err != nil {
 		return err
 	}
+	if !s.owned {
+		return playdate.ErrSpriteBorrowed
+	}
 	if s.added {
 		s.driver.Remove(handle)
 		s.added = false
@@ -229,6 +297,15 @@ func (s *Sprite) Close() error {
 	s.closed = true
 	s.handle = 0
 	return nil
+}
+
+// BorrowedSprites converts native query handles without transferring ownership.
+func BorrowedSprites(handles []uintptr, driver SpriteDriver) []playdate.Sprite {
+	result := make([]playdate.Sprite, len(handles))
+	for index, handle := range handles {
+		result[index] = NewBorrowedSprite(handle, driver)
+	}
+	return result
 }
 
 // ValidateBitmapSize applies the common Simulator/device creation contract.

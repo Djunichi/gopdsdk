@@ -19,7 +19,12 @@ func (testContext) NewBitmap(int, int) (playdate.Bitmap, error)                 
 func (testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 func (testContext) NewSprite() (playdate.Sprite, error)                                { return nil, nil }
-func (testContext) UpdateAndDrawSprites()                                              {}
+func (testContext) QuerySpritesAtPoint(float32, float32) []playdate.Sprite             { return nil }
+func (testContext) QuerySpritesInRect(playdate.Rect) []playdate.Sprite                 { return nil }
+func (testContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) {
+	return nil, nil
+}
+func (testContext) UpdateAndDrawSprites() {}
 
 func TestBitmapOwnershipLifecycle(t *testing.T) {
 	var freed []uintptr
@@ -133,6 +138,47 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 	}
 	if err := sprite.Close(); !errors.Is(err, playdate.ErrSpriteClosed) {
 		t.Fatalf("double Close() = %v", err)
+	}
+}
+
+func TestSpriteCollisionBridgeAndBorrowedResponse(t *testing.T) {
+	var operations []string
+	driver := SpriteDriver{
+		SetCollideRect:   func(uintptr, playdate.Rect) { operations = append(operations, "rect") },
+		ClearCollideRect: func(uintptr) { operations = append(operations, "clear") },
+		SetTag:           func(uintptr, uint8) { operations = append(operations, "tag") },
+		MoveWithCollisions: func(uintptr, float32, float32) (float32, float32, []NativeCollision) {
+			return 8, 9, []NativeCollision{{Other: 12, ResponseType: playdate.CollisionOverlap, Time: .5}}
+		},
+	}
+	sprite := NewOwnedSprite(11, driver)
+	if err := sprite.SetCollideRect(playdate.Rect{Width: 16, Height: 16}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.SetTag(2); err != nil {
+		t.Fatal(err)
+	}
+	result, err := sprite.MoveWithCollisions(10, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ActualX != 8 || result.ActualY != 9 || len(result.Collisions) != 1 || result.Collisions[0].ResponseType != playdate.CollisionOverlap {
+		t.Fatalf("result = %+v", result)
+	}
+	if err := result.Collisions[0].Other.Close(); !errors.Is(err, playdate.ErrSpriteBorrowed) {
+		t.Fatalf("borrowed Close() = %v", err)
+	}
+	if err := sprite.ClearCollideRect(); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"rect", "tag", "clear"}
+	if len(operations) != len(want) {
+		t.Fatalf("operations = %v", operations)
+	}
+	for index := range want {
+		if operations[index] != want[index] {
+			t.Fatalf("operations = %v", operations)
+		}
 	}
 }
 

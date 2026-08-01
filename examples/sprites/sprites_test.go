@@ -33,9 +33,15 @@ func (s *testSprite) SetPosition(float32, float32) error { return s.record("posi
 func (s *testSprite) MoveBy(float32, float32) error      { return s.record("move") }
 func (s *testSprite) SetVisible(bool) error              { return s.record("visible") }
 func (s *testSprite) SetZIndex(int) error                { return s.record("z") }
-func (s *testSprite) Add() error                         { return s.record("add") }
-func (s *testSprite) Remove() error                      { return s.record("remove") }
-func (s *testSprite) Close() error                       { return s.record("close") }
+func (s *testSprite) SetCollideRect(playdate.Rect) error { return s.record("collideRect") }
+func (s *testSprite) ClearCollideRect() error            { return s.record("clearCollideRect") }
+func (s *testSprite) SetTag(uint8) error                 { return s.record("tag") }
+func (s *testSprite) MoveWithCollisions(float32, float32) (playdate.MoveResult, error) {
+	return playdate.MoveResult{}, s.record("collideMove")
+}
+func (s *testSprite) Add() error    { return s.record("add") }
+func (s *testSprite) Remove() error { return s.record("remove") }
+func (s *testSprite) Close() error  { return s.record("close") }
 
 type testContext struct {
 	operations []string
@@ -60,6 +66,11 @@ func (c *testContext) NewSprite() (playdate.Sprite, error) {
 		return nil, errors.New("create failed")
 	}
 	return &testSprite{name: string(rune('0' + c.create)), operations: &c.operations}, nil
+}
+func (*testContext) QuerySpritesAtPoint(float32, float32) []playdate.Sprite { return nil }
+func (*testContext) QuerySpritesInRect(playdate.Rect) []playdate.Sprite     { return nil }
+func (*testContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) {
+	return nil, nil
 }
 func (c *testContext) UpdateAndDrawSprites() { c.operations = append(c.operations, "draw") }
 

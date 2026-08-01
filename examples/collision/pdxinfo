@@ -1,0 +1,6 @@
+name=Collision P2.2
+author=gopdsdk
+description=Deterministic player, walls, collectibles, score, and reset acceptance scene
+bundleID=dev.gopdsdk.collision
+version=1.0.0
+buildNumber=1
