@@ -56,6 +56,10 @@ func TestRender(t *testing.T) {
 		"C.bridgeSpriteRemove",
 		"C.bridgeFreeSprite",
 		"C.bridgeUpdateAndDrawSprites",
+		"C.bridgeLoadSoundEffect",
+		"C.bridgeLoadFilePlayer",
+		"sdkRuntime.NewSoundEffect",
+		"sdkRuntime.NewFilePlayer",
 	} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q:\n%s", want, sources.Go)
@@ -97,6 +101,9 @@ func TestRender(t *testing.T) {
 		"sprite->removeSprite",
 		"sprite->freeSprite",
 		"sprite->updateAndDrawSprites",
+		"sound->sample->load",
+		"sound->sampleplayer->newPlayer",
+		"sound->fileplayer->loadIntoPlayer",
 	} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("C source does not contain %q:\n%s", want, sources.C)

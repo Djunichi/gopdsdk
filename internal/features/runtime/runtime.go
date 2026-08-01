@@ -42,6 +42,143 @@ var (
 	ErrInvalidBitmap = errors.New("bitmap handle was not created by this runtime")
 )
 
+// AudioDriver contains the common native operations for either accepted player.
+type AudioDriver struct {
+	Play      func(uintptr) bool
+	Stop      func(uintptr)
+	SetVolume func(uintptr, float32, float32)
+	Volume    func(uintptr) (float32, float32)
+	IsPlaying func(uintptr) bool
+	Pause     func(uintptr, bool)
+	Free      func(uintptr)
+}
+
+type audioPlayer struct {
+	handle uintptr
+	driver AudioDriver
+	paused bool
+	closed bool
+}
+
+// NewSoundEffect wraps an owned sample player and its sample as one handle.
+func NewSoundEffect(handle uintptr, driver AudioDriver) playdate.SoundEffect {
+	return &audioPlayer{handle: handle, driver: driver}
+}
+
+// NewFilePlayer wraps an owned streaming file player.
+func NewFilePlayer(handle uintptr, driver AudioDriver) playdate.FilePlayer {
+	return &audioPlayer{handle: handle, driver: driver}
+}
+
+func (p *audioPlayer) nativeHandle() (uintptr, error) {
+	if p == nil || p.closed || p.handle == 0 {
+		return 0, playdate.ErrAudioClosed
+	}
+	return p.handle, nil
+}
+
+func (p *audioPlayer) Play() error {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !p.driver.Play(handle) {
+		return playdate.ErrAudioPlay
+	}
+	p.paused = false
+	return nil
+}
+
+func (p *audioPlayer) Stop() error {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.Stop(handle)
+	p.paused = false
+	return nil
+}
+
+func (p *audioPlayer) SetVolume(left, right float32) error {
+	if err := ValidateAudioVolume(left, right); err != nil {
+		return err
+	}
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.SetVolume(handle, left, right)
+	return nil
+}
+
+func (p *audioPlayer) Volume() (float32, float32, error) {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return 0, 0, err
+	}
+	left, right := p.driver.Volume(handle)
+	return left, right, nil
+}
+
+func (p *audioPlayer) State() (playdate.PlaybackState, error) {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	if p.paused {
+		return playdate.PlaybackPaused, nil
+	}
+	if p.driver.IsPlaying(handle) {
+		return playdate.PlaybackPlaying, nil
+	}
+	return playdate.PlaybackStopped, nil
+}
+
+func (p *audioPlayer) Pause() error {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if p.driver.IsPlaying(handle) {
+		p.driver.Pause(handle, true)
+		p.paused = true
+	}
+	return nil
+}
+
+func (p *audioPlayer) Resume() error {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if p.paused {
+		p.driver.Pause(handle, false)
+		p.paused = false
+	}
+	return nil
+}
+
+func (p *audioPlayer) Close() error {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.Stop(handle)
+	p.driver.Free(handle)
+	p.handle = 0
+	p.closed = true
+	p.paused = false
+	return nil
+}
+
+// ValidateAudioVolume applies the shared Simulator/device volume contract.
+func ValidateAudioVolume(left, right float32) error {
+	if left < 0 || left > 1 || right < 0 || right > 1 || left != left || right != right {
+		return playdate.ErrAudioVolume
+	}
+	return nil
+}
+
 // BitmapDriver contains platform operations for one native bitmap handle.
 type BitmapDriver struct {
 	Dimensions func(uintptr) (width, height int)

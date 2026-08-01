@@ -25,7 +25,72 @@ func (testContext) QuerySpritesInRect(playdate.Rect) []playdate.Sprite          
 func (testContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite, error) {
 	return nil, nil
 }
-func (testContext) UpdateAndDrawSprites() {}
+func (testContext) UpdateAndDrawSprites()                                {}
+func (testContext) LoadSoundEffect(string) (playdate.SoundEffect, error) { return nil, nil }
+func (testContext) LoadFilePlayer(string) (playdate.FilePlayer, error)   { return nil, nil }
+
+func TestAudioOwnershipStateAndValidation(t *testing.T) {
+	playing := false
+	paused := false
+	freed := 0
+	left, right := float32(1), float32(1)
+	driver := AudioDriver{
+		Play:      func(uintptr) bool { playing = true; return true },
+		Stop:      func(uintptr) { playing = false },
+		SetVolume: func(_ uintptr, l, r float32) { left, right = l, r },
+		Volume:    func(uintptr) (float32, float32) { return left, right },
+		IsPlaying: func(uintptr) bool { return playing },
+		Pause:     func(_ uintptr, value bool) { paused = value },
+		Free:      func(uintptr) { freed++ },
+	}
+	player := NewSoundEffect(17, driver)
+	if err := player.SetVolume(.25, .75); err != nil {
+		t.Fatal(err)
+	}
+	if l, r, err := player.Volume(); err != nil || l != .25 || r != .75 {
+		t.Fatalf("Volume() = %v, %v, %v", l, r, err)
+	}
+	if err := player.Play(); err != nil {
+		t.Fatal(err)
+	}
+	if state, _ := player.State(); state != playdate.PlaybackPlaying {
+		t.Fatalf("state = %v", state)
+	}
+	if err := player.Pause(); err != nil || !paused {
+		t.Fatalf("Pause() = %v, paused %v", err, paused)
+	}
+	if state, _ := player.State(); state != playdate.PlaybackPaused {
+		t.Fatalf("state = %v", state)
+	}
+	if err := player.Resume(); err != nil || paused {
+		t.Fatalf("Resume() = %v, paused %v", err, paused)
+	}
+	if err := player.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if state, _ := player.State(); state != playdate.PlaybackStopped {
+		t.Fatalf("state = %v", state)
+	}
+	if err := player.Play(); err != nil {
+		t.Fatal(err)
+	}
+	if err := player.Close(); err != nil || freed != 1 || playing {
+		t.Fatalf("Close() = %v, freed %d, playing %v", err, freed, playing)
+	}
+	if err := player.Play(); !errors.Is(err, playdate.ErrAudioClosed) {
+		t.Fatalf("closed Play() = %v", err)
+	}
+	if err := ValidateAudioVolume(-1, 1); !errors.Is(err, playdate.ErrAudioVolume) {
+		t.Fatalf("volume error = %v", err)
+	}
+}
+
+func TestAudioPlayFailure(t *testing.T) {
+	player := NewFilePlayer(1, AudioDriver{Play: func(uintptr) bool { return false }})
+	if err := player.Play(); !errors.Is(err, playdate.ErrAudioPlay) {
+		t.Fatalf("Play() = %v", err)
+	}
+}
 
 func TestBitmapOwnershipLifecycle(t *testing.T) {
 	var freed []uintptr

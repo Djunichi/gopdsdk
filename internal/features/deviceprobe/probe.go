@@ -668,6 +668,38 @@ func bridgeSpriteAdd(sprite uintptr)
 func bridgeSpriteRemove(sprite uintptr)
 //go:linkname bridgeUpdateAndDrawSprites bridgeUpdateAndDrawSprites
 func bridgeUpdateAndDrawSprites()
+//go:linkname bridgeLoadSoundEffect bridgeLoadSoundEffect
+func bridgeLoadSoundEffect(path *byte) uintptr
+//go:linkname bridgeSoundEffectPlay bridgeSoundEffectPlay
+func bridgeSoundEffectPlay(effect uintptr) int32
+//go:linkname bridgeSoundEffectStop bridgeSoundEffectStop
+func bridgeSoundEffectStop(effect uintptr)
+//go:linkname bridgeSoundEffectSetVolumeBits bridgeSoundEffectSetVolumeBits
+func bridgeSoundEffectSetVolumeBits(effect uintptr, left, right uint32)
+//go:linkname bridgeSoundEffectVolumeBits bridgeSoundEffectVolumeBits
+func bridgeSoundEffectVolumeBits(effect uintptr, left, right *uint32)
+//go:linkname bridgeSoundEffectIsPlaying bridgeSoundEffectIsPlaying
+func bridgeSoundEffectIsPlaying(effect uintptr) int32
+//go:linkname bridgeSoundEffectPause bridgeSoundEffectPause
+func bridgeSoundEffectPause(effect uintptr, paused int32)
+//go:linkname bridgeFreeSoundEffect bridgeFreeSoundEffect
+func bridgeFreeSoundEffect(effect uintptr)
+//go:linkname bridgeLoadFilePlayer bridgeLoadFilePlayer
+func bridgeLoadFilePlayer(path *byte) uintptr
+//go:linkname bridgeFilePlayerPlay bridgeFilePlayerPlay
+func bridgeFilePlayerPlay(player uintptr) int32
+//go:linkname bridgeFilePlayerStop bridgeFilePlayerStop
+func bridgeFilePlayerStop(player uintptr)
+//go:linkname bridgeFilePlayerSetVolumeBits bridgeFilePlayerSetVolumeBits
+func bridgeFilePlayerSetVolumeBits(player uintptr, left, right uint32)
+//go:linkname bridgeFilePlayerVolumeBits bridgeFilePlayerVolumeBits
+func bridgeFilePlayerVolumeBits(player uintptr, left, right *uint32)
+//go:linkname bridgeFilePlayerIsPlaying bridgeFilePlayerIsPlaying
+func bridgeFilePlayerIsPlaying(player uintptr) int32
+//go:linkname bridgeFilePlayerPause bridgeFilePlayerPause
+func bridgeFilePlayerPause(player uintptr)
+//go:linkname bridgeFreeFilePlayer bridgeFreeFilePlayer
+func bridgeFreeFilePlayer(player uintptr)
 
 func float32FromBits(bits uint32) float32 { return *(*float32)(unsafe.Pointer(&bits)) }
 
@@ -748,6 +780,23 @@ func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { 
 func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesInRectBits(float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height), &count); return borrowedSpriteList(list, count) }
 func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count int32; list := bridgeOverlappingSprites(handle, &count); return borrowedSpriteList(list, count), nil }
 func (playdateContext) UpdateAndDrawSprites() { bridgeUpdateAndDrawSprites() }
+
+var soundEffectDriver = sdkRuntime.AudioDriver{
+	Play: func(handle uintptr) bool { return bridgeSoundEffectPlay(handle) != 0 }, Stop: bridgeSoundEffectStop,
+	SetVolume: func(handle uintptr, left, right float32) { bridgeSoundEffectSetVolumeBits(handle, float32Bits(left), float32Bits(right)) },
+	Volume: func(handle uintptr) (float32, float32) { var left, right uint32; bridgeSoundEffectVolumeBits(handle, &left, &right); return float32FromBits(left), float32FromBits(right) },
+	IsPlaying: func(handle uintptr) bool { return bridgeSoundEffectIsPlaying(handle) != 0 },
+	Pause: func(handle uintptr, paused bool) { value := int32(0); if paused { value = 1 }; bridgeSoundEffectPause(handle, value) }, Free: bridgeFreeSoundEffect,
+}
+var filePlayerDriver = sdkRuntime.AudioDriver{
+	Play: func(handle uintptr) bool { return bridgeFilePlayerPlay(handle) != 0 }, Stop: bridgeFilePlayerStop,
+	SetVolume: func(handle uintptr, left, right float32) { bridgeFilePlayerSetVolumeBits(handle, float32Bits(left), float32Bits(right)) },
+	Volume: func(handle uintptr) (float32, float32) { var left, right uint32; bridgeFilePlayerVolumeBits(handle, &left, &right); return float32FromBits(left), float32FromBits(right) },
+	IsPlaying: func(handle uintptr) bool { return bridgeFilePlayerIsPlaying(handle) != 0 },
+	Pause: func(handle uintptr, _ bool) { bridgeFilePlayerPause(handle) }, Free: bridgeFreeFilePlayer,
+}
+func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSoundEffect(handle, soundEffectDriver), nil }
+func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadFilePlayer(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil }
 
 var gameContext playdateContext
 var application = mustApplication()
@@ -918,6 +967,24 @@ uintptr_t bridgeOverlappingSprites(uintptr_t sprite,int32_t* count) { return (ui
 void bridgeSpriteAdd(uintptr_t sprite) { activePlaydate->sprite->addSprite((LCDSprite*)sprite); }
 void bridgeSpriteRemove(uintptr_t sprite) { activePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
 void bridgeUpdateAndDrawSprites(void) { activePlaydate->sprite->updateAndDrawSprites(); }
+typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
+uintptr_t bridgeLoadSoundEffect(const char* path) { AudioSample* sample=activePlaydate->sound->sample->load(path); if(!sample)return 0; SamplePlayer* player=activePlaydate->sound->sampleplayer->newPlayer(); if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;} BridgeSoundEffect* effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect)); if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;} effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect; }
+static BridgeSoundEffect* bridgeEffect(uintptr_t effect){return(BridgeSoundEffect*)effect;}
+int32_t bridgeSoundEffectPlay(uintptr_t effect){return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,1,1.0f);}
+void bridgeSoundEffectStop(uintptr_t effect){activePlaydate->sound->sampleplayer->stop(bridgeEffect(effect)->player);}
+void bridgeSoundEffectSetVolumeBits(uintptr_t effect,uint32_t left,uint32_t right){union{uint32_t bits;float value;}l={.bits=left},r={.bits=right};activePlaydate->sound->sampleplayer->setVolume(bridgeEffect(effect)->player,l.value,r.value);}
+void bridgeSoundEffectVolumeBits(uintptr_t effect,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->sampleplayer->getVolume(bridgeEffect(effect)->player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
+int32_t bridgeSoundEffectIsPlaying(uintptr_t effect){return activePlaydate->sound->sampleplayer->isPlaying(bridgeEffect(effect)->player);}
+void bridgeSoundEffectPause(uintptr_t effect,int32_t paused){activePlaydate->sound->sampleplayer->setPaused(bridgeEffect(effect)->player,paused);}
+void bridgeFreeSoundEffect(uintptr_t effect){BridgeSoundEffect* value=bridgeEffect(effect);activePlaydate->sound->sampleplayer->freePlayer(value->player);activePlaydate->sound->sample->freeSample(value->sample);activePlaydate->system->realloc(value,0);}
+uintptr_t bridgeLoadFilePlayer(const char* path){FilePlayer* player=activePlaydate->sound->fileplayer->newPlayer();if(!player)return 0;if(!activePlaydate->sound->fileplayer->loadIntoPlayer(player,path)){activePlaydate->sound->fileplayer->freePlayer(player);return 0;}return(uintptr_t)player;}
+int32_t bridgeFilePlayerPlay(uintptr_t player){return activePlaydate->sound->fileplayer->play((FilePlayer*)player,1);}
+void bridgeFilePlayerStop(uintptr_t player){activePlaydate->sound->fileplayer->stop((FilePlayer*)player);}
+void bridgeFilePlayerSetVolumeBits(uintptr_t player,uint32_t left,uint32_t right){union{uint32_t bits;float value;}l={.bits=left},r={.bits=right};activePlaydate->sound->fileplayer->setVolume((FilePlayer*)player,l.value,r.value);}
+void bridgeFilePlayerVolumeBits(uintptr_t player,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->fileplayer->getVolume((FilePlayer*)player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
+int32_t bridgeFilePlayerIsPlaying(uintptr_t player){return activePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player);}
+void bridgeFilePlayerPause(uintptr_t player){activePlaydate->sound->fileplayer->pause((FilePlayer*)player);}
+void bridgeFreeFilePlayer(uintptr_t player){activePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player);}
 `
 
 const conservativeBootstrapSource = `#include "pd_api.h"
@@ -1027,6 +1094,24 @@ uintptr_t bridgeOverlappingSprites(uintptr_t sprite,int32_t* count) { return (ui
 void bridgeSpriteAdd(uintptr_t sprite) { activePlaydate->sprite->addSprite((LCDSprite*)sprite); }
 void bridgeSpriteRemove(uintptr_t sprite) { activePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
 void bridgeUpdateAndDrawSprites(void) { activePlaydate->sprite->updateAndDrawSprites(); }
+typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
+uintptr_t bridgeLoadSoundEffect(const char* path) { AudioSample* sample=activePlaydate->sound->sample->load(path); if(!sample)return 0; SamplePlayer* player=activePlaydate->sound->sampleplayer->newPlayer(); if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;} BridgeSoundEffect* effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect)); if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;} effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect; }
+static BridgeSoundEffect* bridgeEffect(uintptr_t effect){return(BridgeSoundEffect*)effect;}
+int32_t bridgeSoundEffectPlay(uintptr_t effect){return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,1,1.0f);}
+void bridgeSoundEffectStop(uintptr_t effect){activePlaydate->sound->sampleplayer->stop(bridgeEffect(effect)->player);}
+void bridgeSoundEffectSetVolumeBits(uintptr_t effect,uint32_t left,uint32_t right){union{uint32_t bits;float value;}l={.bits=left},r={.bits=right};activePlaydate->sound->sampleplayer->setVolume(bridgeEffect(effect)->player,l.value,r.value);}
+void bridgeSoundEffectVolumeBits(uintptr_t effect,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->sampleplayer->getVolume(bridgeEffect(effect)->player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
+int32_t bridgeSoundEffectIsPlaying(uintptr_t effect){return activePlaydate->sound->sampleplayer->isPlaying(bridgeEffect(effect)->player);}
+void bridgeSoundEffectPause(uintptr_t effect,int32_t paused){activePlaydate->sound->sampleplayer->setPaused(bridgeEffect(effect)->player,paused);}
+void bridgeFreeSoundEffect(uintptr_t effect){BridgeSoundEffect* value=bridgeEffect(effect);activePlaydate->sound->sampleplayer->freePlayer(value->player);activePlaydate->sound->sample->freeSample(value->sample);activePlaydate->system->realloc(value,0);}
+uintptr_t bridgeLoadFilePlayer(const char* path){FilePlayer* player=activePlaydate->sound->fileplayer->newPlayer();if(!player)return 0;if(!activePlaydate->sound->fileplayer->loadIntoPlayer(player,path)){activePlaydate->sound->fileplayer->freePlayer(player);return 0;}return(uintptr_t)player;}
+int32_t bridgeFilePlayerPlay(uintptr_t player){return activePlaydate->sound->fileplayer->play((FilePlayer*)player,1);}
+void bridgeFilePlayerStop(uintptr_t player){activePlaydate->sound->fileplayer->stop((FilePlayer*)player);}
+void bridgeFilePlayerSetVolumeBits(uintptr_t player,uint32_t left,uint32_t right){union{uint32_t bits;float value;}l={.bits=left},r={.bits=right};activePlaydate->sound->fileplayer->setVolume((FilePlayer*)player,l.value,r.value);}
+void bridgeFilePlayerVolumeBits(uintptr_t player,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->fileplayer->getVolume((FilePlayer*)player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
+int32_t bridgeFilePlayerIsPlaying(uintptr_t player){return activePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player);}
+void bridgeFilePlayerPause(uintptr_t player){activePlaydate->sound->fileplayer->pause((FilePlayer*)player);}
+void bridgeFreeFilePlayer(uintptr_t player){activePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player);}
 `
 
 const targetSource = `{
