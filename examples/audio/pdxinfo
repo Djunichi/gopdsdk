@@ -1,0 +1,6 @@
+name=P2.4 Audio
+author=gopdsdk
+description=Sound effect and file player acceptance
+bundleID=dev.gopdsdk.audio
+version=1.0.0
+buildNumber=1

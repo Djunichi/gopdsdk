@@ -137,6 +137,9 @@ const LifecyclePause LifecycleEvent
 const LifecycleResume LifecycleEvent
 const LifecycleTerminate LifecycleEvent
 const LifecycleUnlock LifecycleEvent
+const PlaybackPaused PlaybackState
+const PlaybackPlaying PlaybackState
+const PlaybackStopped PlaybackState
 func (*Animation).Bitmap() (Bitmap, error)
 func (*Animation).Frame() int
 func (*Animation).Pause()
@@ -145,10 +148,13 @@ func (*Animation).Resume()
 func (*Animation).SetFixedFrame(frame int) error
 func (*Animation).Update(deltaSeconds float32)
 func (*Animation).UseDeltaTime()
+func (AudioLoadError).Error() string
 func (BitmapLoadError).Error() string
 func (Buttons).Has(requested Buttons) bool
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
+type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
+type AudioLoadError string
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
 type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
@@ -156,7 +162,8 @@ type Buttons uint8
 type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
 type CollisionResponse uint8
 type Color uint8
-type Context interface{System; Graphics; InputReader; Sprites}
+type Context interface{System; Graphics; InputReader; Sprites; Audio}
+type FilePlayer interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
@@ -164,12 +171,18 @@ type InputReader interface{Input() Input}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
+type PlaybackState uint8
 type Point struct{X float32; Y float32}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
+type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
 type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
 var ErrAnimationConfig error
+var ErrAudioClosed error
+var ErrAudioCreate error
+var ErrAudioPlay error
+var ErrAudioVolume error
 var ErrBitmapBorrowed error
 var ErrBitmapClosed error
 var ErrBitmapColor error

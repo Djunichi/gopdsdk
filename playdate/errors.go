@@ -12,6 +12,15 @@ type animationError string
 
 func (message animationError) Error() string { return string(message) }
 
+type audioError string
+
+func (message audioError) Error() string { return string(message) }
+
+// AudioLoadError identifies an audio asset that Playdate could not load.
+type AudioLoadError string
+
+func (path AudioLoadError) Error() string { return "load audio: " + string(path) }
+
 // BitmapLoadError contains the diagnostic returned by the Playdate API.
 type BitmapLoadError string
 
@@ -44,4 +53,12 @@ var (
 	ErrSpriteBorrowed error = spriteError("borrowed sprite cannot be closed")
 	// ErrSpriteCreate indicates that Playdate could not allocate a sprite.
 	ErrSpriteCreate error = spriteError("create sprite failed")
+	// ErrAudioClosed indicates an operation on a closed audio player.
+	ErrAudioClosed error = audioError("audio player is closed")
+	// ErrAudioCreate indicates that Playdate could not allocate a player.
+	ErrAudioCreate error = audioError("create audio player failed")
+	// ErrAudioPlay indicates that Playdate rejected playback.
+	ErrAudioPlay error = audioError("audio playback failed")
+	// ErrAudioVolume indicates a non-finite volume outside the 0..1 range.
+	ErrAudioVolume error = audioError("audio volume must be between zero and one")
 )

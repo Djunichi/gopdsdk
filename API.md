@@ -28,13 +28,15 @@ resources already acquired when a later acquisition fails.
 
 ## Context capabilities
 
-`playdate.Context` composes three smaller interfaces:
+`playdate.Context` composes five smaller interfaces:
 
 - `System` provides the wrapping monotonic millisecond clock.
 - `InputReader` provides one immutable frame snapshot.
 - `Graphics` provides clear/text and the accepted bitmap operations.
 - `Sprites` creates explicitly owned sprites and runs the shared display-list
   update/draw pass.
+- `Audio` loads explicitly owned short sound effects and one-file streaming
+  players.
 
 Helpers should accept the narrowest interface they need. This keeps pure game
 logic independent from runtime callbacks and makes deterministic testing
@@ -76,6 +78,26 @@ crank input use the same float32 contract in Simulator and device adapters.
 
 Source resources live below `resources/`; that directory becomes the PDX root.
 For example, load `resources/images/player.png` as `images/player`.
+
+## Audio ownership and lifecycle
+
+`LoadSoundEffect` loads a short, memory-backed sample/player pair;
+`LoadFilePlayer` loads one streaming file player. Both expose play, stop,
+stereo volume, stopped/playing/paused state, pause/resume, and explicit close.
+Repeated `SoundEffect.Play` restarts the accepted effect without allocating a
+new native player.
+
+Pause players on pause/lock lifecycle events, resume them on resume/unlock,
+and close file players before sound effects on termination. `Close` stops
+playback before releasing native handles. A failed sound-effect construction
+frees its partially acquired sample/player, and game initialization must close
+earlier successful audio loads if a later load or configuration step fails.
+After close, operations return `ErrAudioClosed`; invalid volume returns
+`ErrAudioVolume`, playback rejection returns `ErrAudioPlay`, and load failures
+return `AudioLoadError`.
+
+This vertical API intentionally excludes synthesis, microphone input, and the
+rest of the Playdate sound binding.
 
 ## Device Go subset
 

@@ -19,4 +19,5 @@ type Context interface {
 	Graphics
 	InputReader
 	Sprites
+	Audio
 }

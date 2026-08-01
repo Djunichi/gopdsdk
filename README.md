@@ -287,10 +287,9 @@ two scales, and a solid square created at runtime. Pure-Go tests verify the
 operation order and one-time ownership cleanup.
 
 The public package remains a single `playdate` import but is organized by
-domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, and
-`errors`). `playdate.Context` composes the narrower `System`, `Graphics`, and
-`InputReader` capabilities so application helpers can depend on only the API
-surface they use.
+domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, `audio`, and
+`errors`). `playdate.Context` composes narrower capabilities so application
+helpers can depend on only the API surface they use.
 
 ## P1.3 external playable consumer
 
@@ -329,6 +328,27 @@ or a resource manager. The version becomes consumable without `replace` only
 after the reviewed commit is tagged and the tag is published. The candidate
 passed Windows Simulator/device-build probes and a repeated 65-second physical
 device soak without changing either device log.
+
+## P2.4 audio candidate
+
+`examples/audio` uses two deliberately narrow vertical APIs: a memory-backed
+short sound effect and one streaming file/music player. A repeats the same
+effect; B starts or stops the music. Both players expose stereo volume,
+stopped/playing/paused status, lifecycle pause/resume, and explicit close.
+Initialization rolls back an already loaded effect when the music load fails.
+
+Run the same package on both targets:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/audio
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/audio
+```
+
+The implementation and generated ABI are unit-tested. Promotion from candidate
+requires audible parity for both bundled sounds in Simulator and device,
+repeated A playback, pause/resume, and a 10-minute physical-device soak with
+stable memory and no new device log entries. Synthesis, microphone input, and
+the full Playdate sound binding remain out of scope.
 
 ## Development and CI
 

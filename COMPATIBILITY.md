@@ -38,6 +38,10 @@ physical hardware work on that host. Docker does not promote those levels.
 - P1.4 candidate: Windows `doctor --probe` promoted Simulator and device-build
   to `READY`; the versioned external consumer repeated physical deployment and
   a 65-second soak with both device logs unchanged.
+- P2.4 candidate: portable sound-effect and single-file-player ownership,
+  repeated playback, state, volume, lifecycle pause/resume, rollback, and close
+  are unit-tested. Simulator/device parity and the 10-minute physical-device
+  soak remain acceptance work until run and observed.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
