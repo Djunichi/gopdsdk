@@ -67,8 +67,8 @@ func TestCLIPlayableExternalConsumerWorkflow(t *testing.T) {
 		arguments []string
 		target    string
 	}{
-		{[]string{"build", "--dry-run", "--sdk", filepath.Join(project, "fake sdk"), "."}, "simulator"},
-		{[]string{"build", "device", "--dry-run", "--sdk", filepath.Join(project, "fake sdk"), "."}, "device"},
+		{arguments: []string{"build", "--dry-run", "--sdk", filepath.Join(project, "fake sdk"), "."}, target: "simulator"},
+		{arguments: []string{"build", "device", "--dry-run", "--sdk", filepath.Join(project, "fake sdk"), "."}, target: "device"},
 	} {
 		output := runTestCommand(t, project, binary, test.arguments...)
 		for _, required := range []string{"Build plan", "Target:      " + test.target, "Application: ."} {
@@ -81,7 +81,7 @@ func TestCLIPlayableExternalConsumerWorkflow(t *testing.T) {
 
 func copyTestTree(t *testing.T, source, destination string) {
 	t.Helper()
-	if err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -93,16 +93,20 @@ func copyTestTree(t *testing.T, source, destination string) {
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, contents, 0o644)
-	}); err != nil {
+		return copyFile(path, target)
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 }
 
+func copyFile(source, destination string) error {
+	contents, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(destination, contents, 0o644)
+}
 func runTestCommand(t *testing.T, directory, executable string, arguments ...string) string {
 	t.Helper()
 	command := exec.Command(executable, arguments...)

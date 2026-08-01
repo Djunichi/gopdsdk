@@ -8,48 +8,43 @@ import (
 	"github.com/Djunichi/gopdsdk/playdate"
 )
 
-func TestStateAndDrawPlan(t *testing.T) {
-	got := Step(State{PlayerX: 100, TargetX: 124}, Frame{CrankDelta: 16, DeltaSeconds: .25, Pressed: playdate.ButtonRight | playdate.ButtonA})
-	want := State{PlayerX: 124, TargetX: 115, Score: 1, Elapsed: .25}
+func TestStepUsesCrankButtonsDeltaAndCatch(t *testing.T) {
+	got := Step(State{PlayerX: 100, TargetX: 124}, Frame{CrankDelta: 16, DeltaSeconds: 0.25, Pressed: playdate.ButtonRight | playdate.ButtonA})
+	want := State{PlayerX: 124, TargetX: 115, Score: 1, Elapsed: 0.25}
 	if got != want {
 		t.Fatalf("Step() = %+v, want %+v", got, want)
 	}
-	got = Step(State{PlayerX: 359, Elapsed: 59.5}, Frame{CrankDelta: 100, DeltaSeconds: .5})
-	if got.PlayerX != 360 || got.Elapsed != 60 || got.Phase != complete {
-		t.Fatalf("soak state = %+v", got)
+}
+
+func TestStepClampsAndCompletesSixtySecondSoak(t *testing.T) {
+	got := Step(State{PlayerX: 359, TargetX: 10, Elapsed: 59.5}, Frame{CrankDelta: 100, DeltaSeconds: 0.5})
+	if got.PlayerX != 360 || got.Phase != complete || got.Elapsed != 60 {
+		t.Fatalf("Step() = %+v", got)
 	}
-	plan := DrawPlan(State{PlayerX: 42.9, TargetX: 123, Score: 2, Elapsed: 60, Phase: complete})
-	wantPlan := []DrawCommand{{drawText, "P1.3 CRANK CATCH", 12, 8}, {drawText, "A:catch B:reset d-pad:nudge", 12, 30}, {drawText, "Score:2  PASS 60.0/60s", 12, 52}, {drawTarget, "", 123, 112}, {drawPlayer, "", 42, 184}}
-	if !reflect.DeepEqual(plan, wantPlan) {
-		t.Fatalf("DrawPlan() = %#v", plan)
+	if after := Step(got, Frame{CrankDelta: -100, DeltaSeconds: 1}); after != got {
+		t.Fatalf("complete state changed: %+v", after)
 	}
 }
 
-func TestResetAndLifecycleState(t *testing.T) {
+func TestDrawPlanIsDeterministic(t *testing.T) {
+	state := State{PlayerX: 42.9, TargetX: 123, Score: 2, Elapsed: 60, Phase: complete}
+	want := []DrawCommand{{drawText, "P1.3 CRANK CATCH", 12, 8}, {drawText, "A:catch B:reset d-pad:nudge", 12, 30}, {drawText, "Score:2  PASS 60.0/60s", 12, 52}, {drawTarget, "", 123, 112}, {drawPlayer, "", 42, 184}}
+	if got := DrawPlan(state); !reflect.DeepEqual(got, want) {
+		t.Fatalf("DrawPlan() = %#v, want %#v", got, want)
+	}
+}
+
+func TestButtonBResetsState(t *testing.T) {
 	changed := State{PlayerX: 42, TargetX: 99, Score: 7, Elapsed: 12}
 	if got := Step(changed, Frame{Pressed: playdate.ButtonB}); got != initialState() {
 		t.Fatalf("reset = %+v", got)
-	}
-	g := New().(*game)
-	if err := g.HandleLifecycle(&context{}, playdate.LifecyclePause); err != nil {
-		t.Fatal(err)
-	}
-	before := g.state
-	g.state = Step(g.state, Frame{CrankDelta: 20, DeltaSeconds: 1})
-	if g.state != before {
-		t.Fatalf("paused state changed: %+v", g.state)
-	}
-	if err := g.HandleLifecycle(&context{}, playdate.LifecycleResume); err != nil {
-		t.Fatal(err)
-	}
-	if g.state.Phase != playing {
-		t.Fatalf("phase = %v", g.state.Phase)
 	}
 }
 
 type bitmap struct {
 	name       string
 	operations *[]string
+	closeErr   error
 }
 
 func (*bitmap) Width() (int, error)       { return 16, nil }
@@ -58,7 +53,7 @@ func (*bitmap) Clear() error              { return nil }
 func (*bitmap) Fill(playdate.Color) error { return nil }
 func (b *bitmap) Close() error {
 	*b.operations = append(*b.operations, "close:"+b.name)
-	return nil
+	return b.closeErr
 }
 
 type context struct {
@@ -87,7 +82,7 @@ func (c *context) DrawBitmap(value playdate.Bitmap, x, y int) error {
 }
 func (*context) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
 
-func TestAdapterCleanupAndRollback(t *testing.T) {
+func TestGameExecutesPlanAndClosesOnce(t *testing.T) {
 	c := &context{input: playdate.Input{CrankDelta: 8, DeltaSeconds: 1}}
 	g := New().(*game)
 	if err := g.Init(c); err != nil {
@@ -104,14 +99,36 @@ func TestAdapterCleanupAndRollback(t *testing.T) {
 	}
 	want := []string{"load:images/player", "load:images/target", "clear", "text:P1.3 CRANK CATCH", "text:A:catch B:reset d-pad:nudge", "text:Score:0  PLAY 1.0/60s", "draw:images/target", "draw:images/player", "close:images/player", "close:images/target"}
 	if !reflect.DeepEqual(c.operations, want) {
-		t.Fatalf("operations = %v", c.operations)
+		t.Fatalf("operations = %v, want %v", c.operations, want)
 	}
+}
 
-	rollback := &context{loadErrorAt: 2}
-	if err := New().Init(rollback); err == nil {
+func TestInitRollsBackFirstBitmap(t *testing.T) {
+	c := &context{loadErrorAt: 2}
+	if err := New().Init(c); err == nil {
 		t.Fatal("Init() succeeded")
 	}
-	if want := []string{"load:images/player", "load:images/target", "close:images/player"}; !reflect.DeepEqual(rollback.operations, want) {
-		t.Fatalf("rollback = %v", rollback.operations)
+	want := []string{"load:images/player", "load:images/target", "close:images/player"}
+	if !reflect.DeepEqual(c.operations, want) {
+		t.Fatalf("operations = %v, want %v", c.operations, want)
+	}
+}
+
+func TestLifecyclePausesGameplay(t *testing.T) {
+	g := New().(*game)
+	c := &context{}
+	if err := g.HandleLifecycle(c, playdate.LifecyclePause); err != nil {
+		t.Fatal(err)
+	}
+	before := g.state
+	g.state = Step(g.state, Frame{CrankDelta: 20, DeltaSeconds: 1})
+	if g.state != before {
+		t.Fatalf("paused state changed: %+v", g.state)
+	}
+	if err := g.HandleLifecycle(c, playdate.LifecycleResume); err != nil {
+		t.Fatal(err)
+	}
+	if g.state.Phase != playing {
+		t.Fatalf("phase = %v", g.state.Phase)
 	}
 }

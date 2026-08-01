@@ -8,7 +8,11 @@ import (
 	"github.com/Djunichi/gopdsdk/playdate"
 )
 
-const soakSeconds = float32(60)
+const (
+	playerAsset = "images/player"
+	targetAsset = "images/target"
+	soakSeconds = float32(60)
+)
 
 type phase uint8
 
@@ -29,8 +33,9 @@ type State struct {
 
 // Frame contains the gameplay-relevant part of one input snapshot.
 type Frame struct {
-	CrankDelta, DeltaSeconds float32
-	Pressed                  playdate.Buttons
+	CrankDelta   float32
+	DeltaSeconds float32
+	Pressed      playdate.Buttons
 }
 
 // Step advances gameplay without runtime or graphics dependencies.
@@ -123,12 +128,12 @@ func New() playdate.Game { return &game{state: initialState()} }
 func initialState() State { return State{PlayerX: 184, TargetX: 184} }
 
 func (g *game) Init(context playdate.Context) error {
-	player, err := context.LoadBitmap("images/player")
+	player, err := context.LoadBitmap(playerAsset)
 	if err != nil {
 		return err
 	}
 	g.player = player
-	target, err := context.LoadBitmap("images/target")
+	target, err := context.LoadBitmap(targetAsset)
 	if err != nil {
 		return errors.Join(err, g.close())
 	}
