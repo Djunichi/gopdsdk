@@ -225,6 +225,25 @@ and lifecycle sequences to this same game implementation.
 
 ## P1.2 bitmap acceptance
 
+Application packages keep source assets below a dedicated `resources`
+directory. Its contents become the PDX resource root:
+
+```text
+game/
+  game.go
+  game_test.go
+  pdxinfo
+  resources/
+    images/
+    audio/
+    fonts/
+    data/
+```
+
+For example, `resources/images/player.png` is compiled into the PDX as
+`images/player.pdi` and loaded with `LoadBitmap("images/player")`. Files outside
+`resources` are never copied into the package.
+
 The `examples/bitmap` game loads a packaged 64x64 bitmap, creates and fills an
 owned bitmap, draws both bitmaps, draws a scaled copy, reports the loaded
 dimensions, and closes both resources on termination. Run the same package on

@@ -7,17 +7,27 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
-// Stage copies non-Go application resources from applicationDir into sourceDir.
-// The caller writes the authoritative pdxinfo separately.
+// Stage copies the contents of applicationDir/resources into sourceDir. A
+// missing resources directory is valid. The caller stages pdxinfo separately.
 func Stage(applicationDir, sourceDir string) error {
-	return filepath.WalkDir(applicationDir, func(path string, entry fs.DirEntry, walkErr error) error {
+	resourcesDir := filepath.Join(applicationDir, "resources")
+	info, err := os.Stat(resourcesDir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("inspect PDX resources: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("inspect PDX resources: %s is not a directory", resourcesDir)
+	}
+	return filepath.WalkDir(resourcesDir, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		relative, err := filepath.Rel(applicationDir, path)
+		relative, err := filepath.Rel(resourcesDir, path)
 		if err != nil || relative == "." {
 			return err
 		}
@@ -25,9 +35,6 @@ func Stage(applicationDir, sourceDir string) error {
 			return fmt.Errorf("stage PDX resources: symbolic link is unsupported: %s", relative)
 		}
 		if entry.IsDir() {
-			return nil
-		}
-		if excluded(relative) {
 			return nil
 		}
 		destination := filepath.Join(sourceDir, relative)
@@ -39,13 +46,6 @@ func Stage(applicationDir, sourceDir string) error {
 		}
 		return nil
 	})
-}
-
-func excluded(relative string) bool {
-	name := filepath.Base(relative)
-	return strings.EqualFold(filepath.Ext(name), ".go") ||
-		strings.EqualFold(name, "go.mod") || strings.EqualFold(name, "go.sum") ||
-		strings.EqualFold(name, "pdxinfo")
 }
 
 func copyFile(source, destination string) error {
