@@ -34,3 +34,5 @@ dependency is needed.
 Verification claims must name their actual level: unit, external-consumer CLI,
 native CI, SDK integration, or physical device. CI, cross-compilation, dry-runs,
 and Docker do not prove SDK, Simulator, USB, or hardware readiness.
+Physical-device acceptance requires a connected Playdate. Check the post-run
+crashlog only when the user explicitly requests it.

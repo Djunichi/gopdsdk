@@ -137,17 +137,28 @@ const LifecyclePause LifecycleEvent
 const LifecycleResume LifecycleEvent
 const LifecycleTerminate LifecycleEvent
 const LifecycleUnlock LifecycleEvent
+func (*Animation).Bitmap() (Bitmap, error)
+func (*Animation).Frame() int
+func (*Animation).Pause()
+func (*Animation).Paused() bool
+func (*Animation).Resume()
+func (*Animation).SetFixedFrame(frame int) error
+func (*Animation).Update(deltaSeconds float32)
+func (*Animation).UseDeltaTime()
 func (BitmapLoadError).Error() string
 func (Buttons).Has(requested Buttons) bool
+func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
+type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
 type BitmapLoadError string
+type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Buttons uint8
 type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
 type CollisionResponse uint8
 type Color uint8
 type Context interface{System; Graphics; InputReader; Sprites}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
-type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); NewBitmap(width int, height int) (Bitmap, error)}
+type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
 type LifecycleEvent uint8
@@ -158,12 +169,16 @@ type Rect struct{X float32; Y float32; Width float32; Height float32}
 type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
+var ErrAnimationConfig error
 var ErrBitmapBorrowed error
 var ErrBitmapClosed error
 var ErrBitmapColor error
 var ErrBitmapCreate error
+var ErrBitmapFrameRange error
 var ErrBitmapScale error
 var ErrBitmapSize error
+var ErrBitmapTableBorrowed error
+var ErrBitmapTableClosed error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error

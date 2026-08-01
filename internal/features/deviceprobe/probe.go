@@ -608,6 +608,12 @@ func bridgeFrameDeltaBits() uint32
 
 //go:linkname bridgeLoadBitmap bridgeLoadBitmap
 func bridgeLoadBitmap(path *byte, message *uintptr) uintptr
+//go:linkname bridgeLoadBitmapTable bridgeLoadBitmapTable
+func bridgeLoadBitmapTable(path *byte, message *uintptr) uintptr
+//go:linkname bridgeBitmapTableFrame bridgeBitmapTableFrame
+func bridgeBitmapTableFrame(table uintptr, index int32) uintptr
+//go:linkname bridgeFreeBitmapTable bridgeFreeBitmapTable
+func bridgeFreeBitmapTable(table uintptr)
 //go:linkname bridgeNewBitmap bridgeNewBitmap
 func bridgeNewBitmap(width, height int32) uintptr
 //go:linkname bridgeFreeBitmap bridgeFreeBitmap
@@ -684,12 +690,22 @@ var bitmapDriver = sdkRuntime.BitmapDriver{
 	Fill: func(handle uintptr, color sdkPlaydate.Color) { bridgeFillBitmap(handle, int32(color)) },
 	Free: bridgeFreeBitmap,
 }
+var bitmapTableDriver = sdkRuntime.BitmapTableDriver{
+	Frame: func(table uintptr, index int) uintptr { return bridgeBitmapTableFrame(table, int32(index)) },
+	Free: bridgeFreeBitmapTable,
+}
 
 func (playdateContext) LoadBitmap(path string) (sdkPlaydate.Bitmap, error) {
 	terminated := path + "\x00"; var message uintptr
 	handle := bridgeLoadBitmap(unsafe.StringData(terminated), &message)
 	if handle == 0 { if message != 0 { return nil, sdkPlaydate.BitmapLoadError(cString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
 	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) LoadBitmapTable(path string) (sdkPlaydate.BitmapTable, error) {
+	terminated := path + "\x00"; var message uintptr
+	handle := bridgeLoadBitmapTable(unsafe.StringData(terminated), &message)
+	if handle == 0 { if message != 0 { return nil, sdkPlaydate.BitmapLoadError(cString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmapTable(handle, bitmapTableDriver, bitmapDriver), nil
 }
 func cString(pointer uintptr) string { length := 0; for *(*byte)(unsafe.Pointer(pointer + uintptr(length))) != 0 { length++ }; return unsafe.String((*byte)(unsafe.Pointer(pointer)), length) }
 func (playdateContext) NewBitmap(width, height int) (sdkPlaydate.Bitmap, error) {
@@ -871,6 +887,9 @@ uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->sys
 int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
 uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
 uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmap(path, error); }
+uintptr_t bridgeLoadBitmapTable(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmapTable(path, error); }
+uintptr_t bridgeBitmapTableFrame(uintptr_t table, int32_t index) { return (uintptr_t)activePlaydate->graphics->getTableBitmap((LCDBitmapTable*)table, index); }
+void bridgeFreeBitmapTable(uintptr_t table) { activePlaydate->graphics->freeBitmapTable((LCDBitmapTable*)table); }
 uintptr_t bridgeNewBitmap(int32_t width, int32_t height) { return (uintptr_t)activePlaydate->graphics->newBitmap(width, height, kColorClear); }
 void bridgeFreeBitmap(uintptr_t bitmap) { activePlaydate->graphics->freeBitmap((LCDBitmap*)bitmap); }
 void bridgeBitmapSize(uintptr_t bitmap, int32_t* width, int32_t* height) { int nativeWidth, nativeHeight; activePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, &nativeWidth, &nativeHeight, NULL, NULL, NULL); *width = nativeWidth; *height = nativeHeight; }
@@ -977,6 +996,9 @@ uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->sys
 int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
 uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
 uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmap(path, error); }
+uintptr_t bridgeLoadBitmapTable(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmapTable(path, error); }
+uintptr_t bridgeBitmapTableFrame(uintptr_t table, int32_t index) { return (uintptr_t)activePlaydate->graphics->getTableBitmap((LCDBitmapTable*)table, index); }
+void bridgeFreeBitmapTable(uintptr_t table) { activePlaydate->graphics->freeBitmapTable((LCDBitmapTable*)table); }
 uintptr_t bridgeNewBitmap(int32_t width, int32_t height) { return (uintptr_t)activePlaydate->graphics->newBitmap(width, height, kColorClear); }
 void bridgeFreeBitmap(uintptr_t bitmap) { activePlaydate->graphics->freeBitmap((LCDBitmap*)bitmap); }
 void bridgeBitmapSize(uintptr_t bitmap, int32_t* width, int32_t* height) { int nativeWidth, nativeHeight; activePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, &nativeWidth, &nativeHeight, NULL, NULL, NULL); *width = nativeWidth; *height = nativeHeight; }

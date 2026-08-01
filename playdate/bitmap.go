@@ -8,3 +8,10 @@ type Bitmap interface {
 	Fill(Color) error
 	Close() error
 }
+
+// BitmapTable owns a Playdate bitmap table. Frames borrowed from it remain
+// valid only until the table is closed.
+type BitmapTable interface {
+	Frame(index int) (Bitmap, error)
+	Close() error
+}

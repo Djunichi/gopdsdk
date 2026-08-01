@@ -37,3 +37,6 @@ docs/
 
 # Local build caches
 .cache/
+
+# Generated SDK packages and Simulator diagnostics
+build/

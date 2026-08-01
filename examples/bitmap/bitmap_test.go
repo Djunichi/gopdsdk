@@ -53,6 +53,7 @@ func (c *testContext) LoadBitmap(path string) (playdate.Bitmap, error) {
 	c.operations = append(c.operations, "load:"+path)
 	return c.loaded, nil
 }
+func (*testContext) LoadBitmapTable(string) (playdate.BitmapTable, error) { return nil, nil }
 func (c *testContext) NewBitmap(width, height int) (playdate.Bitmap, error) {
 	c.operations = append(c.operations, "new:48x48")
 	return c.created, nil
