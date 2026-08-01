@@ -1,0 +1,6 @@
+name=gopdsdk Fonts UI
+author=gopdsdk
+description=P2.5 custom font, HUD, pause, game-over, and restart acceptance
+bundleID=com.gopdsdk.examples.fontsui
+version=1.0.0
+buildNumber=1

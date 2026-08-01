@@ -350,6 +350,26 @@ repeated A playback, pause/resume, and a 10-minute physical-device soak with
 stable memory and no new device log entries. Synthesis, microphone input, and
 the full Playdate sound binding remain out of scope.
 
+## P2.5 fonts and game UI candidate
+
+`examples/fontsui` loads `resources/fonts/gopdsdk-ui.fnt` as `fonts/gopdsdk-ui`, draws
+all UI text with that selected font, and centers overlays from native text
+measurements. Its pure `LayoutPlan` produces stable HUD, score, pause, and
+game-over commands; A increments score or restarts after game over, B ends the
+run, and lifecycle pause/resume selects the pause screen. The owned font is
+closed on termination.
+
+Run the same candidate on either target with:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/fontsui
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/fontsui
+```
+
+The API and adapters are unit-tested. Windows Simulator and physical-device
+visual acceptance passed with matching custom-font HUD, score, pause,
+game-over, and restart screens. A longer device memory soak remains unverified.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -381,5 +401,6 @@ toolchain without pretending to verify GUI or USB behavior.
 - Device `defer`/`recover` is rejected because TinyGo 0.41.1 accesses an ARM
   system register unavailable to Playdate applications through that path.
 - macOS and Linux official SDK integration remains unverified.
-- Graphics currently cover clear/text and the P1.2 bitmap slice. Sprites,
-  animation, fonts, arbitrary framebuffer access, and audio remain unavailable.
+- Graphics cover clear/text, bitmaps, sprites, animation, and custom fonts;
+  arbitrary framebuffer access remains unavailable. Audio covers the narrow
+  P2.4 sound-effect and file-player slice.

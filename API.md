@@ -99,6 +99,20 @@ return `AudioLoadError`.
 This vertical API intentionally excludes synthesis, microphone input, and the
 rest of the Playdate sound binding.
 
+## Fonts and deterministic UI
+
+Native contexts also implement the narrow `FontGraphics` capability. Assert it
+only in games that need custom fonts, load packaged `resources/fonts/name.fnt`
+as `fonts/name`, and close every successful `Font` exactly once. `TextWidth`
+and `Height` use the same native font metrics as drawing; closed fonts return
+`ErrFontClosed`, and foreign handles return `ErrFontInvalid`.
+
+Keep game UI as state plus a deterministic draw plan: measure strings, derive
+coordinates, then execute `DrawTextFont` commands. HUD, pause, and game-over
+screens do not require a generic widget tree, focus model, event router, or
+layout engine. Add shared UI abstractions only after a second real game exposes
+the same repeated contract.
+
 ## Device Go subset
 
 The accepted device profile is sequential Go with TinyGo conservative GC,

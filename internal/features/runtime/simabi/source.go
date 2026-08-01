@@ -58,6 +58,11 @@ func renderGo(config Config) string {
 void bridgeRegisterUpdate(PlaydateAPI* playdate);
 void bridgeClear(void);
 void bridgeDrawText(const char* text, size_t length, int x, int y);
+uintptr_t bridgeLoadFont(const char* path, const char** error);
+void bridgeSetFont(uintptr_t font);
+int bridgeTextWidth(uintptr_t font, const char* text, size_t length);
+int bridgeFontHeight(uintptr_t font);
+void bridgeFreeFont(uintptr_t font);
 uint32_t bridgeCurrentTimeMilliseconds(void);
 uint32_t bridgeButtons(void);
 float bridgeCrankAngle(void);
@@ -170,6 +175,24 @@ func (playdateContext) DrawText(text string, x, y int) {
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
 	C.bridgeDrawText(cText, C.size_t(len(text)), C.int(x), C.int(y))
+}
+
+var fontDriver = sdkRuntime.FontDriver{
+	TextWidth: func(handle uintptr, text string) int { cText := C.CString(text); defer C.free(unsafe.Pointer(cText)); return int(C.bridgeTextWidth(C.uintptr_t(handle), cText, C.size_t(len(text)))) },
+	Height: func(handle uintptr) int { return int(C.bridgeFontHeight(C.uintptr_t(handle))) },
+	Free: func(handle uintptr) { C.bridgeFreeFont(C.uintptr_t(handle)) },
+}
+
+func (playdateContext) LoadFont(path string) (sdkPlaydate.Font, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); var message *C.char
+	handle := uintptr(C.bridgeLoadFont(cPath, (**C.char)(unsafe.Pointer(&message))))
+	if handle == 0 { if message != nil { return nil, sdkPlaydate.FontLoadError(C.GoString(message)) }; return nil, sdkPlaydate.FontLoadError("unknown error") }
+	return sdkRuntime.NewOwnedFont(handle, fontDriver), nil
+}
+func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int) error {
+	handle, err := sdkRuntime.FontHandle(font); if err != nil { return err }
+	C.bridgeSetFont(C.uintptr_t(handle)); cText := C.CString(text); defer C.free(unsafe.Pointer(cText))
+	C.bridgeDrawText(cText, C.size_t(len(text)), C.int(x), C.int(y)); return nil
 }
 
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
@@ -318,6 +341,12 @@ void bridgeDrawText(const char* text, size_t length, int x, int y)
 {
 	bridgePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
 }
+
+uintptr_t bridgeLoadFont(const char* path, const char** error) { return (uintptr_t)bridgePlaydate->graphics->loadFont(path, error); }
+void bridgeSetFont(uintptr_t font) { bridgePlaydate->graphics->setFont((LCDFont*)font); }
+int bridgeTextWidth(uintptr_t font, const char* text, size_t length) { return bridgePlaydate->graphics->getTextWidth((LCDFont*)font, text, length, kUTF8Encoding, 0); }
+int bridgeFontHeight(uintptr_t font) { return bridgePlaydate->graphics->getFontHeight((LCDFont*)font); }
+void bridgeFreeFont(uintptr_t font) { bridgePlaydate->system->realloc((void*)font, 0); }
 
 void bridgeClear(void)
 {
