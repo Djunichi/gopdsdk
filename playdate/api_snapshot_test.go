@@ -151,6 +151,8 @@ func (*Animation).UseDeltaTime()
 func (AudioLoadError).Error() string
 func (BitmapLoadError).Error() string
 func (Buttons).Has(requested Buttons) bool
+func (FontLoadError).Error() string
+func (FontLoadError).Is(target error) bool
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
@@ -164,6 +166,9 @@ type CollisionResponse uint8
 type Color uint8
 type Context interface{System; Graphics; InputReader; Sprites; Audio}
 type FilePlayer interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
+type Font interface{Close() error; Height() (int, error); TextWidth(text string) (int, error)}
+type FontGraphics interface{DrawTextFont(font Font, text string, x int, y int) error; LoadFont(path string) (Font, error)}
+type FontLoadError string
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
@@ -192,6 +197,9 @@ var ErrBitmapScale error
 var ErrBitmapSize error
 var ErrBitmapTableBorrowed error
 var ErrBitmapTableClosed error
+var ErrFontClosed error
+var ErrFontInvalid error
+var ErrFontLoad error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error

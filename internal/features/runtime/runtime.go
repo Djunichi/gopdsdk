@@ -42,6 +42,67 @@ var (
 	ErrInvalidBitmap = errors.New("bitmap handle was not created by this runtime")
 )
 
+// FontDriver contains platform operations for an owned native font.
+type FontDriver struct {
+	TextWidth func(uintptr, string) int
+	Height    func(uintptr) int
+	Free      func(uintptr)
+}
+
+type font struct {
+	handle uintptr
+	driver FontDriver
+	closed bool
+}
+
+// NewOwnedFont wraps a font returned by the Playdate loader.
+func NewOwnedFont(handle uintptr, driver FontDriver) playdate.Font {
+	return &font{handle: handle, driver: driver}
+}
+
+func (f *font) nativeHandle() (uintptr, error) {
+	if f == nil || f.closed || f.handle == 0 {
+		return 0, playdate.ErrFontClosed
+	}
+	return f.handle, nil
+}
+
+func (f *font) TextWidth(text string) (int, error) {
+	handle, err := f.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	return f.driver.TextWidth(handle, text), nil
+}
+
+func (f *font) Height() (int, error) {
+	handle, err := f.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	return f.driver.Height(handle), nil
+}
+
+func (f *font) Close() error {
+	handle, err := f.nativeHandle()
+	if err != nil {
+		return err
+	}
+	f.driver.Free(handle)
+	f.handle = 0
+	f.closed = true
+	return nil
+}
+
+// FontHandle validates and extracts a font created by this runtime.
+func FontHandle(value playdate.Font) (uintptr, error) {
+	f, ok := value.(*font)
+	if !ok {
+		return 0, playdate.ErrFontInvalid
+	}
+	return f.nativeHandle()
+}
+
 // AudioDriver contains the common native operations for either accepted player.
 type AudioDriver struct {
 	Play      func(uintptr) bool
@@ -553,6 +614,22 @@ type applicationContext struct {
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }
+
+func (context *applicationContext) LoadFont(path string) (playdate.Font, error) {
+	graphics, ok := context.Context.(playdate.FontGraphics)
+	if !ok {
+		return nil, playdate.ErrFontLoad
+	}
+	return graphics.LoadFont(path)
+}
+
+func (context *applicationContext) DrawTextFont(font playdate.Font, text string, x, y int) error {
+	graphics, ok := context.Context.(playdate.FontGraphics)
+	if !ok {
+		return playdate.ErrFontLoad
+	}
+	return graphics.DrawTextFont(font, text, x, y)
+}
 
 // NewApplication composes a public game with its platform context. beforeInit
 // runs immediately before the game's initialization callback when a platform

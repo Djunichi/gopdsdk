@@ -8,10 +8,48 @@ import (
 	"github.com/Djunichi/gopdsdk/playdate"
 )
 
+func TestOwnedFontMeasurementAndClose(t *testing.T) {
+	freed := uintptr(0)
+	font := NewOwnedFont(17, FontDriver{
+		TextWidth: func(handle uintptr, text string) int { return int(handle) + len(text) },
+		Height:    func(handle uintptr) int { return int(handle) },
+		Free:      func(handle uintptr) { freed = handle },
+	})
+	if width, err := font.TextWidth("HUD"); err != nil || width != 20 {
+		t.Fatalf("TextWidth = %d, %v", width, err)
+	}
+	if height, err := font.Height(); err != nil || height != 17 {
+		t.Fatalf("Height = %d, %v", height, err)
+	}
+	if err := font.Close(); err != nil || freed != 17 {
+		t.Fatalf("Close = %v, freed %d", err, freed)
+	}
+	if _, err := font.TextWidth("HUD"); !errors.Is(err, playdate.ErrFontClosed) {
+		t.Fatalf("closed TextWidth = %v", err)
+	}
+	if err := font.Close(); !errors.Is(err, playdate.ErrFontClosed) {
+		t.Fatalf("second Close = %v", err)
+	}
+}
+
+func TestFontHandleRejectsForeignFont(t *testing.T) {
+	if _, err := FontHandle(foreignFont{}); !errors.Is(err, playdate.ErrFontInvalid) {
+		t.Fatalf("FontHandle = %v", err)
+	}
+}
+
+type foreignFont struct{}
+
+func (foreignFont) TextWidth(string) (int, error) { return 0, nil }
+func (foreignFont) Height() (int, error)          { return 0, nil }
+func (foreignFont) Close() error                  { return nil }
+
 type testContext struct{}
 
 func (testContext) Clear()                                                             {}
 func (testContext) DrawText(string, int, int)                                          {}
+func (testContext) LoadFont(string) (playdate.Font, error)                             { return foreignFont{}, nil }
+func (testContext) DrawTextFont(playdate.Font, string, int, int) error                 { return nil }
 func (testContext) CurrentTimeMilliseconds() uint32                                    { return 0 }
 func (testContext) Input() playdate.Input                                              { return playdate.Input{} }
 func (testContext) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
@@ -390,6 +428,13 @@ func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 	application, err := NewApplication(testGame{
 		init: func(got playdate.Context) error {
 			calls = append(calls, "init")
+			fonts, ok := got.(playdate.FontGraphics)
+			if !ok {
+				return errors.New("font graphics not forwarded")
+			}
+			if _, fontErr := fonts.LoadFont("fonts/test"); fontErr != nil {
+				return fontErr
+			}
 			return nil
 		},
 		update: func(got playdate.Context) (bool, error) {

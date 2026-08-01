@@ -42,6 +42,10 @@ physical hardware work on that host. Docker does not promote those levels.
   repeated playback, state, volume, lifecycle pause/resume, rollback, and close
   are unit-tested. Simulator/device parity and the 10-minute physical-device
   soak remain acceptance work until run and observed.
+- P2.5 candidate: custom-font loading, selected-font drawing, native text
+  measurement, explicit close, and deterministic HUD/pause/game-over/restart
+  plans are unit-tested. Windows Simulator/device visual parity passed; a
+  longer physical-device memory soak remains acceptance work.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
