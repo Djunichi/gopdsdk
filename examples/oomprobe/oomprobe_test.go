@@ -1,12 +1,17 @@
 package oomprobe
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Djunichi/gopdsdk/playdate"
+)
 
 type testContext struct{}
 
 func (testContext) Clear()                          {}
 func (testContext) DrawText(string, int, int)       {}
 func (testContext) CurrentTimeMilliseconds() uint32 { return 0 }
+func (testContext) Input() playdate.Input           { return playdate.Input{} }
 
 func TestUpdateRetainsEveryAllocatedBlock(t *testing.T) {
 	game := &game{}

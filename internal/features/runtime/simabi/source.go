@@ -17,6 +17,7 @@ const (
 type Config struct {
 	APIHeader         string
 	RuntimeImport     string
+	PlaydateImport    string
 	ApplicationImport string
 }
 
@@ -34,6 +35,7 @@ func Render(config Config) (Sources, error) {
 	}{
 		{name: "APIHeader", value: config.APIHeader},
 		{name: "RuntimeImport", value: config.RuntimeImport},
+		{name: "PlaydateImport", value: config.PlaydateImport},
 		{name: "ApplicationImport", value: config.ApplicationImport},
 	} {
 		if field.value == "" {
@@ -57,12 +59,18 @@ void bridgeRegisterUpdate(PlaydateAPI* playdate);
 void bridgeClear(void);
 void bridgeDrawText(const char* text, size_t length, int x, int y);
 uint32_t bridgeCurrentTimeMilliseconds(void);
+uint32_t bridgeButtons(void);
+float bridgeCrankAngle(void);
+float bridgeCrankDelta(void);
+int bridgeCrankDocked(void);
+float bridgeFrameDelta(void);
 */
 import "C"
 import (
 	"unsafe"
 
 	sdkRuntime %q
+	sdkPlaydate %q
 	app %q
 )
 
@@ -96,7 +104,11 @@ func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t
 
 //export goUpdate
 func goUpdate() C.int {
-	refresh, err := application.Update()
+	refresh, err := application.Update(sdkRuntime.RawInput{
+		Buttons: sdkPlaydate.Buttons(C.bridgeButtons()), CrankAngle: float32(C.bridgeCrankAngle()),
+		CrankDelta: float32(C.bridgeCrankDelta()), CrankDocked: C.bridgeCrankDocked() != 0,
+		DeltaSeconds: float32(C.bridgeFrameDelta()),
+	})
 	if err != nil {
 		return 0
 	}
@@ -117,10 +129,13 @@ func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return uint32(C.bridgeCurrentTimeMilliseconds())
 }
 
+func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
+
 func main() {}
 `,
 		filepath.ToSlash(config.APIHeader),
 		config.RuntimeImport,
+		config.PlaydateImport,
 		config.ApplicationImport,
 	)
 }
@@ -149,6 +164,7 @@ void bridgeRegisterUpdate(PlaydateAPI* playdate)
 {
 	bridgePlaydate = playdate;
 	playdate->system->setUpdateCallback(bridgeUpdate, NULL);
+	playdate->system->resetElapsedTime();
 }
 
 void bridgeDrawText(const char* text, size_t length, int x, int y)
@@ -164,6 +180,24 @@ void bridgeClear(void)
 uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return bridgePlaydate->system->getCurrentTimeMilliseconds();
+}
+
+uint32_t bridgeButtons(void)
+{
+	PDButtons current = 0;
+	bridgePlaydate->system->getButtonState(&current, NULL, NULL);
+	return (uint32_t)current;
+}
+
+float bridgeCrankAngle(void) { return bridgePlaydate->system->getCrankAngle(); }
+float bridgeCrankDelta(void) { return bridgePlaydate->system->getCrankChange(); }
+int bridgeCrankDocked(void) { return bridgePlaydate->system->isCrankDocked(); }
+
+float bridgeFrameDelta(void)
+{
+	float elapsed = bridgePlaydate->system->getElapsedTime();
+	bridgePlaydate->system->resetElapsedTime();
+	return elapsed;
 }
 `, filepath.ToSlash(apiHeader))
 }

@@ -12,6 +12,7 @@ func TestRender(t *testing.T) {
 	sources, err := Render(Config{
 		APIHeader:         header,
 		RuntimeImport:     "github.com/Djunichi/gopdsdk/internal/features/runtime",
+		PlaydateImport:    "github.com/Djunichi/gopdsdk/playdate",
 		ApplicationImport: "github.com/Djunichi/gopdsdk/probe/app",
 	})
 	if err != nil {
@@ -23,6 +24,11 @@ func TestRender(t *testing.T) {
 		"sdkRuntime.NewApplication(app.New(), gameContext",
 		"application.Handle",
 		"application.Update",
+		"sdkPlaydate.Buttons(C.bridgeButtons())",
+		"C.bridgeCrankAngle",
+		"C.bridgeCrankDelta",
+		"C.bridgeCrankDocked",
+		"C.bridgeFrameDelta",
 		"C.bridgeClear",
 		"C.bridgeDrawText",
 		"C.bridgeCurrentTimeMilliseconds",
@@ -37,6 +43,12 @@ func TestRender(t *testing.T) {
 		"graphics->clear(kColorWhite)",
 		"drawText(text, length, kUTF8Encoding, x, y)",
 		"system->getCurrentTimeMilliseconds()",
+		"system->getButtonState",
+		"system->getCrankAngle",
+		"system->getCrankChange",
+		"system->isCrankDocked",
+		"system->getElapsedTime",
+		"system->resetElapsedTime",
 	} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("C source does not contain %q:\n%s", want, sources.C)

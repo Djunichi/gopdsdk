@@ -25,7 +25,7 @@ func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 
 func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", `"example.com/game"`, "func main()"} {
+	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", "bridgeButtons", "bridgeCrankAngleBits", "bridgeCrankDeltaBits", "bridgeCrankDocked", "bridgeFrameDeltaBits", "float32FromBits", `"example.com/game"`, "func main()"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
@@ -76,7 +76,7 @@ func TestBootstrapReservesBoundedAlignedHeap(t *testing.T) {
 
 func TestBootstrapDelegatesUpdateAndGraphicsToGo(t *testing.T) {
 	for _, source := range []string{bootstrapSource, conservativeBootstrapSource} {
-		for _, want := range []string{"result = goEventHandler(playdate, event, arg);", "setUpdateCallback(bridgeUpdate, playdate)", "return goUpdate();", "void bridgeClear(void)", "void bridgeDrawText", "graphics->drawText", "bridgeCurrentTimeMilliseconds", "system->getCurrentTimeMilliseconds()"} {
+		for _, want := range []string{"result = goEventHandler(playdate, event, arg);", "setUpdateCallback(bridgeUpdate, playdate)", "return goUpdate();", "void bridgeClear(void)", "void bridgeDrawText", "graphics->drawText", "bridgeCurrentTimeMilliseconds", "system->getCurrentTimeMilliseconds()", "bridgeButtons", "getButtonState", "bridgeFloatBits", "bridgeCrankAngleBits", "getCrankAngle", "bridgeCrankDeltaBits", "getCrankChange", "bridgeCrankDocked", "isCrankDocked", "bridgeFrameDeltaBits", "getElapsedTime", "resetElapsedTime"} {
 			if !strings.Contains(source, want) {
 				t.Errorf("bootstrap source does not contain %q", want)
 			}

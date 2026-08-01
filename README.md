@@ -199,6 +199,25 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/hello
 The command leaves the Simulator process running. `Process.Kill` is used only by
 the automated probe command.
 
+## P1.1 lifecycle and input parity probe
+
+The `examples/lifecycleinput` game exercises the same public lifecycle and
+per-frame input snapshots on Simulator and device. Build or run that single
+package on both targets:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/lifecycleinput
+go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK ./examples/lifecycleinput
+```
+
+The display reports the last pause/resume, lock/unlock, terminate, or low-power
+event; current, pressed, released, and held button masks; crank angle and
+change; dock transitions; and frame delta. The pure-Go tests supply fixed input
+samples to this same game implementation. Physical parity still requires
+exercising the controls and lifecycle transitions on a connected Playdate,
+waiting for the on-screen `Soak:DONE` marker after 60 seconds, and then checking
+that no new crash-log entry was created.
+
 ## Development and CI
 
 Run the repository checks with:

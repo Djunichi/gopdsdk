@@ -574,6 +574,7 @@ import (
 	"unsafe"
 
 	sdkRuntime %q
+	sdkPlaydate %q
 	app %q
 )
 
@@ -586,6 +587,23 @@ func bridgeDrawText(text *byte, length uintptr, x, y int32)
 //go:linkname bridgeCurrentTimeMilliseconds bridgeCurrentTimeMilliseconds
 func bridgeCurrentTimeMilliseconds() uint32
 
+//go:linkname bridgeButtons bridgeButtons
+func bridgeButtons() uint32
+
+//go:linkname bridgeCrankAngleBits bridgeCrankAngleBits
+func bridgeCrankAngleBits() uint32
+
+//go:linkname bridgeCrankDeltaBits bridgeCrankDeltaBits
+func bridgeCrankDeltaBits() uint32
+
+//go:linkname bridgeCrankDocked bridgeCrankDocked
+func bridgeCrankDocked() int32
+
+//go:linkname bridgeFrameDeltaBits bridgeFrameDeltaBits
+func bridgeFrameDeltaBits() uint32
+
+func float32FromBits(bits uint32) float32 { return *(*float32)(unsafe.Pointer(&bits)) }
+
 type playdateContext struct{}
 
 func (playdateContext) Clear() { bridgeClear() }
@@ -597,6 +615,8 @@ func (playdateContext) DrawText(text string, x, y int) {
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return bridgeCurrentTimeMilliseconds()
 }
+
+func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
 
 var gameContext playdateContext
 var application = mustApplication()
@@ -619,7 +639,11 @@ func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
 
 //export goUpdate
 func goUpdate() int32 {
-	refresh, err := application.Update()
+	refresh, err := application.Update(sdkRuntime.RawInput{
+		Buttons: sdkPlaydate.Buttons(bridgeButtons()), CrankAngle: float32FromBits(bridgeCrankAngleBits()),
+		CrankDelta: float32FromBits(bridgeCrankDeltaBits()), CrankDocked: bridgeCrankDocked() != 0,
+		DeltaSeconds: float32FromBits(bridgeFrameDeltaBits()),
+	})
 	if err != nil {
 		return 0
 	}
@@ -627,7 +651,7 @@ func goUpdate() int32 {
 }
 
 func main() {}
-`, modulePath+"/internal/features/runtime", applicationImport)
+`, modulePath+"/internal/features/runtime", modulePath+"/playdate", applicationImport)
 }
 
 type applicationInfo struct {
@@ -665,6 +689,7 @@ _Static_assert(kEventMirrorEnded <= INT32_MAX, "PDSystemEvent values must fit in
 _Static_assert(sizeof(uint32_t) == 4, "event argument must be 32-bit");
 _Static_assert(sizeof(uintptr_t) == 4, "device pointers must be 32-bit");
 _Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
+_Static_assert(sizeof(float) == 4, "Playdate float samples must be IEEE-754 binary32 slots");
 
 extern void runtimeRun(void) __asm__("runtime.run");
 extern int goEventHandler(PlaydateAPI*, PDSystemEvent, uint32_t);
@@ -696,7 +721,10 @@ int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
     }
 	result = goEventHandler(playdate, event, arg);
 	if (event == kEventInit && result == 0)
+	{
 		playdate->system->setUpdateCallback(bridgeUpdate, playdate);
+		playdate->system->resetElapsedTime();
+	}
 	return result;
 }
 
@@ -720,6 +748,13 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return activePlaydate->system->getCurrentTimeMilliseconds();
 }
+
+uint32_t bridgeButtons(void) { PDButtons value = 0; activePlaydate->system->getButtonState(&value, NULL, NULL); return (uint32_t)value; }
+static uint32_t bridgeFloatBits(float value) { union { float value; uint32_t bits; } conversion = { .value = value }; return conversion.bits; }
+uint32_t bridgeCrankAngleBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankAngle()); }
+uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankChange()); }
+int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
+uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
 `
 
 const conservativeBootstrapSource = `#include "pd_api.h"
@@ -729,6 +764,7 @@ _Static_assert(kEventMirrorEnded <= INT32_MAX, "PDSystemEvent values must fit in
 _Static_assert(sizeof(uint32_t) == 4, "event argument must be 32-bit");
 _Static_assert(sizeof(uintptr_t) == 4, "device pointers must be 32-bit");
 _Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
+_Static_assert(sizeof(float) == 4, "Playdate float samples must be IEEE-754 binary32 slots");
 
 extern void runtimeRun(void) __asm__("runtime.run");
 extern uintptr_t runtimeStackTop __asm__("runtime.stackTop");
@@ -761,7 +797,10 @@ int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
     }
 	result = goEventHandler(playdate, event, arg);
 	if (event == kEventInit && result == 0)
+	{
 		playdate->system->setUpdateCallback(bridgeUpdate, playdate);
+		playdate->system->resetElapsedTime();
+	}
 	return result;
 }
 
@@ -786,6 +825,13 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return activePlaydate->system->getCurrentTimeMilliseconds();
 }
+
+uint32_t bridgeButtons(void) { PDButtons value = 0; activePlaydate->system->getButtonState(&value, NULL, NULL); return (uint32_t)value; }
+static uint32_t bridgeFloatBits(float value) { union { float value; uint32_t bits; } conversion = { .value = value }; return conversion.bits; }
+uint32_t bridgeCrankAngleBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankAngle()); }
+uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankChange()); }
+int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
+uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
 `
 
 const targetSource = `{
