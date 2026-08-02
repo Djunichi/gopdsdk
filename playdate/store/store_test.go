@@ -152,16 +152,17 @@ func TestShortWriteDoesNotReplaceLastValue(t *testing.T) {
 
 func TestFailedMigrationPreservesOriginal(t *testing.T) {
 	files := newMemoryFileSystem()
+	want := errors.New("invalid legacy field")
 	files.data["save.bin"] = encode(1, []byte("original"))
 	before := append([]byte(nil), files.data["save.bin"]...)
 	value := newTestStore(t, files, Config{
 		Path: "save.bin", Version: 2, MaximumSize: 32,
 		Migrations: []VersionMigration{{From: 1, Migrate: func([]byte) ([]byte, error) {
-			return nil, errors.New("invalid legacy field")
+			return nil, want
 		}}},
 	})
 	_, err := value.Load()
-	if !errors.Is(err, ErrMigration) {
+	if !errors.Is(err, ErrMigration) || !errors.Is(err, want) {
 		t.Fatalf("Load() error = %v", err)
 	}
 	if !bytes.Equal(files.data["save.bin"], before) {

@@ -1,10 +1,6 @@
 // Package playdate defines the portable API shared by Playdate games and native adapters.
 package playdate
 
-import (
-	"errors"
-)
-
 // Camera identifies a world-space viewport in integer pixels.
 type Camera struct {
 	X, Y          int
@@ -56,6 +52,12 @@ type TileMap struct {
 type TileDrawStats struct {
 	Visited, Drawn int
 }
+
+type tileMapDrawError struct{ cause error }
+
+func (tileMapDrawError) Error() string         { return "tile map draw failed" }
+func (failure tileMapDrawError) Unwrap() error { return failure.cause }
+func (tileMapDrawError) Is(target error) bool  { return target == ErrTileMapDraw }
 
 // NewTileMap validates and copies a tile layer.
 func NewTileMap(config TileMapConfig) (*TileMap, error) {
@@ -109,7 +111,7 @@ func (tilemap *TileMap) Draw(graphics Graphics, bitmaps []Bitmap, camera Camera)
 				return stats, ErrTileMapBitmap
 			}
 			if err := graphics.DrawBitmap(bitmaps[index], column*tilemap.tileWidth-camera.X, row*tilemap.tileHeight-camera.Y); err != nil {
-				return stats, errors.Join(ErrTileMapDraw, err)
+				return stats, tileMapDrawError{cause: err}
 			}
 			stats.Drawn++
 		}

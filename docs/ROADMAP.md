@@ -1,6 +1,6 @@
 # Product roadmap
 
-Status: accepted direction after the `v0.3.0` release, updated 2026-08-02.
+Status: `v0.4.0` release candidate preparation, updated 2026-08-02.
 
 This document is the canonical high-level roadmap from the released `v0.3.0`
 baseline to `v1.0.0`. The detailed P0, P1, and P2 documents retain their
@@ -46,7 +46,7 @@ cross-build does not promote a capability to device-ready.
 | P1 | `v0.1.x` | Lifecycle, input, bitmap graphics, resources, device runtime | Complete |
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
-| P4 | `v0.4.0` | Persistence and Playdate system integration | Planned |
+| P4 | `v0.4.0` | Persistence and Playdate system integration | Release candidate; final gates pending |
 | P5 | `v0.5.0` | Advanced audio and music | Planned |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
@@ -368,7 +368,7 @@ directly over COM3 reached the native serial callback and displayed
 conservative-GC soak, memory-growth measurement, and post-run crashlog
 inspection remain unverified.
 
-### P4.6 — integrated multi-session acceptance game
+### P4.6 — integrated multi-session acceptance game — implemented, physical multi-session gates pending
 
 - Extend an external game using only public `gopdsdk` API to preserve settings
   and progress across normal restart, application update, failed write,
@@ -380,7 +380,17 @@ inspection remain unverified.
   physical-device multi-session gates; label every unrun durability or hardware
   scenario by its actual evidence level.
 
-### P4.7 — `v0.4.0` release
+Crank Caverns now persists settings, clears, best time, explicit checkpoints,
+and run score through four schema versions. Its title and pause menus expose
+continue, start-new, save, and load behavior; localized System Menu settings,
+battery status, and Launcher exit use only public capabilities. Portable tests
+cover failed writes, corrupt payloads, migration, reload, and new-run reset.
+Windows Simulator interaction, conservative-GC device build (277,524 bytes
+static RAM), USB installation, and device launch command passed on 2026-08-02.
+Physical cross-restart/update and injected-failure scenarios, soak, memory
+growth, and crashlog inspection remain unverified.
+
+### P4.7 — `v0.4.0` release — release candidate preparation
 
 - Review the exported persistence ownership, callback, migration, and recovery
   contracts.

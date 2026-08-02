@@ -4,6 +4,39 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
+## v0.4.0 - release candidate (2026-08-02)
+
+### Added
+
+- Owned Playdate filesystem operations and portable file-error categories.
+- `playdate/store` bounded versioned persistence with checksums, atomic
+  replacement, backup recovery, and stepwise migration.
+- Owned System Menu items, localized string lookup, accelerometer, power and
+  system-preference capabilities.
+- Optional bounded scoreboards and debug-message capabilities.
+- A P1-P4 Crank Caverns consumer with persisted settings, progress, score,
+  explicit save/load checkpoints, migrations, battery status, and Launcher
+  exit.
+
+### Changed
+
+- Tile-map draw failures retain both `ErrTileMapDraw` classification and their
+  underlying cause without `errors.Join`, keeping the device runtime sequential.
+- Store migration failures retain `ErrMigration` and the direct cause through
+  `errors.Is` without formatting arbitrary errors in device code.
+- Device validation distinguishes unsupported channel operations from
+  reflectlite-retained `runtime.chanLen`/`runtime.chanCap` query helpers.
+
+### Compatibility
+
+- The full Go test and vet suites pass on the Windows candidate checkout.
+- Crank Caverns passed Windows Simulator interaction, conservative-GC hard-
+  float device build at 277,524 bytes of static RAM, USB installation on COM3,
+  and the device launch command. Physical multi-session durability, soak,
+  memory-growth, crashlog, native CI, and post-tag proxy checks remain pending.
+- See [MIGRATING.md](MIGRATING.md) and [COMPATIBILITY.md](COMPATIBILITY.md) for
+  consumer guidance and evidence limits.
+
 ## v0.3.0 - 2026-08-02
 
 ### Added

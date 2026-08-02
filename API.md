@@ -1,6 +1,6 @@
 # Public API
 
-This document describes the public contract proposed for gopdsdk `v0.2.0`.
+This document describes the public contract proposed for gopdsdk `v0.4.0`.
 The module is still pre-v1: minor releases may make intentional breaking
 changes, which must be called out in release notes. Patch releases preserve the
 documented API and behavior.
@@ -178,6 +178,36 @@ coordinates, then execute `DrawTextFont` commands. HUD, pause, and game-over
 screens do not require a generic widget tree, focus model, event router, or
 layout engine. Add shared UI abstractions only after a second real game exposes
 the same repeated contract.
+
+## Filesystem and versioned persistence
+
+Games assert the optional `FileSystem` capability for owned files, metadata,
+non-recursive listing, and directory mutations. Paths are game-relative;
+read-source flags distinguish packaged resources from the Data directory.
+Every successful `OpenFile` result must be closed. Native failures are copied
+into `FileOperationError` and classify as `ErrFileIO`.
+
+The separate `playdate/store` package provides bounded checksummed envelopes,
+atomic temporary-file replacement, backup recovery, and explicit one-version
+migrations. Serialization and corrupt-save policy remain application-owned.
+Migration failures classify as `store.ErrMigration` and preserve their direct
+cause for `errors.Is`; callers must not parse error strings.
+
+## System integration
+
+`SystemMenu` owns at most three action, checkmark, or options items. Items retain
+their callback until removal, may be removed idempotently, and are cleaned up
+after termination. `Localization` exposes system language and copied `.strings`
+lookups; missing-key fallback remains game policy.
+
+`Accelerometer` requires explicit enablement and is disabled at termination.
+`PowerMonitor` and `SystemPreferences` expose read-only device/global state.
+`Launcher` remains the single exit-to-launcher capability.
+
+`Scoreboards` is an optional bounded asynchronous service, not general
+networking. `DebugMessages` is a separate bounded diagnostic FIFO for Simulator
+and serial input. Neither capability may re-enter game code from a native
+callback, and callbacks after termination are suppressed.
 
 ## Device Go subset
 

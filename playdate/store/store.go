@@ -20,16 +20,11 @@ type storeError string
 
 func (message storeError) Error() string { return string(message) }
 
-type migrationError struct{ detail string }
+type migrationError struct{ cause error }
 
-func (failure migrationError) Error() string {
-	if failure.detail == "" {
-		return ErrMigration.Error()
-	}
-	return ErrMigration.Error() + ": " + failure.detail
-}
-
-func (migrationError) Unwrap() error { return ErrMigration }
+func (migrationError) Error() string             { return "stored value migration failed" }
+func (migrationError) Unwrap() error             { return ErrMigration }
+func (failure migrationError) Is(err error) bool { return err == ErrMigration || err == failure.cause }
 
 var (
 	// ErrConfig indicates an invalid store path, version, size bound, or migration table.
@@ -223,10 +218,10 @@ func (store *Store) Load() ([]byte, error) {
 		}
 		payload, err = migration(append([]byte(nil), payload...))
 		if err != nil {
-			return nil, migrationError{detail: err.Error()}
+			return nil, migrationError{cause: err}
 		}
 		if uint64(len(payload)) > uint64(store.maximumSize) {
-			return nil, migrationError{detail: ErrTooLarge.Error()}
+			return nil, migrationError{cause: ErrTooLarge}
 		}
 		version++
 	}

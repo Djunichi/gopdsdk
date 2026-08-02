@@ -261,7 +261,7 @@ func TestDirectoryFileSizeSumsNestedRegularFiles(t *testing.T) {
 func TestUnsupportedRuntimeSymbolsRejectsUnsupportedSubset(t *testing.T) {
 	output := "00003ae0 t runtime.setupDeferFrame\n000056b8 t runtime._recover\n00006000 t runtime.chanSend\n00006100 t runtime.SetFinalizer\n00006200 t reflect.Value.Call\n00003298 t runtime/interrupt.In\n"
 	got := unsupportedRuntimeSymbols(output, buildplan.DeviceMemoryNone)
-	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime.chan", "runtime.SetFinalizer", "reflect.", "runtime/interrupt.In"}
+	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime.SetFinalizer", "reflect.", "runtime.chan", "runtime/interrupt.In"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("unsupportedRuntimeSymbols() = %v, want %v", got, want)
 	}
@@ -273,6 +273,9 @@ func TestUnsupportedRuntimeSymbolsRejectsUnsupportedSubset(t *testing.T) {
 	}
 	if got := unsupportedRuntimeSymbols("00000100 t internal/reflectlite.Value.Kind\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
 		t.Fatalf("unsupportedRuntimeSymbols(internal reflectlite) = %v, want none", got)
+	}
+	if got := unsupportedRuntimeSymbols("00000100 t runtime.chanLen\n00000110 t runtime.chanCap\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
+		t.Fatalf("unsupportedRuntimeSymbols(channel queries) = %v, want none", got)
 	}
 }
 
