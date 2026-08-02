@@ -609,6 +609,24 @@ func bridgeCurrentTimeMilliseconds() uint32
 
 //go:linkname bridgeExitToLauncher bridgeExitToLauncher
 func bridgeExitToLauncher()
+//go:linkname bridgeSetAccelerometerEnabled bridgeSetAccelerometerEnabled
+func bridgeSetAccelerometerEnabled(enabled int32)
+//go:linkname bridgeAccelerometer bridgeAccelerometer
+func bridgeAccelerometer(x, y, z *float32)
+//go:linkname bridgePowerStatus bridgePowerStatus
+func bridgePowerStatus() int32
+//go:linkname bridgeBatteryPercentageBits bridgeBatteryPercentageBits
+func bridgeBatteryPercentageBits() uint32
+//go:linkname bridgeBatteryVoltageBits bridgeBatteryVoltageBits
+func bridgeBatteryVoltageBits() uint32
+//go:linkname bridgeSystemVolumeBits bridgeSystemVolumeBits
+func bridgeSystemVolumeBits() uint32
+//go:linkname bridgeReduceFlashing bridgeReduceFlashing
+func bridgeReduceFlashing() int32
+//go:linkname bridgeTimezoneOffsetSeconds bridgeTimezoneOffsetSeconds
+func bridgeTimezoneOffsetSeconds() int32
+//go:linkname bridgeUses24HourTime bridgeUses24HourTime
+func bridgeUses24HourTime() int32
 //go:linkname bridgeLanguage bridgeLanguage
 func bridgeLanguage() int32
 //go:linkname bridgeLocalizedText bridgeLocalizedText
@@ -832,6 +850,15 @@ func (playdateContext) CurrentTimeMilliseconds() uint32 {
 }
 
 func (playdateContext) ExitToLauncher() { bridgeExitToLauncher() }
+func (playdateContext) SetAccelerometerEnabled(enabled bool){value:=int32(0);if enabled{value=1};bridgeSetAccelerometerEnabled(value)}
+func (playdateContext) AccelerometerXYZ()(float32,float32,float32){var x,y,z float32;bridgeAccelerometer(&x,&y,&z);return x,y,z}
+func (playdateContext) PowerStatus()sdkPlaydate.PowerStatus{return sdkPlaydate.PowerStatus(bridgePowerStatus())}
+func (playdateContext) BatteryPercentage()float32{return float32FromBits(bridgeBatteryPercentageBits())}
+func (playdateContext) BatteryVoltage()float32{return float32FromBits(bridgeBatteryVoltageBits())}
+func (playdateContext) SystemVolume()float32{return float32FromBits(bridgeSystemVolumeBits())}
+func (playdateContext) ReduceFlashing()bool{return bridgeReduceFlashing()!=0}
+func (playdateContext) TimezoneOffsetSeconds()int32{return bridgeTimezoneOffsetSeconds()}
+func (playdateContext) Uses24HourTime()bool{return bridgeUses24HourTime()!=0}
 
 var menuCallbackIDs=map[uintptr]uint32{}
 //export goMenuCallback
@@ -1100,6 +1127,16 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 }
 
 void bridgeExitToLauncher(void) { activePlaydate->system->exitToLauncher(); }
+static uint32_t bridgeFloatBits(float value);
+void bridgeSetAccelerometerEnabled(int32_t enabled){activePlaydate->system->setPeripheralsEnabled(enabled?kAccelerometer:kNone);}
+void bridgeAccelerometer(float* x,float* y,float* z){activePlaydate->system->getAccelerometer(x,y,z);}
+int32_t bridgePowerStatus(void){return activePlaydate->system->getPowerStatus();}
+uint32_t bridgeBatteryPercentageBits(void){return bridgeFloatBits(activePlaydate->system->getBatteryPercentage());}
+uint32_t bridgeBatteryVoltageBits(void){return bridgeFloatBits(activePlaydate->system->getBatteryVoltage());}
+uint32_t bridgeSystemVolumeBits(void){return bridgeFloatBits(activePlaydate->system->getVolume());}
+int32_t bridgeReduceFlashing(void){return activePlaydate->system->getReduceFlashing();}
+int32_t bridgeTimezoneOffsetSeconds(void){return activePlaydate->system->getTimezoneOffset();}
+int32_t bridgeUses24HourTime(void){return activePlaydate->system->shouldDisplay24HourTime();}
 int32_t bridgeLanguage(void){return activePlaydate->system->getLanguage();}
 uintptr_t bridgeLocalizedText(const char* key,int32_t language){return(uintptr_t)activePlaydate->system->getLocalizedText(key,(PDLanguage)language);}
 void bridgeFree(uintptr_t pointer){activePlaydate->system->realloc((void*)pointer,0);}
@@ -1273,6 +1310,16 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 }
 
 void bridgeExitToLauncher(void) { activePlaydate->system->exitToLauncher(); }
+static uint32_t bridgeFloatBits(float value);
+void bridgeSetAccelerometerEnabled(int32_t enabled){activePlaydate->system->setPeripheralsEnabled(enabled?kAccelerometer:kNone);}
+void bridgeAccelerometer(float* x,float* y,float* z){activePlaydate->system->getAccelerometer(x,y,z);}
+int32_t bridgePowerStatus(void){return activePlaydate->system->getPowerStatus();}
+uint32_t bridgeBatteryPercentageBits(void){return bridgeFloatBits(activePlaydate->system->getBatteryPercentage());}
+uint32_t bridgeBatteryVoltageBits(void){return bridgeFloatBits(activePlaydate->system->getBatteryVoltage());}
+uint32_t bridgeSystemVolumeBits(void){return bridgeFloatBits(activePlaydate->system->getVolume());}
+int32_t bridgeReduceFlashing(void){return activePlaydate->system->getReduceFlashing();}
+int32_t bridgeTimezoneOffsetSeconds(void){return activePlaydate->system->getTimezoneOffset();}
+int32_t bridgeUses24HourTime(void){return activePlaydate->system->shouldDisplay24HourTime();}
 int32_t bridgeLanguage(void){return activePlaydate->system->getLanguage();}
 uintptr_t bridgeLocalizedText(const char* key,int32_t language){return(uintptr_t)activePlaydate->system->getLocalizedText(key,(PDLanguage)language);}
 void bridgeFree(uintptr_t pointer){activePlaydate->system->realloc((void*)pointer,0);}

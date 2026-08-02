@@ -307,7 +307,7 @@ Playdate execution. The menu callbacks changed both settings and the values
 survived a game restart. Extended conservative-GC soak, memory-growth
 measurement, and post-run crashlog inspection remain unverified.
 
-### P4.4 — device and system status
+### P4.4 — device and system status — implemented
 
 - Add opt-in accelerometer sampling with explicit peripheral enablement and
   lifecycle behavior.
@@ -316,6 +316,23 @@ measurement, and post-run crashlog inspection remain unverified.
   capabilities required by the acceptance consumer.
 - Preserve `ExitToLauncher` as the existing optional lifecycle capability and
   include it in the integrated P4 flow rather than creating a second exit API.
+
+The implemented slice exposes optional `Accelerometer`, `PowerMonitor`, and
+`SystemPreferences` capabilities. Sampling requires explicit peripheral
+enablement, returns zero before enablement, and is disabled after lifecycle
+termination. Power and global preferences remain read-only, and the existing
+`Launcher` API is forwarded in the same acceptance flow. Deterministic tests
+cover capability assertions, forwarding, power flags, pre-enablement reads, and
+termination cleanup; generated Simulator and both device adapters are checked
+for every bridge. On 2026-08-02 `examples/systemstatus` passed SDK 3.1.1
+Simulator build and launch and the conservative device gate at 283,884 bytes of
+static RAM and a 55,193-byte PDX, including USB deployment and physical Playdate
+execution. Hardware observation confirmed accelerometer, battery, volume,
+timezone, clock format, reduce-flashing, and `NONE`/`USB` power states. The first
+device run exposed direct float-return ABI corruption for battery and volume;
+passing their IEEE-754 bits across the TinyGo/C boundary corrected it. `CHARGE`
+and `SCREWS` power states, conservative-GC soak, memory-growth measurement, and
+post-run crashlog inspection remain unverified.
 
 ### P4.5 — optional online and debug facilities
 

@@ -49,6 +49,14 @@ normal lifecycle path. An in-game title or pause menu is application state:
 switching from gameplay back to that menu does not terminate or restart the
 process.
 
+Games that sample motion assert `Accelerometer`, explicitly enable it, and read
+`AccelerometerXYZ`; reads before enablement return zero and the runtime disables
+the peripheral after `LifecycleTerminate`. `PowerMonitor` exposes the power
+flags, battery percentage, and voltage. `SystemPreferences` exposes only the
+read-only system volume, reduce-flashing preference, timezone offset in seconds,
+and 12/24-hour preference. These capabilities do not add setters for global
+user preferences.
+
 Games that draw immediate-mode geometry assert `PrimitiveGraphics`; games that
 change clipping, draw offset, or bitmap compositing assert `GraphicsState`.
 These optional capabilities keep existing graphics fakes small. Primitive

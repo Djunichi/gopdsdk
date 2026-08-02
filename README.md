@@ -308,34 +308,6 @@ domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, `audio`, and
 `errors`). `playdate.Context` composes narrower capabilities so application
 helpers can depend on only the API surface they use.
 
-## P1.3 external playable consumer
-
-The P1.3 acceptance fixture is copied into a temporary directory and compiled
-as a separate Go module with a local `replace` to gopdsdk. It is a small
-crank-controlled catch game using buttons for catch/nudge actions, lifecycle
-pause/resume, frame delta, and two packaged `resources/images` bitmaps. Gameplay
-is a pure-Go state machine and rendering is derived as a deterministic draw
-plan. Tests verify the 60-second completion marker, partial-initialization
-rollback, and one-time termination cleanup.
-
-The external-consumer CLI acceptance test compiles the fixture and inspects
-both Simulator and device dry-run plans. On the accepted Windows profile, that
-same fixture has also been built and launched in the official Simulator and
-built, installed, and launched on a physical Playdate. The device completed a
-65-second conservative-GC soak; `errorlog.txt` remained 142 bytes with its
-pre-run timestamp and `crashlog.txt` remained 4337 bytes with its pre-run
-timestamp, so the run produced no new log entry.
-
-Repeat the physical acceptance procedure after relevant runtime or toolchain
-changes:
-
-1. Run the consumer in Simulator and exercise crank, A, d-pad, pause, and resume.
-2. Run that same package on device for at least 60 seconds until `PASS` appears.
-3. Mount the data disk and confirm that `errorlog.txt` and `crashlog.txt` have no
-   new entry from the acceptance run.
-
-No public API or subsystem was added for P1.3.
-
 ## P1.4 release candidate
 
 P1.4 prepares `v0.1.0`: a version-aware `init` workflow, reviewed public API
@@ -620,6 +592,26 @@ USB deployment, and physical Playdate execution. The menu callbacks changed
 both settings and their values survived a game restart. Extended
 conservative-GC soak, memory-growth measurement, and post-run crashlog
 inspection remain unverified.
+
+## P4.4 device and system status
+
+Games can optionally assert `playdate.Accelerometer`, `playdate.PowerMonitor`,
+and `playdate.SystemPreferences`. Accelerometer sampling requires explicit
+enablement and is disabled automatically after lifecycle termination. Power and
+preference access is read-only. The existing `playdate.Launcher` remains the
+only exit-to-launcher API.
+
+The `examples/systemstatus` consumer displays motion, battery, power, volume,
+reduce-flashing, timezone, and clock-format values and exits through the
+Launcher when B is pressed. On 2026-08-02 it passed deterministic tests, SDK
+3.1.1 Simulator build and launch, and the conservative device gate at 283,884
+bytes of static RAM and a 55,193-byte PDX, including USB deployment and physical
+Playdate execution. Hardware observation confirmed accelerometer, battery,
+volume, timezone, clock format, reduce-flashing, and `NONE`/`USB` power states.
+The first device run exposed direct float-return ABI corruption for battery and
+volume; passing their IEEE-754 bits across the TinyGo/C boundary corrected it.
+`CHARGE` and `SCREWS` power states, extended conservative-GC soak, memory-growth
+measurement, and post-run crashlog inspection remain unverified.
 
 ## Development and CI
 

@@ -68,6 +68,22 @@ func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
 	}
 }
 
+func TestBothDeviceAdaptersContainSystemStatusBridge(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"bridgeSetAccelerometerEnabled", "bridgeAccelerometer", "bridgePowerStatus", "bridgeBatteryPercentageBits", "bridgeBatteryVoltageBits", "bridgeSystemVolumeBits", "float32FromBits(bridgeBatteryPercentageBits())", "bridgeReduceFlashing", "bridgeTimezoneOffsetSeconds", "bridgeUses24HourTime"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("probe source does not contain %q", want)
+		}
+	}
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{"setPeripheralsEnabled", "getAccelerometer", "getPowerStatus", "getBatteryPercentage", "getBatteryVoltage", "getVolume", "getReduceFlashing", "getTimezoneOffset", "shouldDisplay24HourTime"} {
+			if !strings.Contains(bootstrap, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+	}
+}
+
 func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
 	for _, want := range []string{"runtime.run", "runtime.alloc", "activePlaydate->system->realloc(NULL, size)", "event == kEventInit && !booted", "runtimeRun();", "goEventHandler(playdate, event, arg)"} {
 		if !strings.Contains(bootstrapSource, want) {
