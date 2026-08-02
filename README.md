@@ -2,8 +2,8 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation, P1, and P2.0 through P2.5 scopes are complete**. `v0.2.0`
-is the current release: its public API is snapshot-tested and
+The **P0 foundation and P1 through P3 scopes are complete**. `v0.3.0` is the
+current release: its public API is snapshot-tested and
 documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
@@ -44,13 +44,13 @@ deployment works on that host.
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
-## Install v0.2.0
+## Install v0.3.0
 
 Run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.2.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.2.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.3.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.3.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -492,9 +492,17 @@ counting API. The integrated P3.5 scene is the next consumer evidence; an
 abstraction will be added only after another real scene repeats its complete
 loading, caching, rollback, transition, and shutdown policy.
 
-## P3 application navigation
+## P3 integrated acceptance game
 
-The P3 integrated game will begin at an in-game menu with `Play` and `Exit`.
+The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame) game
+completes the P3 consumer slice. Its repository is currently private, but the
+link is retained as the canonical acceptance-game reference. It uses only the
+public `gopdsdk` API and integrates lifecycle and input, crank control, owned
+bitmaps, sprites and collision queries, bitmap-table animation, sound effect
+and streaming music, custom-font UI, primitives and graphics state, offscreen
+drawing, direct framebuffer pixels, tile map and camera.
+
+The game begins at an in-game menu with `Play` and `Exit`.
 Gameplay can transition back to that menu without restarting the application.
 `Exit` asserts `playdate.Launcher` and calls `ExitToLauncher`; Playdate sends
 `LifecycleTerminate` before returning to the Launcher, preserving normal owned
@@ -515,8 +523,11 @@ Windows SDK 3.1.1 Simulator and physical-device acceptance passed on
 2026-08-02: `Play`, B-button return to the menu, `Exit` back to the Launcher,
 and the packaged card, icon, and launch image all behaved as intended. The
 device path used a conservative-GC hard-float build and USB deployment on COM3.
-This navigation slice does not replace the remaining P3.5 integrated-game,
-resource-cleanup, fixed-budget, or soak evidence.
+Crank Caverns deterministically tests its gameplay state and render plans and
+owns every native resource explicitly. The complete game establishes the P3
+product boundary; fixed frame-time, bounded-heap, extended soak, and post-run
+device-log measurements remain unverified evidence and are not implied by the
+v0.3.0 release.
 
 ## Development and CI
 

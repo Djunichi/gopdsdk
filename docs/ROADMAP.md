@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: accepted direction after the `v0.2.0` release, updated 2026-08-02.
+Status: accepted direction after the `v0.3.0` release, updated 2026-08-02.
 
-This document is the canonical high-level roadmap from the released `v0.2.0`
+This document is the canonical high-level roadmap from the released `v0.3.0`
 baseline to `v1.0.0`. The detailed P0, P1, and P2 documents retain their
 historical plans, decisions, and evidence. Completing a scope means its product
 boundary is implemented; Simulator, SDK integration, and physical-device
@@ -45,7 +45,7 @@ cross-build does not promote a capability to device-ready.
 | P0 | foundation | Cross-platform CLI, Simulator and device build foundations | Complete |
 | P1 | `v0.1.x` | Lifecycle, input, bitmap graphics, resources, device runtime | Complete |
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
-| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | In progress; P3.1–P3.3 implemented, P3.4 assessed, P3.5 navigation foundation accepted |
+| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Planned |
 | P5 | `v0.5.0` | Advanced audio and music | Planned |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
@@ -92,13 +92,21 @@ hard-float build, USB deployment, and matching physical Playdate execution on
 2026-08-02. Conservative-GC soak and memory-growth measurement remain unrun;
 P3.1 evidence does not complete P3.0 or later P3 scopes.
 
-### P3.2 — framebuffer and offscreen drawing
+### P3.2 — framebuffer and offscreen drawing — implemented
 
 - Add scoped framebuffer access with explicit lifetime, no hidden copy,
   dirty-row reporting, and deterministic pure-Go pixel tests.
 - Make retention beyond the callback or frame invalid by contract.
 - Add drawing into owned bitmaps only when the framebuffer or world consumer
   proves the required context and cleanup model.
+
+The accepted vertical slice provides callback-scoped zero-copy framebuffer
+access, checked lifetime, explicit dirty-row aggregation, and drawing into
+owned bitmaps with drawing-context restoration. Deterministic portable and
+generated-adapter tests cover the contract; `examples/framebuffer` provides the
+focused scene and Crank Caverns exercises both capabilities in its integrated
+consumer. Separate focused-scene SDK visual and physical-device evidence
+remains unverified.
 
 ### P3.3 — tile map and camera — implemented
 
@@ -130,7 +138,7 @@ manager or reference counting. P3.5 must use that contract for its first
 integrated scene; a higher-level owner is justified only if a second real
 consumer duplicates the complete behavior above.
 
-### P3.5 — integrated acceptance game
+### P3.5 — integrated acceptance game — complete
 
 - Build one external scene using primitives, framebuffer or offscreen drawing,
   camera, tiles, sprites, collisions, animation, audio, fonts, and lifecycle.
@@ -146,15 +154,27 @@ The navigation foundation is accepted: `examples/navigation` covers `Play`, an
 in-process B-button return to the main menu, and `ExitToLauncher`. Matching
 interaction passed Windows SDK 3.1.1 Simulator and physical Playdate on
 2026-08-02. The generated 1-bit card, icon, and launch image also displayed
-correctly in the device Launcher. This does not complete P3.5: the integrated
-all-subsystem game, resource-cleanup observation, fixed budgets, and soak gates
-remain.
+correctly in the device Launcher.
 
-### P3.6 — `v0.3.0` release
+The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame) consumer,
+currently in a private repository, completes the integrated product slice using
+only public `gopdsdk` API. It combines every implemented P1-P3 gameplay
+capability in one playable scene and retains explicit scene ownership and
+rollback. Portable deterministic gameplay and render-plan tests pass. Fixed
+frame-time, bounded-heap, extended physical-device soak, termination cleanup
+observation, and post-run device-log comparison remain unverified evidence and
+are not promoted by scope completion.
+
+### P3.6 — `v0.3.0` release — complete
 
 - Review the exported snapshot and ownership contracts.
 - Update API, compatibility, examples, migration notes, and release checks.
 - Verify a published external consumer without a local `replace` after tagging.
+
+The reviewed API and ownership contracts, compatibility matrix, examples,
+release notes, and release procedure were updated for `v0.3.0`. The clean
+published-module consumer check necessarily follows tag publication and remains
+a post-release verification gate.
 
 P3 should make platformers, puzzle games, arcade games, top-down games,
 software-rendered pseudo-3D, and similar offline gameplay practical. P3 only
