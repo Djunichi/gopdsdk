@@ -102,6 +102,15 @@ physical hardware work on that host. Docker does not promote those levels.
   gameplay and render plans are unit-tested. Fixed frame-time, bounded-heap,
   extended physical-device soak, cleanup observation on termination, and
   post-run device-log comparison remain unverified for the integrated game.
+- P4.1 implemented: optional filesystem capability forwarding, owned file
+  lifetime, read/write/seek/flush/close behavior, path and mode validation,
+  metadata, listing, and directory mutations are covered by deterministic
+  runtime and generated Simulator/device adapter tests. The focused
+  `examples/filesystem` flow passed Windows SDK 3.1.1 Simulator and physical
+  Playdate execution on 2026-08-02 after a device-only borrowed listing string
+  was fixed by copying it before bridge-memory release. The repeated device
+  flow displayed `P4.1 filesystem OK`; multi-session durability, interrupted
+  writes, soak, and memory-growth measurement remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

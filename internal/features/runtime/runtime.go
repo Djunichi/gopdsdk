@@ -3,10 +3,154 @@ package runtime
 
 import (
 	"errors"
+	"io"
 	"math"
+	"path"
+	"strings"
 
 	"github.com/Djunichi/gopdsdk/playdate"
 )
+
+// FileDriver contains platform operations for one owned native file.
+type FileDriver struct {
+	Read  func(uintptr, []byte) (int, string)
+	Write func(uintptr, []byte) (int, string)
+	Flush func(uintptr) (int, string)
+	Tell  func(uintptr) (int, string)
+	Seek  func(uintptr, int32, int) (int, string)
+	Close func(uintptr) (int, string)
+}
+
+type ownedFile struct {
+	handle uintptr
+	path   string
+	driver FileDriver
+	closed bool
+}
+
+// NewOwnedFile wraps a Playdate file handle that must be explicitly closed.
+func NewOwnedFile(handle uintptr, filePath string, driver FileDriver) playdate.File {
+	return &ownedFile{handle: handle, path: filePath, driver: driver}
+}
+
+func (file *ownedFile) nativeHandle() (uintptr, error) {
+	if file == nil || file.closed || file.handle == 0 {
+		return 0, playdate.ErrFileClosed
+	}
+	return file.handle, nil
+}
+
+func fileFailure(operation, filePath, message string) error {
+	return playdate.FileOperationError{Operation: operation, Path: filePath, Message: message}
+}
+
+func (file *ownedFile) Read(buffer []byte) (int, error) {
+	handle, err := file.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	if len(buffer) == 0 {
+		return 0, nil
+	}
+	count, message := file.driver.Read(handle, buffer)
+	if count < 0 {
+		return 0, fileFailure("read", file.path, message)
+	}
+	if count == 0 {
+		return 0, io.EOF
+	}
+	return count, nil
+}
+
+func (file *ownedFile) Write(buffer []byte) (int, error) {
+	handle, err := file.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	if len(buffer) == 0 {
+		return 0, nil
+	}
+	count, message := file.driver.Write(handle, buffer)
+	if count < 0 {
+		return 0, fileFailure("write", file.path, message)
+	}
+	if count != len(buffer) {
+		return count, io.ErrShortWrite
+	}
+	return count, nil
+}
+
+func (file *ownedFile) Flush() error {
+	handle, err := file.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if result, message := file.driver.Flush(handle); result < 0 {
+		return fileFailure("flush", file.path, message)
+	}
+	return nil
+}
+
+func (file *ownedFile) Seek(offset int64, whence int) (int64, error) {
+	handle, err := file.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	if offset < math.MinInt32 || offset > math.MaxInt32 || whence < io.SeekStart || whence > io.SeekEnd {
+		return 0, playdate.ErrFileOffset
+	}
+	if result, message := file.driver.Seek(handle, int32(offset), whence); result < 0 {
+		return 0, fileFailure("seek", file.path, message)
+	}
+	position, message := file.driver.Tell(handle)
+	if position < 0 {
+		return 0, fileFailure("tell", file.path, message)
+	}
+	return int64(position), nil
+}
+
+func (file *ownedFile) Close() error {
+	handle, err := file.nativeHandle()
+	if err != nil {
+		return err
+	}
+	file.closed = true
+	file.handle = 0
+	if result, message := file.driver.Close(handle); result < 0 {
+		return fileFailure("close", file.path, message)
+	}
+	return nil
+}
+
+// ValidateFilePath applies the shared Playdate relative-path contract.
+func ValidateFilePath(filePath string, allowRoot bool) error {
+	if strings.IndexByte(filePath, 0) >= 0 || strings.Contains(filePath, "\\") || strings.HasPrefix(filePath, "/") {
+		return playdate.ErrFilePath
+	}
+	cleaned := path.Clean(filePath)
+	if cleaned == "." {
+		if allowRoot {
+			return nil
+		}
+		return playdate.ErrFilePath
+	}
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") || cleaned != filePath {
+		return playdate.ErrFilePath
+	}
+	return nil
+}
+
+// ValidateFileOptions applies the official FileOptions combinations.
+func ValidateFileOptions(options playdate.FileOptions) error {
+	switch options {
+	case playdate.FileReadPackage, playdate.FileReadData,
+		playdate.FileReadPackage | playdate.FileReadData,
+		playdate.FileWrite, playdate.FileAppend:
+		return nil
+	default:
+		return playdate.ErrFileMode
+	}
+}
 
 // Framebuffer provides a direct, callback-scoped view of native display memory.
 type Framebuffer struct {
@@ -736,6 +880,62 @@ func (context *applicationContext) ExitToLauncher() {
 	if ok {
 		launcher.ExitToLauncher()
 	}
+}
+
+func (context *applicationContext) fileSystem() (playdate.FileSystem, error) {
+	files, ok := context.Context.(playdate.FileSystem)
+	if !ok {
+		return nil, playdate.ErrFileUnavailable
+	}
+	return files, nil
+}
+
+func (context *applicationContext) OpenFile(filePath string, options playdate.FileOptions) (playdate.File, error) {
+	files, err := context.fileSystem()
+	if err != nil {
+		return nil, err
+	}
+	return files.OpenFile(filePath, options)
+}
+
+func (context *applicationContext) Stat(filePath string) (playdate.FileInfo, error) {
+	files, err := context.fileSystem()
+	if err != nil {
+		return playdate.FileInfo{}, err
+	}
+	return files.Stat(filePath)
+}
+
+func (context *applicationContext) List(filePath string, showHidden bool) ([]string, error) {
+	files, err := context.fileSystem()
+	if err != nil {
+		return nil, err
+	}
+	return files.List(filePath, showHidden)
+}
+
+func (context *applicationContext) Mkdir(filePath string) error {
+	files, err := context.fileSystem()
+	if err != nil {
+		return err
+	}
+	return files.Mkdir(filePath)
+}
+
+func (context *applicationContext) Remove(filePath string, recursive bool) error {
+	files, err := context.fileSystem()
+	if err != nil {
+		return err
+	}
+	return files.Remove(filePath, recursive)
+}
+
+func (context *applicationContext) Rename(from, to string) error {
+	files, err := context.fileSystem()
+	if err != nil {
+		return err
+	}
+	return files.Rename(from, to)
 }
 
 func (context *applicationContext) LoadFont(path string) (playdate.Font, error) {

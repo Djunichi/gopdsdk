@@ -2,8 +2,8 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1 through P3 scopes are complete**. `v0.3.0` is the
-current release: its public API is snapshot-tested and
+The **P0 foundation and P1 through P3 scopes are complete; P4 is in progress**.
+`v0.3.0` is the current release: its public API is snapshot-tested and
 documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
@@ -528,6 +528,39 @@ owns every native resource explicitly. The complete game establishes the P3
 product boundary; fixed frame-time, bounded-heap, extended soak, and post-run
 device-log measurements remain unverified evidence and are not implied by the
 v0.3.0 release.
+
+## P4.1 owned filesystem
+
+Games can optionally assert `playdate.FileSystem` from their callback context.
+It exposes owned files with Go `Read`, `Write`, `Seek`, `Flush`, and `Close`
+behavior, plus `Stat`, non-recursive `List`, `Mkdir`, `Remove`, and `Rename`.
+Read options preserve the official distinction between packaged PDX files,
+Data files, and Data-first fallback:
+
+```go
+files, ok := any(context).(playdate.FileSystem)
+if !ok {
+	return playdate.ErrFileUnavailable
+}
+
+file, err := files.OpenFile(
+	"save.bin",
+	playdate.FileReadData|playdate.FileReadPackage,
+)
+if err != nil {
+	return err
+}
+defer file.Close()
+```
+
+Paths are game-relative. Native diagnostics are copied into
+`playdate.FileOperationError`; callers can use `errors.Is(err,
+playdate.ErrFileIO)` without parsing diagnostic text. `rename` follows the
+official overwrite behavior and will be the atomic replacement primitive for
+P4.2. The focused `examples/filesystem` flow passed Windows SDK 3.1.1 Simulator
+and physical Playdate execution on 2026-08-02, including write, flush, close,
+rename, Data read, stat, list, and recursive remove. Multi-session durability,
+interrupted replacement, soak, and memory-growth evidence remain unverified.
 
 ## Development and CI
 

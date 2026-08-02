@@ -139,6 +139,10 @@ const DrawModeInverted DrawMode
 const DrawModeNXOR DrawMode
 const DrawModeWhiteTransparent DrawMode
 const DrawModeXOR DrawMode
+const FileAppend FileOptions
+const FileReadData FileOptions
+const FileReadPackage FileOptions
+const FileWrite FileOptions
 const LifecycleLock LifecycleEvent
 const LifecycleLowPower LifecycleEvent
 const LifecyclePause LifecycleEvent
@@ -164,6 +168,8 @@ func (*TileMap).WorldSize() (width int, height int)
 func (AudioLoadError).Error() string
 func (BitmapLoadError).Error() string
 func (Buttons).Has(requested Buttons) bool
+func (FileOperationError).Error() string
+func (FileOperationError).Unwrap() error
 func (FontLoadError).Error() string
 func (FontLoadError).Is(target error) bool
 func (Paint).Components() (solid uint8, pattern [16]byte, patterned bool)
@@ -185,7 +191,12 @@ type CollisionResponse uint8
 type Color uint8
 type Context interface{System; Graphics; InputReader; Sprites; Audio}
 type DrawMode uint8
+type File interface{Close() error; Flush() error; io.Reader; io.Writer; io.Seeker}
+type FileInfo struct{IsDir bool; Size uint32; Year int; Month int; Day int; Hour int; Minute int; Second int}
+type FileOperationError struct{Operation string; Path string; Message string}
+type FileOptions uint8
 type FilePlayer interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
+type FileSystem interface{List(path string, showHidden bool) ([]string, error); Mkdir(path string) error; OpenFile(path string, options FileOptions) (File, error); Remove(path string, recursive bool) error; Rename(from string, to string) error; Stat(path string) (FileInfo, error)}
 type Font interface{Close() error; Height() (int, error); TextWidth(text string) (int, error)}
 type FontGraphics interface{DrawTextFont(font Font, text string, x int, y int) error; LoadFont(path string) (Font, error)}
 type FontLoadError string
@@ -227,6 +238,12 @@ var ErrBitmapScale error
 var ErrBitmapSize error
 var ErrBitmapTableBorrowed error
 var ErrBitmapTableClosed error
+var ErrFileClosed error
+var ErrFileIO error
+var ErrFileMode error
+var ErrFileOffset error
+var ErrFilePath error
+var ErrFileUnavailable error
 var ErrFontClosed error
 var ErrFontInvalid error
 var ErrFontLoad error

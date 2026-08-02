@@ -44,6 +44,25 @@ func TestProbeSourceContainsCollisionBridge(t *testing.T) {
 	}
 }
 
+func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"sdkPlaydate.FileSystem", "sdkRuntime.NewOwnedFile", "bridgeFileOpen", "bridgeFileList", "bridgeFileRename", "copiedCString(bridgeFileListItem", "return copiedCString(pointer)"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("probe source does not contain %q", want)
+		}
+	}
+	if strings.Contains(source, "defer bridgeFileListFree") {
+		t.Fatal("probe source retains unsupported TinyGo defer runtime for filesystem lists")
+	}
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{"file->open", "file->read", "file->listfiles", "file->rename", "bridgeFileListFree"} {
+			if !strings.Contains(bootstrap, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+	}
+}
+
 func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
 	for _, want := range []string{"runtime.run", "runtime.alloc", "activePlaydate->system->realloc(NULL, size)", "event == kEventInit && !booted", "runtimeRun();", "goEventHandler(playdate, event, arg)"} {
 		if !strings.Contains(bootstrapSource, want) {
