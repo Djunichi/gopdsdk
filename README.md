@@ -3,7 +3,7 @@
 An independent Go SDK and toolchain for building Playdate applications.
 
 The **P0 foundation, P1, and P2.0 through P2.5 scopes are complete**. `v0.2.0`
-is the current release candidate: its public API is snapshot-tested and
+is the current release: its public API is snapshot-tested and
 documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
@@ -46,7 +46,7 @@ TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
 ## Install v0.2.0
 
-After the `v0.2.0` tag is published, run the CLI directly at that version:
+Run the released CLI directly at that version:
 
 ```sh
 go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.2.0 doctor
@@ -57,9 +57,11 @@ go mod tidy
 
 The tagged CLI creates a project requiring the same module version without a
 local `replace`. A development CLI built from a checkout intentionally writes a
-local replacement instead. Until the tag exists, use the checkout workflow
-below. See [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md), and
-[RELEASING.md](RELEASING.md).
+local replacement instead; use the checkout workflow below when developing
+from source. See [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md), and
+[RELEASING.md](RELEASING.md). The accepted path from P3 to `v1.0.0`, including
+post-release multiplayer research, is recorded in
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Environment diagnostics
 
@@ -380,11 +382,11 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/audio
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/audio
 ```
 
-The implementation and generated ABI are unit-tested. Promotion from candidate
-requires audible parity for both bundled sounds in Simulator and device,
-repeated A playback, pause/resume, and a 10-minute physical-device soak with
-stable memory and no new device log entries. Synthesis, microphone input, and
-the full Playdate sound binding remain out of scope.
+The implementation and generated ABI are unit-tested. Audible parity for both
+bundled sounds in Simulator and device, repeated A playback, pause/resume, and
+a 10-minute physical-device soak with stable memory and no new device log
+entries remain unverified evidence levels. Synthesis, microphone input, and the
+full Playdate sound binding remain out of scope.
 
 ## P2.5 fonts and game UI
 
@@ -395,7 +397,7 @@ game-over commands; A increments score or restarts after game over, B ends the
 run, and lifecycle pause/resume selects the pause screen. The owned font is
 closed on termination.
 
-Run the same candidate on either target with:
+Run the same example on either target with:
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/fontsui
