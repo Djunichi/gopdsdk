@@ -67,6 +67,21 @@ int bridgeFontHeight(uintptr_t font);
 void bridgeFreeFont(uintptr_t font);
 uint32_t bridgeCurrentTimeMilliseconds(void);
 void bridgeExitToLauncher(void);
+const char* bridgeFileError(void);
+uintptr_t bridgeFileOpen(const char* path, int options);
+int bridgeFileClose(uintptr_t file);
+int bridgeFileRead(uintptr_t file, void* buffer, unsigned int length);
+int bridgeFileWrite(uintptr_t file, const void* buffer, unsigned int length);
+int bridgeFileFlush(uintptr_t file);
+int bridgeFileTell(uintptr_t file);
+int bridgeFileSeek(uintptr_t file, int position, int whence);
+int bridgeFileStat(const char* path, int* values);
+uintptr_t bridgeFileList(const char* path, int showHidden, int* count, int* result);
+const char* bridgeFileListItem(uintptr_t list, int index);
+void bridgeFileListFree(uintptr_t list);
+int bridgeFileMkdir(const char* path);
+int bridgeFileRemove(const char* path, int recursive);
+int bridgeFileRename(const char* from, const char* to);
 uint32_t bridgeButtons(void);
 float bridgeCrankAngle(void);
 float bridgeCrankDelta(void);
@@ -190,6 +205,7 @@ var _ sdkPlaydate.GraphicsState = playdateContext{}
 var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
 var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
 var _ sdkPlaydate.Launcher = playdateContext{}
+var _ sdkPlaydate.FileSystem = playdateContext{}
 
 func (playdateContext) Clear() { C.bridgeClear() }
 func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
@@ -232,6 +248,23 @@ func (playdateContext) CurrentTimeMilliseconds() uint32 {
 }
 
 func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }
+
+func fileErrorMessage() string { message := C.bridgeFileError(); if message == nil { return "" }; return C.GoString(message) }
+var fileDriver = sdkRuntime.FileDriver{
+	Read: func(handle uintptr, buffer []byte) (int, string) { result:=int(C.bridgeFileRead(C.uintptr_t(handle),unsafe.Pointer(unsafe.SliceData(buffer)),C.uint(len(buffer))));if result<0{return result,fileErrorMessage()};return result,"" },
+	Write: func(handle uintptr, buffer []byte) (int, string) { result:=int(C.bridgeFileWrite(C.uintptr_t(handle),unsafe.Pointer(unsafe.SliceData(buffer)),C.uint(len(buffer))));if result<0{return result,fileErrorMessage()};return result,"" },
+	Flush: func(handle uintptr) (int, string) { result:=int(C.bridgeFileFlush(C.uintptr_t(handle)));if result<0{return result,fileErrorMessage()};return result,"" },
+	Tell: func(handle uintptr) (int, string) { result:=int(C.bridgeFileTell(C.uintptr_t(handle)));if result<0{return result,fileErrorMessage()};return result,"" },
+	Seek: func(handle uintptr,position int32,whence int)(int,string){result:=int(C.bridgeFileSeek(C.uintptr_t(handle),C.int(position),C.int(whence)));if result<0{return result,fileErrorMessage()};return result,""},
+	Close: func(handle uintptr)(int,string){result:=int(C.bridgeFileClose(C.uintptr_t(handle)));if result<0{return result,fileErrorMessage()};return result,""},
+}
+func (playdateContext) OpenFile(path string, options sdkPlaydate.FileOptions)(sdkPlaydate.File,error){if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return nil,err};if err:=sdkRuntime.ValidateFileOptions(options);err!=nil{return nil,err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));handle:=uintptr(C.bridgeFileOpen(cPath,C.int(options)));if handle==0{return nil,sdkPlaydate.FileOperationError{Operation:"open",Path:path,Message:fileErrorMessage()}};return sdkRuntime.NewOwnedFile(handle,path,fileDriver),nil}
+func (playdateContext) Stat(path string)(sdkPlaydate.FileInfo,error){if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return sdkPlaydate.FileInfo{},err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));var values [8]C.int;if C.bridgeFileStat(cPath,&values[0])<0{return sdkPlaydate.FileInfo{},sdkPlaydate.FileOperationError{Operation:"stat",Path:path,Message:fileErrorMessage()}};return sdkPlaydate.FileInfo{IsDir:values[0]!=0,Size:uint32(values[1]),Year:int(values[2]),Month:int(values[3]),Day:int(values[4]),Hour:int(values[5]),Minute:int(values[6]),Second:int(values[7])},nil}
+func (playdateContext) List(path string,showHidden bool)([]string,error){if err:=sdkRuntime.ValidateFilePath(path,true);err!=nil{return nil,err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));hidden:=0;if showHidden{hidden=1};var count,result C.int;list:=uintptr(C.bridgeFileList(cPath,C.int(hidden),&count,&result));if result<0{message:="";if result == -1 {message=fileErrorMessage()};C.bridgeFileListFree(C.uintptr_t(list));return nil,sdkPlaydate.FileOperationError{Operation:"list",Path:path,Message:message}};defer C.bridgeFileListFree(C.uintptr_t(list));items:=make([]string,int(count));for i:=range items{items[i]=C.GoString(C.bridgeFileListItem(C.uintptr_t(list),C.int(i)))};return items,nil}
+func filePathOperation(operation,path string,call func(*C.char)C.int)error{if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));if call(cPath)<0{return sdkPlaydate.FileOperationError{Operation:operation,Path:path,Message:fileErrorMessage()}};return nil}
+func (playdateContext) Mkdir(path string)error{return filePathOperation("mkdir",path,func(value *C.char)C.int{return C.bridgeFileMkdir(value)})}
+func (playdateContext) Remove(path string,recursive bool)error{flag:=0;if recursive{flag=1};return filePathOperation("remove",path,func(value *C.char)C.int{return C.bridgeFileRemove(value,C.int(flag))})}
+func (playdateContext) Rename(from,to string)error{if err:=sdkRuntime.ValidateFilePath(from,false);err!=nil{return err};if err:=sdkRuntime.ValidateFilePath(to,false);err!=nil{return err};cFrom:=C.CString(from);defer C.free(unsafe.Pointer(cFrom));cTo:=C.CString(to);defer C.free(unsafe.Pointer(cTo));if C.bridgeFileRename(cFrom,cTo)<0{return sdkPlaydate.FileOperationError{Operation:"rename",Path:from,Message:fileErrorMessage()}};return nil}
 
 func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
 
@@ -415,6 +448,23 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 }
 
 void bridgeExitToLauncher(void) { bridgePlaydate->system->exitToLauncher(); }
+const char* bridgeFileError(void){return bridgePlaydate->file->geterr();}
+uintptr_t bridgeFileOpen(const char* path,int options){return(uintptr_t)bridgePlaydate->file->open(path,(FileOptions)options);}
+int bridgeFileClose(uintptr_t file){return bridgePlaydate->file->close((SDFile*)file);}
+int bridgeFileRead(uintptr_t file,void* buffer,unsigned int length){return bridgePlaydate->file->read((SDFile*)file,buffer,length);}
+int bridgeFileWrite(uintptr_t file,const void* buffer,unsigned int length){return bridgePlaydate->file->write((SDFile*)file,buffer,length);}
+int bridgeFileFlush(uintptr_t file){return bridgePlaydate->file->flush((SDFile*)file);}
+int bridgeFileTell(uintptr_t file){return bridgePlaydate->file->tell((SDFile*)file);}
+int bridgeFileSeek(uintptr_t file,int position,int whence){return bridgePlaydate->file->seek((SDFile*)file,position,whence);}
+int bridgeFileStat(const char* path,int* values){FileStat value;int result=bridgePlaydate->file->stat(path,&value);if(result<0)return result;values[0]=value.isdir;values[1]=(int)value.size;values[2]=value.m_year;values[3]=value.m_month;values[4]=value.m_day;values[5]=value.m_hour;values[6]=value.m_minute;values[7]=value.m_second;return 0;}
+typedef struct{char** items;int count;int failed;}BridgeFileList;
+static void bridgeCollectFile(const char* name,void* userdata){BridgeFileList* list=userdata;if(list->failed)return;char* copy=bridgePlaydate->system->realloc(NULL,strlen(name)+1);if(!copy){list->failed=1;return;}strcpy(copy,name);char** items=bridgePlaydate->system->realloc(list->items,sizeof(char*)*(list->count+1));if(!items){bridgePlaydate->system->realloc(copy,0);list->failed=1;return;}list->items=items;list->items[list->count++]=copy;}
+uintptr_t bridgeFileList(const char* path,int showHidden,int* count,int* result){BridgeFileList* list=bridgePlaydate->system->realloc(NULL,sizeof(BridgeFileList));if(!list){*count=0;*result=-2;return 0;}list->items=NULL;list->count=0;list->failed=0;*result=bridgePlaydate->file->listfiles(path,bridgeCollectFile,list,showHidden);if(list->failed)*result=-2;*count=list->count;return(uintptr_t)list;}
+const char* bridgeFileListItem(uintptr_t list,int index){return((BridgeFileList*)list)->items[index];}
+void bridgeFileListFree(uintptr_t value){BridgeFileList* list=(BridgeFileList*)value;if(!list)return;for(int i=0;i<list->count;i++)bridgePlaydate->system->realloc(list->items[i],0);bridgePlaydate->system->realloc(list->items,0);bridgePlaydate->system->realloc(list,0);}
+int bridgeFileMkdir(const char* path){return bridgePlaydate->file->mkdir(path);}
+int bridgeFileRemove(const char* path,int recursive){return bridgePlaydate->file->unlink(path,recursive);}
+int bridgeFileRename(const char* from,const char* to){return bridgePlaydate->file->rename(from,to);}
 
 uint32_t bridgeButtons(void)
 {

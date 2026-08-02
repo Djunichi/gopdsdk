@@ -183,18 +183,133 @@ belongs to P6 and does not become a general 3D-engine API.
 
 ## P4 — persistence and system integration
 
-- Owned filesystem handles and portable file errors.
-- Save/load with atomic replacement and explicit format migration.
-- JSON support only where a real save/configuration consumer requires it.
-- System menu items and callbacks.
-- Localization and system-language information.
-- Accelerometer, power status, system volume, and exit-to-launcher capabilities.
-- Official scoreboards may be added as an independent optional online service;
-  they do not imply general networking or multiplayer support.
-- Simulator-only debug input and serial messaging kept separate from portable
-  gameplay contracts.
-- Acceptance through a multi-session external game that preserves settings and
-  progress across restart, update, failure, and corrupted-save scenarios.
+P4 adds durable game state and the normal Playdate system facilities required
+by an external offline game. Persistence remains layered: the native adapters
+provide owned files, while save schemas, migrations, and recovery policy are
+portable Go behavior driven by the acceptance consumer.
+
+### P4.0 — baseline and persistence contract — complete
+
+- Repeat the released `v0.3.0` unit, CLI, native CI, SDK integration, and
+  applicable physical-device gates before growing the API.
+- Specify data-directory path rules, bundled-resource read behavior, file
+  ownership, close and flush semantics, and portable error categories against
+  the official filesystem contract.
+- Define the failure matrix for interrupted writes, missing files, short I/O,
+  incompatible versions, and corrupt saves before choosing the public save
+  API.
+
+The accepted filesystem contract follows the official SDK rather than host OS
+semantics. Paths are game-relative. Read modes are flags: packaged PDX only,
+Data only, or Data-first with packaged fallback; write and append always target
+Data. Handles are closed rather than freed, with the official limit of 64 open
+handles. Directory listing is non-recursive and identifies child directories
+with a trailing slash. `mkdir` does not create parents, while `rename`
+overwrites its destination and therefore becomes the P4.2 atomic-replacement
+primitive.
+
+P4.1 must copy the transient `geterr()` diagnostic at the failing call boundary
+and wrap stable portable error categories without treating human-readable text
+as a machine contract. Zero-byte reads mean EOF; negative results mean failure;
+short successful reads remain valid, while short writes surface explicitly.
+Close invalidates the owned Go handle even when native close reports failure,
+preventing a second close against an indeterminate native lifetime. Seek input
+must fit the official signed 32-bit position contract. P4.2 owns interrupted
+replacement, incompatible-version, migration, and corrupt-save policy rather
+than embedding those decisions in the filesystem adapter.
+
+The released `v0.3.0` evidence is accepted as the P4 baseline and was not
+re-promoted. The current pure-Go unit suite and vet passed on Windows on
+2026-08-02. No new Simulator, SDK integration, USB, or physical-device evidence
+is claimed by P4.0.
+
+### P4.1 — owned filesystem — implemented
+
+- Add the smallest capability for owned open files, read, write, seek, flush,
+  close, stat, list, directory creation, rename, and removal required by the
+  persistence consumer.
+- Keep native error text available for diagnosis while exposing portable
+  sentinel categories suitable for `errors.Is` decisions.
+- Regression-test capability assertion and calls through `NewApplication` on
+  both native ABI contexts, including idempotent cleanup after partial setup.
+
+The implemented vertical slice exposes optional `FileSystem`, owned `File`,
+official read-source flags, metadata and non-recursive listing, and the native
+directory mutation operations. Portable validation covers paths, modes,
+offsets, closed handles, EOF, and short writes. Native failures retain a copied
+diagnostic and support `errors.Is(err, ErrFileIO)`. Deterministic runtime,
+application-forwarding, API-snapshot, and generated Simulator/device adapter
+tests pass.
+
+The focused `examples/filesystem` scene then passed Windows SDK 3.1.1
+Simulator and physical Playdate execution on 2026-08-02. It exercised write,
+flush, close, rename, Data read, stat, non-recursive list, and recursive remove
+in one native flow. The first hardware run exposed a device-only borrowed-string
+lifetime bug in listing; the adapter now copies each callback name before
+freeing bridge memory, and the repeated hardware run displayed the expected
+`P4.1 filesystem OK`. The device artifact used 266,904 bytes of static RAM and
+produced a 28,737-byte PDX. Multi-session durability, interrupted writes, soak,
+and memory-growth measurement remain P4.2 or later evidence.
+
+### P4.2 — save and configuration store
+
+- Implement versioned save/load above P4.1 with atomic temporary-file
+  replacement, explicit migration, size bounds, and deterministic corrupt-save
+  handling.
+- Add JSON only if the external save or configuration consumer selects it;
+  serialization does not belong in the native adapters.
+- Test first save, replacement, migration, unsupported future versions,
+  interrupted replacement, short I/O, and recovery without silently discarding
+  the last valid state.
+
+### P4.3 — system menu and localization
+
+- Add owned action, checkmark, and option menu items with callback lifetime,
+  removal, title, and value behavior defined across Simulator and device.
+- Expose system language and localized-text lookup without inventing a general
+  translation framework; game-owned fallback text remains portable consumer
+  policy.
+- Exercise menu-driven settings whose localized values persist through P4.2,
+  including callback cleanup during lifecycle termination.
+
+### P4.4 — device and system status
+
+- Add opt-in accelerometer sampling with explicit peripheral enablement and
+  lifecycle behavior.
+- Add power status, battery percentage and voltage, system volume, reduce-
+  flashing preference, timezone, and 12/24-hour preference only through narrow
+  capabilities required by the acceptance consumer.
+- Preserve `ExitToLauncher` as the existing optional lifecycle capability and
+  include it in the integrated P4 flow rather than creating a second exit API.
+
+### P4.5 — optional online and debug facilities
+
+- Assess official scoreboards as an independent optional online service; add
+  them only with a concrete consumer, bounded callbacks, failure handling, and
+  no implication of general networking or multiplayer support.
+- Keep Simulator-only debug input and serial messaging separate from portable
+  gameplay contracts and omit them if no acceptance or diagnostic consumer
+  justifies their callback and platform boundaries.
+
+### P4.6 — integrated multi-session acceptance game
+
+- Extend an external game using only public `gopdsdk` API to preserve settings
+  and progress across normal restart, application update, failed write,
+  migration, and corrupted-save scenarios.
+- Exercise localized system-menu settings, at least one justified P4.4 system
+  capability, and exit-to-launcher without a game-owned C bridge or imports
+  from `internal` packages.
+- Run deterministic portable failure tests first, then matching Simulator and
+  physical-device multi-session gates; label every unrun durability or hardware
+  scenario by its actual evidence level.
+
+### P4.7 — `v0.4.0` release
+
+- Review the exported persistence ownership, callback, migration, and recovery
+  contracts.
+- Update API, compatibility, examples, migration notes, changelog, and release
+  procedure for `v0.4.0`.
+- Verify a published external consumer without a local `replace` after tagging.
 
 ## P5 — advanced audio and music
 

@@ -1,0 +1,6 @@
+name=P4.1 Filesystem Acceptance
+author=gopdsdk
+description=Owned filesystem read, write, metadata, listing, rename, and removal
+bundleID=dev.gopdsdk.filesystem
+version=1.0.0
+buildNumber=1
