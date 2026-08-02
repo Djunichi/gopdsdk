@@ -603,6 +603,24 @@ at 267,116 bytes of static RAM and a 30,269-byte PDX, and passed repeated USB
 deployment and physical execution. Cross-launch durability, power-loss injection,
 soak, and memory-growth evidence remain unverified.
 
+## P4.3 system menu and localization
+
+Games can optionally assert `playdate.SystemMenu` to add owned action,
+checkmark, and options items. Items expose their SDK title and value, support
+idempotent removal, retain callbacks until removal, and are automatically
+removed after `LifecycleTerminate`. `playdate.Localization` exposes only the
+system language and `.strings` lookup; a missing key is reported explicitly so
+fallback text stays in game code.
+
+The `examples/systemmenu` consumer combines these capabilities with the P4.2
+store, persisting its checkmark and option values while localizing the visible
+labels. On 2026-08-02 it passed Windows SDK 3.1.1 Simulator execution, the
+conservative device gate at 268,932 bytes of static RAM and a 35,674-byte PDX,
+USB deployment, and physical Playdate execution. The menu callbacks changed
+both settings and their values survived a game restart. Extended
+conservative-GC soak, memory-growth measurement, and post-run crashlog
+inspection remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:

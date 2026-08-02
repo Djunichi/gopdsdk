@@ -123,6 +123,16 @@ physical hardware work on that host. Docker does not promote those levels.
   bytes of static RAM and a 30,269-byte PDX, USB deployment, and physical
   execution with `P4.2 STORE OK`. Cross-launch durability, injected power loss,
   soak, and memory-growth measurement remain unverified.
+- P4.3 implemented: optional owned action, checkmark, and option System Menu
+  items and localization are covered by deterministic ownership, forwarding,
+  generated Simulator/device adapter, and lifecycle cleanup tests. The focused
+  `examples/systemmenu` consumer persists localized menu values through P4.2.
+  On 2026-08-02 it passed Windows SDK 3.1.1 Simulator execution, the
+  conservative device gate at 268,932 bytes of static RAM and a 35,674-byte
+  PDX, USB deployment, and physical Playdate execution. Both menu callbacks
+  changed their settings and the values survived a game restart. Extended
+  conservative-GC soak, memory-growth measurement, and post-run crashlog
+  inspection remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
