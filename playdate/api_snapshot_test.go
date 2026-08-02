@@ -238,6 +238,8 @@ type PowerMonitor interface{BatteryPercentage() float32; BatteryVoltage() float3
 type PowerStatus uint8
 type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
+type SamplePlayer interface{Length() (float32, error); Offset() (float32, error); PlayRepeated(repeat int, rate float32) error; Rate() (float32, error); SetOffset(seconds float32) error; SetRate(rate float32) error; SoundEffect}
+type SamplePlayers interface{LoadSamplePlayer(path string) (SamplePlayer, error)}
 type Score struct{Rank uint32; Value uint32; Player string; BoardID string}
 type ScoreboardOperationError struct{Operation string; BoardID string; Message string}
 type Scoreboards interface{AddScore(boardID string, value uint32, callback func(Score, error)) error; GetPersonalBest(boardID string, callback func(Score, error)) error; GetScoreboards(callback func(BoardsList, error)) error; GetScores(boardID string, callback func(ScoresList, error)) error}
@@ -251,10 +253,16 @@ type SystemPreferences interface{ReduceFlashing() bool; SystemVolume() float32; 
 type TileDrawStats struct{Visited int; Drawn int}
 type TileMap struct{columns int; rows int; tileWidth int; tileHeight int; tiles []uint8; solid []bool}
 type TileMapConfig struct{Columns int; Rows int; TileWidth int; TileHeight int; Tiles []uint8; Solid []bool}
+type VariableRatePlayer interface{Rate() (float32, error); SetRate(rate float32) error}
 var ErrAnimationConfig error
 var ErrAudioClosed error
 var ErrAudioCreate error
+var ErrAudioOffset error
 var ErrAudioPlay error
+var ErrAudioRate error
+var ErrAudioRepeat error
+var ErrAudioReverseUnsupported error
+var ErrAudioUnavailable error
 var ErrAudioVolume error
 var ErrBitmapBorrowed error
 var ErrBitmapClosed error

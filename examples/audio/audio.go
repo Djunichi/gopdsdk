@@ -1,4 +1,4 @@
-// Package audio exercises the two portable P2.4 audio use cases.
+// Package audio exercises P5.1 sample playback and P2.4 streaming audio.
 package audio
 
 import (
@@ -13,25 +13,48 @@ const (
 )
 
 type game struct {
-	effect playdate.SoundEffect
-	music  playdate.FilePlayer
-	closed bool
+	effect          playdate.SamplePlayer
+	music           playdate.FilePlayer
+	musicRatePlayer playdate.VariableRatePlayer
+	sampleRate      float32
+	musicRate       float32
+	length          float32
+	effectState     playdate.PlaybackState
+	musicState      playdate.PlaybackState
+	dirty           bool
+	closed          bool
 }
 
-// New creates the P2.4 audio acceptance game.
+// New creates the P5.1 audio acceptance game.
 func New() playdate.Game { return &game{} }
 
 func (g *game) Init(context playdate.Context) error {
-	effect, err := context.LoadSoundEffect(effectAsset)
+	samples, ok := context.(playdate.SamplePlayers)
+	if !ok {
+		return playdate.ErrAudioUnavailable
+	}
+	effect, err := samples.LoadSamplePlayer(effectAsset)
 	if err != nil {
 		return err
 	}
 	g.effect = effect
+	g.sampleRate = 1
+	g.musicRate = 1
+	g.dirty = true
+	g.length, err = effect.Length()
+	if err != nil {
+		return errors.Join(err, effect.Close())
+	}
 	music, err := context.LoadFilePlayer(musicAsset)
 	if err != nil {
 		return errors.Join(err, effect.Close())
 	}
 	g.music = music
+	musicRatePlayer, ok := music.(playdate.VariableRatePlayer)
+	if !ok {
+		return errors.Join(playdate.ErrAudioUnavailable, g.close())
+	}
+	g.musicRatePlayer = musicRatePlayer
 	if err = effect.SetVolume(.8, .8); err != nil {
 		return errors.Join(err, g.close())
 	}
@@ -44,15 +67,52 @@ func (g *game) Init(context playdate.Context) error {
 func (g *game) Update(context playdate.Context) (bool, error) {
 	input := context.Input()
 	if input.Pressed.Has(playdate.ButtonA) {
-		if err := g.effect.Play(); err != nil {
+		offset := float32(0)
+		if g.sampleRate < 0 {
+			offset = g.length
+		}
+		if err := g.effect.SetOffset(offset); err != nil {
 			return false, err
 		}
+		if err := g.effect.PlayRepeated(3, g.sampleRate); err != nil {
+			return false, err
+		}
+		g.dirty = true
+	}
+	if input.Pressed.Has(playdate.ButtonRight) && g.sampleRate < 2 {
+		g.sampleRate = nextRate(g.sampleRate, .25)
+		if err := g.effect.SetRate(g.sampleRate); err != nil {
+			return false, err
+		}
+		g.dirty = true
+	}
+	if input.Pressed.Has(playdate.ButtonLeft) && g.sampleRate > -2 {
+		g.sampleRate = nextRate(g.sampleRate, -.25)
+		if err := g.effect.SetRate(g.sampleRate); err != nil {
+			return false, err
+		}
+		g.dirty = true
+	}
+	if input.Pressed.Has(playdate.ButtonUp) && g.musicRate < 2 {
+		g.musicRate = nextRate(g.musicRate, .25)
+		if err := g.musicRatePlayer.SetRate(g.musicRate); err != nil {
+			return false, err
+		}
+		g.dirty = true
+	}
+	if input.Pressed.Has(playdate.ButtonDown) && g.musicRate > .25 {
+		g.musicRate = nextRate(g.musicRate, -.25)
+		if err := g.musicRatePlayer.SetRate(g.musicRate); err != nil {
+			return false, err
+		}
+		g.dirty = true
 	}
 	if input.Pressed.Has(playdate.ButtonB) {
 		state, err := g.music.State()
 		if err != nil {
 			return false, err
 		}
+		g.dirty = true
 		if state == playdate.PlaybackStopped {
 			err = g.music.Play()
 		} else {
@@ -70,13 +130,73 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if effectState != g.effectState || musicState != g.musicState {
+		g.effectState, g.musicState = effectState, musicState
+		g.dirty = true
+	}
+	if !g.dirty {
+		return false, nil
+	}
+	g.dirty = false
 	context.Clear()
-	context.DrawText("P2.4 audio", 12, 8)
-	context.DrawText("A: repeat sound effect", 12, 32)
+	context.DrawText("P5.1 sample playback", 12, 8)
+	context.DrawText("A: play sample x3", 12, 32)
 	context.DrawText("B: play/stop music", 12, 54)
-	context.DrawText("SFX: "+stateName(effectState), 12, 86)
-	context.DrawText("Music: "+stateName(musicState), 12, 108)
+	context.DrawText("Left/Right: sample rate", 12, 76)
+	context.DrawText("Up/Down: music rate", 12, 98)
+	context.DrawText("SFX: "+stateName(effectState)+" "+rateName(g.sampleRate), 12, 130)
+	context.DrawText("Music: "+stateName(musicState)+" "+rateName(g.musicRate), 12, 152)
 	return true, nil
+}
+
+func nextRate(rate, delta float32) float32 {
+	rate += delta
+	if rate == 0 {
+		if delta < 0 {
+			return -.25
+		}
+		return .25
+	}
+	return rate
+}
+
+func rateName(rate float32) string {
+	switch rate {
+	case -2:
+		return "-2.00x"
+	case -1.75:
+		return "-1.75x"
+	case -1.5:
+		return "-1.50x"
+	case -1.25:
+		return "-1.25x"
+	case -1:
+		return "-1.00x"
+	case -.75:
+		return "-0.75x"
+	case -.5:
+		return "-0.50x"
+	case -.25:
+		return "-0.25x"
+	case .25:
+		return "0.25x"
+	case .5:
+		return "0.50x"
+	case .75:
+		return "0.75x"
+	case 1:
+		return "1.00x"
+	case 1.25:
+		return "1.25x"
+	case 1.5:
+		return "1.50x"
+	case 1.75:
+		return "1.75x"
+	case 2:
+		return "2.00x"
+	default:
+		return "invalid"
+	}
 }
 
 func (g *game) HandleLifecycle(_ playdate.Context, event playdate.LifecycleEvent) error {

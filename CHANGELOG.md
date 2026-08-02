@@ -4,6 +4,37 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
+## Unreleased - v0.5.0
+
+### Added
+
+- Optional `playdate.SamplePlayers` and explicitly owned `SamplePlayer` APIs
+  with bounded repeats, forward/reverse rates, duration, and playback offset.
+- Optional `playdate.VariableRatePlayer` support for streaming `FilePlayer`
+  pitch and speed control without widening the base `FilePlayer` contract;
+  negative streaming rates return `ErrAudioReverseUnsupported`.
+- Simulator and device ABI forwarding for advanced sample and file-player rate
+  operations, including forwarding through `NewApplication`.
+- A P5.1 audio acceptance scene with independent sample and music rate controls,
+  reverse-start positioning, and state-driven redraws.
+
+### Fixed
+
+- Reject reverse `FilePlayer` rates before entering the native API. The official
+  streaming player supports positive rates only; reverse remains available to
+  PCM `SamplePlayer` assets and is unsupported for ADPCM.
+
+### Compatibility
+
+- The full Go test and vet suites pass on Windows; Simulator and conservative
+  hard-float device builds pass with the official SDK.
+- Audible variable-rate sample and streaming-music interaction passed in
+  Windows Simulator and on a physical Playdate on 2026-08-02. The device build
+  used 268,940 bytes of static RAM and produced a 125,340-byte PDX; USB install
+  on COM3 and launch succeeded.
+- macOS/Linux native SDK integration, extended hardware soak, memory-growth,
+  lifecycle stress, and post-run crashlog inspection remain pending.
+
 ## v0.4.0 - release candidate (2026-08-02)
 
 ### Added

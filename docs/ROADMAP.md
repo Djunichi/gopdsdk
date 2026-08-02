@@ -47,7 +47,7 @@ cross-build does not promote a capability to device-ready.
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Release candidate; final gates pending |
-| P5 | `v0.5.0` | Advanced audio and music | Planned |
+| P5 | `v0.5.0` | Advanced audio and music | In progress; P5.1 device-accepted |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
 
@@ -399,6 +399,25 @@ growth, and crashlog inspection remain unverified.
 - Verify a published external consumer without a local `replace` after tagging.
 
 ## P5 — advanced audio and music
+
+### P5.1 — advanced sample playback
+
+- Add an optional `SamplePlayers` capability without widening the base
+  `Context` or breaking the P2 sound-effect API.
+- Support bounded repeat counts, forward and reverse sample rates, duration,
+  playback-position control, and variable-rate streaming music with explicit
+  player ownership.
+- Reject negative streaming rates with `ErrAudioReverseUnsupported`; reverse
+  playback remains sample-only and requires PCM rather than ADPCM assets.
+- Forward the capability through `NewApplication` and both native ABI contexts.
+- Native bridge generation is unit-tested. On 2026-08-02 the acceptance game
+  passed audible variable-rate sample and streaming-music interaction in
+  Windows Simulator and on a physical Playdate after conservative build, USB
+  installation, and launch. macOS/Linux native SDK integration, extended soak,
+  memory-growth measurement, lifecycle stress, and crashlog inspection remain
+  unverified.
+
+### Later P5 slices
 
 - Samples and sample players beyond the P2 sound-effect convenience API.
 - Channels, routing, fades, completion callbacks, and audio-clock timing.

@@ -203,6 +203,16 @@ var (
 	ErrAudioPlay error = audioError("audio playback failed")
 	// ErrAudioVolume indicates a non-finite volume outside the 0..1 range.
 	ErrAudioVolume error = audioError("audio volume must be between zero and one")
+	// ErrAudioRepeat indicates a repeat count outside the native 32-bit range.
+	ErrAudioRepeat error = audioError("audio repeat count must be between zero and 2147483647")
+	// ErrAudioRate indicates a zero or non-finite playback rate.
+	ErrAudioRate error = audioError("audio rate must be finite and non-zero")
+	// ErrAudioReverseUnsupported indicates reverse playback on a streaming player.
+	ErrAudioReverseUnsupported error = audioError("streaming audio cannot play in reverse")
+	// ErrAudioOffset indicates a non-finite or negative playback offset.
+	ErrAudioOffset error = audioError("audio offset must be finite and non-negative")
+	// ErrAudioUnavailable indicates that an optional advanced audio capability is absent.
+	ErrAudioUnavailable error = audioError("advanced audio is unavailable")
 )
 
 // Font errors.

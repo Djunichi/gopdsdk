@@ -94,8 +94,11 @@ func TestRender(t *testing.T) {
 		"C.bridgeFreeSprite",
 		"C.bridgeUpdateAndDrawSprites",
 		"C.bridgeLoadSoundEffect",
+		"C.bridgeSamplePlayerPlay",
 		"C.bridgeLoadFilePlayer",
+		"C.bridgeFilePlayerSetRate",
 		"sdkRuntime.NewSoundEffect",
+		"sdkRuntime.NewSamplePlayer",
 		"sdkRuntime.NewFilePlayer",
 	} {
 		if !strings.Contains(sources.Go, want) {
