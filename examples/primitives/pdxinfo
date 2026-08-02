@@ -1,0 +1,6 @@
+name=P3.1 Primitives Acceptance
+author=gopdsdk
+description=Drawing primitives, paint, clipping, offset, and mode acceptance
+bundleID=dev.gopdsdk.primitives
+version=1.0.0
+buildNumber=1

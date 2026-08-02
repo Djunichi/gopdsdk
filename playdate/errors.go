@@ -12,6 +12,14 @@ type BitmapLoadError string
 func (message BitmapLoadError) Error() string { return "load bitmap: " + string(message) }
 
 var (
+	// ErrGraphicsColor indicates a solid color outside the public values.
+	ErrGraphicsColor error = bitmapError("invalid graphics color")
+	// ErrGraphicsUnavailable indicates a context without the optional graphics slice.
+	ErrGraphicsUnavailable error = bitmapError("graphics capability is unavailable")
+	// ErrGraphicsGeometry indicates non-positive dimensions, widths, or non-finite angles.
+	ErrGraphicsGeometry error = bitmapError("invalid graphics geometry")
+	// ErrGraphicsDrawMode indicates a draw mode outside the public values.
+	ErrGraphicsDrawMode error = bitmapError("invalid graphics draw mode")
 	// ErrBitmapClosed indicates an operation on an already closed bitmap.
 	ErrBitmapClosed error = bitmapError("bitmap is closed")
 	// ErrBitmapBorrowed indicates an attempt to close a borrowed bitmap.

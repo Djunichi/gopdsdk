@@ -408,6 +408,28 @@ The API and adapters are unit-tested. Windows Simulator and physical-device
 visual acceptance passed with matching custom-font HUD, score, pause,
 game-over, and restart screens. A longer device memory soak remains unverified.
 
+## P3.1 drawing primitives and state
+
+`examples/primitives` is the consumer-driven acceptance scene for immediate
+mode lines, outlined and filled rectangles, ellipses, outlined and filled
+triangles, solid/XOR/8x8 pattern paint, clipping, draw offset, and bitmap draw
+modes. Games opt into the narrow `playdate.PrimitiveGraphics` and
+`playdate.GraphicsState` capabilities instead of expanding every `Graphics`
+fake.
+
+Run the same scene on either target with:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/primitives
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/primitives
+```
+
+Deterministic unit tests, Windows SDK 3.1.1 Simulator compilation and visual
+execution, hard-float device build, USB deployment, and matching physical
+Playdate execution passed on 2026-08-02. The accepted device artifact used
+266,556 bytes of static RAM and produced a 29,160-byte PDX. Conservative-GC
+soak and memory-growth measurement remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:

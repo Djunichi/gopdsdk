@@ -1,6 +1,7 @@
 # Compatibility and evidence
 
-The proposed `v0.2.0` release supports one exact verified toolchain profile.
+The released `v0.2.0` baseline and current P3 development use one exact
+verified toolchain profile.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -56,6 +57,15 @@ physical hardware work on that host. Docker does not promote those levels.
   measurement, explicit close, and deterministic HUD/pause/game-over/restart
   plans are unit-tested. Windows Simulator/device visual parity passed; a
   longer physical-device memory soak remains acceptance work.
+- P3.1 implemented: immediate-mode lines, outlined/filled rectangles,
+  ellipses, outlined/filled triangles, solid/XOR/8x8 pattern paint, clipping,
+  draw offset, draw modes, forwarding through the application context, and
+  portable validation errors are unit-tested through both generated adapters.
+  `examples/primitives` passed Windows SDK 3.1.1 Simulator compilation and
+  visual execution, hard-float device build, USB deployment on COM3, and
+  matching physical Playdate execution on 2026-08-02. The measured artifact
+  used 266,556 bytes of static RAM and produced a 29,160-byte PDX. A
+  conservative-GC soak and memory-growth measurement remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

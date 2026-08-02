@@ -67,6 +67,67 @@ func (testContext) UpdateAndDrawSprites()                                {}
 func (testContext) LoadSoundEffect(string) (playdate.SoundEffect, error) { return nil, nil }
 func (testContext) LoadFilePlayer(string) (playdate.FilePlayer, error)   { return nil, nil }
 
+type graphicsCapabilityContext struct {
+	testContext
+	draws int
+}
+
+func (c *graphicsCapabilityContext) DrawLine(int, int, int, int, int, playdate.Paint) error {
+	c.draws++
+	return nil
+}
+func (*graphicsCapabilityContext) DrawRect(int, int, int, int, playdate.Paint) error { return nil }
+func (*graphicsCapabilityContext) FillRect(int, int, int, int, playdate.Paint) error { return nil }
+func (*graphicsCapabilityContext) DrawEllipse(int, int, int, int, int, float32, float32, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) FillEllipse(int, int, int, int, float32, float32, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) DrawTriangle(int, int, int, int, int, int, int, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) FillTriangle(int, int, int, int, int, int, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) SetClipRect(int, int, int, int) error { return nil }
+func (*graphicsCapabilityContext) ClearClipRect()                       {}
+func (*graphicsCapabilityContext) SetDrawOffset(int, int)               {}
+func (*graphicsCapabilityContext) SetDrawMode(playdate.DrawMode) error  { return nil }
+
+type graphicsCapabilityGame struct{}
+
+func (graphicsCapabilityGame) Init(context playdate.Context) error {
+	if _, ok := context.(playdate.PrimitiveGraphics); !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	if _, ok := context.(playdate.GraphicsState); !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	return nil
+}
+func (graphicsCapabilityGame) Update(context playdate.Context) (bool, error) {
+	paint, _ := playdate.SolidPaint(playdate.ColorBlack)
+	return true, context.(playdate.PrimitiveGraphics).DrawLine(0, 0, 1, 1, 1, paint)
+}
+
+func TestApplicationForwardsOptionalGraphicsCapabilities(t *testing.T) {
+	context := &graphicsCapabilityContext{}
+	application, err := NewApplication(graphicsCapabilityGame{}, context, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	if refresh, err := application.Update(RawInput{}); err != nil || refresh != 1 {
+		t.Fatalf("Update() = %v, %v", refresh, err)
+	}
+	if context.draws != 1 {
+		t.Fatalf("draws = %d", context.draws)
+	}
+}
+
 func TestAudioOwnershipStateAndValidation(t *testing.T) {
 	playing := false
 	paused := false
@@ -222,6 +283,18 @@ func TestBitmapArgumentValidation(t *testing.T) {
 	}
 	if err := ValidateBitmapScale(1, *(*float32)(unsafe.Pointer(&[]uint32{0x7fc00000}[0]))); !errors.Is(err, playdate.ErrBitmapScale) {
 		t.Fatalf("NaN scale error = %v", err)
+	}
+}
+
+func TestPrimitiveAndDrawModeValidation(t *testing.T) {
+	if err := ValidatePrimitiveGeometry(0, 1, 1, 0, 360); !errors.Is(err, playdate.ErrGraphicsGeometry) {
+		t.Fatalf("width error = %v", err)
+	}
+	if err := ValidatePrimitiveGeometry(1, 1, 1, 0, 360); err != nil {
+		t.Fatalf("valid geometry = %v", err)
+	}
+	if err := ValidateDrawMode(playdate.DrawMode(99)); !errors.Is(err, playdate.ErrGraphicsDrawMode) {
+		t.Fatalf("draw mode error = %v", err)
 	}
 }
 

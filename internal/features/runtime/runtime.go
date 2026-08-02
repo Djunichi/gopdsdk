@@ -3,9 +3,26 @@ package runtime
 
 import (
 	"errors"
+	"math"
 
 	"github.com/Djunichi/gopdsdk/playdate"
 )
+
+// ValidatePrimitiveGeometry applies the shared primitive dimension contract.
+func ValidatePrimitiveGeometry(width, height, lineWidth int, startAngle, endAngle float32) error {
+	if width <= 0 || height <= 0 || lineWidth <= 0 || math.IsNaN(float64(startAngle)) || math.IsNaN(float64(endAngle)) || math.IsInf(float64(startAngle), 0) || math.IsInf(float64(endAngle), 0) {
+		return playdate.ErrGraphicsGeometry
+	}
+	return nil
+}
+
+// ValidateDrawMode applies the shared draw-mode contract.
+func ValidateDrawMode(mode playdate.DrawMode) error {
+	if mode > playdate.DrawModeInverted {
+		return playdate.ErrGraphicsDrawMode
+	}
+	return nil
+}
 
 // Event identifies an event delivered by the Playdate runtime.
 type Event int32
@@ -629,6 +646,96 @@ func (context *applicationContext) DrawTextFont(font playdate.Font, text string,
 		return playdate.ErrFontLoad
 	}
 	return graphics.DrawTextFont(font, text, x, y)
+}
+
+func (context *applicationContext) primitiveGraphics() (playdate.PrimitiveGraphics, error) {
+	graphics, ok := context.Context.(playdate.PrimitiveGraphics)
+	if !ok {
+		return nil, playdate.ErrGraphicsUnavailable
+	}
+	return graphics, nil
+}
+
+func (context *applicationContext) DrawLine(x1, y1, x2, y2, width int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.DrawLine(x1, y1, x2, y2, width, paint)
+}
+func (context *applicationContext) DrawRect(x, y, width, height int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.DrawRect(x, y, width, height, paint)
+}
+func (context *applicationContext) FillRect(x, y, width, height int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.FillRect(x, y, width, height, paint)
+}
+func (context *applicationContext) DrawEllipse(x, y, width, height, lineWidth int, startAngle, endAngle float32, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.DrawEllipse(x, y, width, height, lineWidth, startAngle, endAngle, paint)
+}
+func (context *applicationContext) FillEllipse(x, y, width, height int, startAngle, endAngle float32, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.FillEllipse(x, y, width, height, startAngle, endAngle, paint)
+}
+func (context *applicationContext) DrawTriangle(x1, y1, x2, y2, x3, y3, width int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.DrawTriangle(x1, y1, x2, y2, x3, y3, width, paint)
+}
+func (context *applicationContext) FillTriangle(x1, y1, x2, y2, x3, y3 int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.FillTriangle(x1, y1, x2, y2, x3, y3, paint)
+}
+
+func (context *applicationContext) graphicsState() (playdate.GraphicsState, error) {
+	graphics, ok := context.Context.(playdate.GraphicsState)
+	if !ok {
+		return nil, playdate.ErrGraphicsUnavailable
+	}
+	return graphics, nil
+}
+func (context *applicationContext) SetClipRect(x, y, width, height int) error {
+	graphics, err := context.graphicsState()
+	if err != nil {
+		return err
+	}
+	return graphics.SetClipRect(x, y, width, height)
+}
+func (context *applicationContext) ClearClipRect() {
+	if graphics, err := context.graphicsState(); err == nil {
+		graphics.ClearClipRect()
+	}
+}
+func (context *applicationContext) SetDrawOffset(dx, dy int) {
+	if graphics, err := context.graphicsState(); err == nil {
+		graphics.SetDrawOffset(dx, dy)
+	}
+}
+func (context *applicationContext) SetDrawMode(mode playdate.DrawMode) error {
+	graphics, err := context.graphicsState()
+	if err != nil {
+		return err
+	}
+	return graphics.SetDrawMode(mode)
 }
 
 // NewApplication composes a public game with its platform context. beforeInit
