@@ -56,6 +56,7 @@ func renderGo(config Config) string {
 #include %q
 #include <stdlib.h>
 void bridgeRegisterUpdate(PlaydateAPI* playdate);
+void bridgeLogError(const char* message);
 int bridgeAddScore(const char* board, uint32_t value);
 int bridgeGetPersonalBest(const char* board);
 int bridgeGetScoreboards(void);
@@ -186,6 +187,51 @@ void bridgeSoundEffectSetFinishCallback(uintptr_t effect, uint32_t callback);
 void bridgeFilePlayerSetFinishCallback(uintptr_t player, uint32_t callback);
 void bridgeFilePlayerFadeVolume(uintptr_t player, float left, float right, uint32_t frames, uint32_t callback);
 void bridgeFreeFilePlayer(uintptr_t player);
+uintptr_t bridgeSoundEffectSource(uintptr_t effect);
+uintptr_t bridgeNewAudioChannel(void);
+int bridgeAudioChannelAddSource(uintptr_t channel, uintptr_t source);
+int bridgeAudioChannelRemoveSource(uintptr_t channel, uintptr_t source);
+void bridgeAudioChannelSetVolume(uintptr_t channel, float volume);
+float bridgeAudioChannelVolume(uintptr_t channel);
+void bridgeAudioChannelSetPan(uintptr_t channel, float pan);
+int bridgeRemoveAudioChannel(uintptr_t channel);
+void bridgeFreeAudioChannel(uintptr_t channel);
+uintptr_t bridgeNewSynth(int waveform);
+void bridgeSynthSetWaveform(uintptr_t synth, int waveform);
+void bridgeSynthSetEnvelope(uintptr_t synth, float attack, float decay, float sustain, float release);
+void bridgeSynthSetTranspose(uintptr_t synth, float transpose);
+void bridgeSynthSetFrequencyModulator(uintptr_t synth, uintptr_t signal);
+void bridgeSynthSetAmplitudeModulator(uintptr_t synth, uintptr_t signal);
+void bridgeSynthPlayMIDINote(uintptr_t synth, float note, float velocity, float length, uint32_t when);
+void bridgeSynthNoteOff(uintptr_t synth, uint32_t when);
+void bridgeFreeSynth(uintptr_t synth);
+uintptr_t bridgeNewLFO(int type);
+uintptr_t bridgeNewEnvelope(float attack, float decay, float sustain, float release);
+uintptr_t bridgeNewControlSignal(void);
+float bridgeSignalValue(uintptr_t signal);
+void bridgeSignalSetScale(uintptr_t signal, float scale);
+void bridgeSignalSetOffset(uintptr_t signal, float offset);
+void bridgeLFOSetRate(uintptr_t signal, float rate);
+void bridgeLFOSetPhase(uintptr_t signal, float phase);
+void bridgeLFOSetCenter(uintptr_t signal, float center);
+void bridgeLFOSetDepth(uintptr_t signal, float depth);
+void bridgeLFOSetRetrigger(uintptr_t signal, int retrigger);
+void bridgeEnvelopeSetAttack(uintptr_t signal, float value);
+void bridgeEnvelopeSetDecay(uintptr_t signal, float value);
+void bridgeEnvelopeSetSustain(uintptr_t signal, float value);
+void bridgeEnvelopeSetRelease(uintptr_t signal, float value);
+void bridgeEnvelopeSetLegato(uintptr_t signal, int value);
+void bridgeEnvelopeSetRetrigger(uintptr_t signal, int value);
+void bridgeControlSignalAddEvent(uintptr_t signal, int step, float value, int interpolate);
+void bridgeControlSignalRemoveEvent(uintptr_t signal, int step);
+void bridgeControlSignalClearEvents(uintptr_t signal);
+void bridgeFreeLFO(uintptr_t signal);
+void bridgeFreeEnvelope(uintptr_t signal);
+void bridgeFreeControlSignal(uintptr_t signal);
+void bridgeSourceStop(uintptr_t source);
+void bridgeSourceSetVolume(uintptr_t source, float left, float right);
+void bridgeSourceVolume(uintptr_t source, float* left, float* right);
+int bridgeSourceIsPlaying(uintptr_t source);
 */
 import "C"
 import (
@@ -225,6 +271,11 @@ func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t
 		return -1
 	}
 	if err := application.Handle(sdkRuntime.Event(event), uint32(arg)); err != nil {
+		message := C.CString(err.Error())
+		C.bridgeLogError(message)
+		C.bridgeClear()
+		C.bridgeDrawText(message, C.size_t(len(err.Error())), 12, 12)
+		C.free(unsafe.Pointer(message))
 		return -1
 	}
 	return 0
@@ -237,6 +288,7 @@ func goUpdate() C.int {
 		CrankDelta: float32(C.bridgeCrankDelta()), CrankDocked: C.bridgeCrankDocked() != 0,
 		DeltaSeconds: float32(C.bridgeFrameDelta()),
 	})
+	if err != nil { message := C.CString(err.Error()); C.bridgeLogError(message); C.free(unsafe.Pointer(message)) }
 	if err != nil {
 		return 0
 	}
@@ -256,6 +308,8 @@ var _ sdkPlaydate.Localization = playdateContext{}
 var _ sdkPlaydate.Scoreboards = playdateContext{}
 var _ sdkPlaydate.DebugMessages = playdateContext{}
 var _ sdkPlaydate.AudioClock = playdateContext{}
+var _ sdkPlaydate.AudioChannels = playdateContext{}
+var _ sdkPlaydate.Synthesizers = playdateContext{}
 
 func (playdateContext) PollDebugMessage()(string,bool){return debugMessages.Poll()}
 
@@ -459,6 +513,7 @@ func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdk
 func (playdateContext) UpdateAndDrawSprites() { C.bridgeUpdateAndDrawSprites() }
 
 var soundEffectDriver = sdkRuntime.AudioDriver{
+	Source: func(handle uintptr) uintptr { return uintptr(C.bridgeSoundEffectSource(C.uintptr_t(handle))) },
 	Play: func(handle uintptr) bool { return C.bridgeSoundEffectPlay(C.uintptr_t(handle)) != 0 },
 	PlayRepeated: func(handle uintptr, repeat int, rate float32) bool { return C.bridgeSamplePlayerPlay(C.uintptr_t(handle), C.int(repeat), C.float(rate)) != 0 },
 	Stop: func(handle uintptr) { C.bridgeSoundEffectStop(C.uintptr_t(handle)) },
@@ -475,6 +530,7 @@ var soundEffectDriver = sdkRuntime.AudioDriver{
 	Free: func(handle uintptr) { C.bridgeFreeSoundEffect(C.uintptr_t(handle)) },
 }
 var filePlayerDriver = sdkRuntime.AudioDriver{
+	Source: func(handle uintptr) uintptr { return handle },
 	Play: func(handle uintptr) bool { return C.bridgeFilePlayerPlay(C.uintptr_t(handle)) != 0 },
 	Stop: func(handle uintptr) { C.bridgeFilePlayerStop(C.uintptr_t(handle)) },
 	SetVolume: func(handle uintptr, left, right float32) { C.bridgeFilePlayerSetVolume(C.uintptr_t(handle), C.float(left), C.float(right)) },
@@ -503,6 +559,27 @@ func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, erro
 	return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil
 }
 
+var audioChannelDriver = sdkRuntime.AudioChannelDriver{
+	AddSource: func(channel, source uintptr) bool { return C.bridgeAudioChannelAddSource(C.uintptr_t(channel), C.uintptr_t(source)) != 0 },
+	RemoveSource: func(channel, source uintptr) bool { return C.bridgeAudioChannelRemoveSource(C.uintptr_t(channel), C.uintptr_t(source)) != 0 },
+	SetVolume: func(channel uintptr, volume float32) { C.bridgeAudioChannelSetVolume(C.uintptr_t(channel), C.float(volume)) },
+	Volume: func(channel uintptr) float32 { return float32(C.bridgeAudioChannelVolume(C.uintptr_t(channel))) },
+	SetPan: func(channel uintptr, pan float32) { C.bridgeAudioChannelSetPan(C.uintptr_t(channel), C.float(pan)) },
+	Remove: func(channel uintptr) bool { return C.bridgeRemoveAudioChannel(C.uintptr_t(channel)) != 0 },
+	Free: func(channel uintptr) { C.bridgeFreeAudioChannel(C.uintptr_t(channel)) },
+}
+func (playdateContext) NewAudioChannel() (sdkPlaydate.AudioChannel, error) { handle := uintptr(C.bridgeNewAudioChannel()); if handle == 0 { return nil, sdkPlaydate.ErrAudioCreate }; return sdkRuntime.NewAudioChannel(handle, audioChannelDriver), nil }
+
+var signalDriver = sdkRuntime.SignalDriver{Value: func(h uintptr) float32 { return float32(C.bridgeSignalValue(C.uintptr_t(h))) }, SetScale: func(h uintptr,v float32){C.bridgeSignalSetScale(C.uintptr_t(h),C.float(v))}, SetOffset: func(h uintptr,v float32){C.bridgeSignalSetOffset(C.uintptr_t(h),C.float(v))}}
+var lfoDriver = sdkRuntime.LFODriver{Signal: signalDriver, SetRate: func(h uintptr,v float32){C.bridgeLFOSetRate(C.uintptr_t(h),C.float(v))}, SetPhase: func(h uintptr,v float32){C.bridgeLFOSetPhase(C.uintptr_t(h),C.float(v))}, SetCenter: func(h uintptr,v float32){C.bridgeLFOSetCenter(C.uintptr_t(h),C.float(v))}, SetDepth: func(h uintptr,v float32){C.bridgeLFOSetDepth(C.uintptr_t(h),C.float(v))}, SetRetrigger: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeLFOSetRetrigger(C.uintptr_t(h),flag)}}
+var envelopeDriver = sdkRuntime.EnvelopeDriver{Signal: signalDriver, SetAttack: func(h uintptr,v float32){C.bridgeEnvelopeSetAttack(C.uintptr_t(h),C.float(v))}, SetDecay: func(h uintptr,v float32){C.bridgeEnvelopeSetDecay(C.uintptr_t(h),C.float(v))}, SetSustain: func(h uintptr,v float32){C.bridgeEnvelopeSetSustain(C.uintptr_t(h),C.float(v))}, SetRelease: func(h uintptr,v float32){C.bridgeEnvelopeSetRelease(C.uintptr_t(h),C.float(v))}, SetLegato: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeEnvelopeSetLegato(C.uintptr_t(h),flag)}, SetRetrigger: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeEnvelopeSetRetrigger(C.uintptr_t(h),flag)}}
+var controlSignalDriver = sdkRuntime.ControlSignalDriver{Signal: signalDriver, AddEvent: func(h uintptr,step int,v float32,interpolate bool){var flag C.int;if interpolate{flag=1};C.bridgeControlSignalAddEvent(C.uintptr_t(h),C.int(step),C.float(v),flag)}, RemoveEvent: func(h uintptr,step int){C.bridgeControlSignalRemoveEvent(C.uintptr_t(h),C.int(step))}, ClearEvents: func(h uintptr){C.bridgeControlSignalClearEvents(C.uintptr_t(h))}}
+var synthDriver = sdkRuntime.SynthDriver{Audio: sdkRuntime.AudioDriver{Source: func(h uintptr)uintptr{return h}, Stop: func(h uintptr){C.bridgeSourceStop(C.uintptr_t(h))}, SetVolume: func(h uintptr,l,r float32){C.bridgeSourceSetVolume(C.uintptr_t(h),C.float(l),C.float(r))}, Volume: func(h uintptr)(float32,float32){var l,r C.float;C.bridgeSourceVolume(C.uintptr_t(h),&l,&r);return float32(l),float32(r)}, IsPlaying: func(h uintptr)bool{return C.bridgeSourceIsPlaying(C.uintptr_t(h))!=0}, Pause: func(uintptr,bool){}, Free: func(h uintptr){C.bridgeFreeSynth(C.uintptr_t(h))}}, SetWaveform: func(h uintptr,w sdkPlaydate.Waveform){C.bridgeSynthSetWaveform(C.uintptr_t(h),C.int(w))}, SetEnvelope: func(h uintptr,a,d,s,r float32){C.bridgeSynthSetEnvelope(C.uintptr_t(h),C.float(a),C.float(d),C.float(s),C.float(r))}, SetTranspose: func(h uintptr,v float32){C.bridgeSynthSetTranspose(C.uintptr_t(h),C.float(v))}, SetFrequencyModulator: func(h,m uintptr){C.bridgeSynthSetFrequencyModulator(C.uintptr_t(h),C.uintptr_t(m))}, SetAmplitudeModulator: func(h,m uintptr){C.bridgeSynthSetAmplitudeModulator(C.uintptr_t(h),C.uintptr_t(m))}, PlayMIDINote: func(h uintptr,n,v,l float32,w uint32){C.bridgeSynthPlayMIDINote(C.uintptr_t(h),C.float(n),C.float(v),C.float(l),C.uint32_t(w))}, NoteOff: func(h uintptr,w uint32){C.bridgeSynthNoteOff(C.uintptr_t(h),C.uint32_t(w))}}
+func (playdateContext) NewSynth(w sdkPlaydate.Waveform)(sdkPlaydate.Synth,error){if w>sdkPlaydate.WaveformPOVosim{return nil,sdkPlaydate.ErrAudioWaveform};h:=uintptr(C.bridgeNewSynth(C.int(w)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSynth(h,synthDriver),nil}
+func (playdateContext) NewLFO(t sdkPlaydate.LFOType)(sdkPlaydate.LFO,error){if t>sdkPlaydate.LFOTypeArpeggiator{return nil,sdkPlaydate.ErrAudioWaveform};h:=uintptr(C.bridgeNewLFO(C.int(t)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=lfoDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeLFO(C.uintptr_t(h))};return sdkRuntime.NewLFO(h,driver),nil}
+func (playdateContext) NewEnvelope(a,d,s,r float32)(sdkPlaydate.Envelope,error){if err:=sdkRuntime.ValidateEnvelope(a,d,s,r);err!=nil{return nil,err};h:=uintptr(C.bridgeNewEnvelope(C.float(a),C.float(d),C.float(s),C.float(r)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=envelopeDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeEnvelope(C.uintptr_t(h))};return sdkRuntime.NewEnvelope(h,driver),nil}
+func (playdateContext) NewControlSignal()(sdkPlaydate.ControlSignal,error){h:=uintptr(C.bridgeNewControlSignal());if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=controlSignalDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeControlSignal(C.uintptr_t(h))};return sdkRuntime.NewControlSignal(h,driver),nil}
+
 func main() {}
 `,
 		filepath.ToSlash(config.APIHeader),
@@ -525,6 +602,7 @@ _Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
 extern int goUpdate(void);
 
 static PlaydateAPI* bridgePlaydate;
+void bridgeLogError(const char* message){if(bridgePlaydate&&message)bridgePlaydate->system->logToConsole("gopdsdk: %%s",message);}
 extern void goMenuCallback(uint32_t id);
 static void bridgeMenuCallback(void* userdata) { goMenuCallback((uint32_t)(uintptr_t)userdata); }
 extern void goSerialMessage(const char* message);
@@ -732,5 +810,37 @@ float bridgeFilePlayerRate(uintptr_t player) { return bridgePlaydate->sound->fil
 void bridgeFilePlayerSetFinishCallback(uintptr_t player,uint32_t callback){bridgePlaydate->sound->fileplayer->setFinishCallback((FilePlayer*)player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
 void bridgeFilePlayerFadeVolume(uintptr_t player,float left,float right,uint32_t frames,uint32_t callback){bridgePlaydate->sound->fileplayer->fadeVolume((FilePlayer*)player,left,right,(int32_t)frames,callback?bridgeAudioFadeCallback:NULL,(void*)(uintptr_t)callback);}
 void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player); }
+uintptr_t bridgeSoundEffectSource(uintptr_t effect){return(uintptr_t)bridgeEffect(effect)->player;}
+uintptr_t bridgeNewAudioChannel(void){SoundChannel* channel=bridgePlaydate->sound->channel->newChannel();if(!channel)return 0;bridgePlaydate->sound->addChannel(channel);return(uintptr_t)channel;}
+int bridgeAudioChannelAddSource(uintptr_t channel,uintptr_t source){return bridgePlaydate->sound->channel->addSource((SoundChannel*)channel,(SoundSource*)source);}
+int bridgeAudioChannelRemoveSource(uintptr_t channel,uintptr_t source){return bridgePlaydate->sound->channel->removeSource((SoundChannel*)channel,(SoundSource*)source);}
+void bridgeAudioChannelSetVolume(uintptr_t channel,float volume){bridgePlaydate->sound->channel->setVolume((SoundChannel*)channel,volume);}
+float bridgeAudioChannelVolume(uintptr_t channel){return bridgePlaydate->sound->channel->getVolume((SoundChannel*)channel);}
+void bridgeAudioChannelSetPan(uintptr_t channel,float pan){bridgePlaydate->sound->channel->setPan((SoundChannel*)channel,pan);}
+int bridgeRemoveAudioChannel(uintptr_t channel){bridgePlaydate->sound->removeChannel((SoundChannel*)channel);return 1;}
+void bridgeFreeAudioChannel(uintptr_t channel){bridgePlaydate->sound->channel->freeChannel((SoundChannel*)channel);}
+void bridgeSourceStop(uintptr_t source){bridgePlaydate->sound->synth->stop((PDSynth*)source);}
+void bridgeSourceSetVolume(uintptr_t source,float left,float right){bridgePlaydate->sound->source->setVolume((SoundSource*)source,left,right);}
+void bridgeSourceVolume(uintptr_t source,float* left,float* right){bridgePlaydate->sound->source->getVolume((SoundSource*)source,left,right);}
+int bridgeSourceIsPlaying(uintptr_t source){return bridgePlaydate->sound->source->isPlaying((SoundSource*)source);}
+uintptr_t bridgeNewSynth(int waveform){PDSynth* synth=bridgePlaydate->sound->synth->newSynth();if(synth)bridgePlaydate->sound->synth->setWaveform(synth,(SoundWaveform)waveform);return(uintptr_t)synth;}
+void bridgeSynthSetWaveform(uintptr_t synth,int waveform){bridgePlaydate->sound->synth->setWaveform((PDSynth*)synth,(SoundWaveform)waveform);}
+void bridgeSynthSetEnvelope(uintptr_t synth,float a,float d,float s,float r){bridgePlaydate->sound->synth->setAttackTime((PDSynth*)synth,a);bridgePlaydate->sound->synth->setDecayTime((PDSynth*)synth,d);bridgePlaydate->sound->synth->setSustainLevel((PDSynth*)synth,s);bridgePlaydate->sound->synth->setReleaseTime((PDSynth*)synth,r);}
+void bridgeSynthSetTranspose(uintptr_t synth,float value){bridgePlaydate->sound->synth->setTranspose((PDSynth*)synth,value);}
+void bridgeSynthSetFrequencyModulator(uintptr_t synth,uintptr_t signal){bridgePlaydate->sound->synth->setFrequencyModulator((PDSynth*)synth,(PDSynthSignalValue*)signal);}
+void bridgeSynthSetAmplitudeModulator(uintptr_t synth,uintptr_t signal){bridgePlaydate->sound->synth->setAmplitudeModulator((PDSynth*)synth,(PDSynthSignalValue*)signal);}
+void bridgeSynthPlayMIDINote(uintptr_t synth,float note,float velocity,float length,uint32_t when){bridgePlaydate->sound->synth->playMIDINote((PDSynth*)synth,note,velocity,length,when);}
+void bridgeSynthNoteOff(uintptr_t synth,uint32_t when){bridgePlaydate->sound->synth->noteOff((PDSynth*)synth,when);}
+void bridgeFreeSynth(uintptr_t synth){bridgePlaydate->sound->synth->freeSynth((PDSynth*)synth);}
+uintptr_t bridgeNewLFO(int type){return(uintptr_t)bridgePlaydate->sound->lfo->newLFO((LFOType)type);}
+uintptr_t bridgeNewEnvelope(float a,float d,float s,float r){return(uintptr_t)bridgePlaydate->sound->envelope->newEnvelope(a,d,s,r);}
+uintptr_t bridgeNewControlSignal(void){return(uintptr_t)bridgePlaydate->sound->controlsignal->newSignal();}
+float bridgeSignalValue(uintptr_t signal){return bridgePlaydate->sound->signal->getValue((PDSynthSignal*)signal);}
+void bridgeSignalSetScale(uintptr_t signal,float value){bridgePlaydate->sound->signal->setValueScale((PDSynthSignal*)signal,value);}
+void bridgeSignalSetOffset(uintptr_t signal,float value){bridgePlaydate->sound->signal->setValueOffset((PDSynthSignal*)signal,value);}
+void bridgeLFOSetRate(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setRate((PDSynthLFO*)signal,value);} void bridgeLFOSetPhase(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setPhase((PDSynthLFO*)signal,value);} void bridgeLFOSetCenter(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setCenter((PDSynthLFO*)signal,value);} void bridgeLFOSetDepth(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setDepth((PDSynthLFO*)signal,value);} void bridgeLFOSetRetrigger(uintptr_t signal,int value){bridgePlaydate->sound->lfo->setRetrigger((PDSynthLFO*)signal,value);}
+void bridgeEnvelopeSetAttack(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setAttack((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetDecay(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setDecay((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetSustain(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setSustain((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetRelease(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setRelease((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetLegato(uintptr_t signal,int value){bridgePlaydate->sound->envelope->setLegato((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetRetrigger(uintptr_t signal,int value){bridgePlaydate->sound->envelope->setRetrigger((PDSynthEnvelope*)signal,value);}
+void bridgeControlSignalAddEvent(uintptr_t signal,int step,float value,int interpolate){bridgePlaydate->sound->controlsignal->addEvent((ControlSignal*)signal,step,value,interpolate);} void bridgeControlSignalRemoveEvent(uintptr_t signal,int step){bridgePlaydate->sound->controlsignal->removeEvent((ControlSignal*)signal,step);} void bridgeControlSignalClearEvents(uintptr_t signal){bridgePlaydate->sound->controlsignal->clearEvents((ControlSignal*)signal);}
+void bridgeFreeLFO(uintptr_t signal){bridgePlaydate->sound->lfo->freeLFO((PDSynthLFO*)signal);} void bridgeFreeEnvelope(uintptr_t signal){bridgePlaydate->sound->envelope->freeEnvelope((PDSynthEnvelope*)signal);} void bridgeFreeControlSignal(uintptr_t signal){bridgePlaydate->sound->controlsignal->freeSignal((ControlSignal*)signal);}
 `, filepath.ToSlash(apiHeader))
 }

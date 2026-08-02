@@ -688,6 +688,34 @@ Windows Simulator and on a physical Playdate. Installation through COM3 and
 device launch succeeded. Extended soak, memory-growth measurement, lifecycle
 stress, and post-run crashlog inspection remain unverified.
 
+## P5.3 routing, synthesizers, and signals
+
+Games can capability-assert `AudioChannels` and `Synthesizers` without widening
+the base `Context`. Explicitly owned channels route sample, file, and synth
+sources and expose channel volume and pan. Synths support native waveforms,
+ADSR parameters, transpose, audio-clock note scheduling, and frequency or
+amplitude modulation by owned LFOs, envelopes, and control-signal timelines.
+
+Routing and modulation edges do not transfer endpoint ownership. Closing a
+source or signal detaches every retained edge before freeing it; closing a
+channel detaches its sources without closing them. Unit tests cover duplicate
+attachments, close ordering, invalid parameters, graph forwarding through
+`NewApplication`, and generated Simulator/device bridge symbols.
+
+`examples/audio` exercises the complete P5.3 graph. A starts an indefinite
+scheduled synth note and release schedules `NoteOff`; B plays the routed sample
+and A+B controls routed file music. Left/Right cycles all eight synth waveforms,
+Up/Down cycles no modulation, amplitude/frequency LFO, envelope, and control
+signal. A+Left/Right cycles all seven LFO shapes, B+Left/Right cycles transpose,
+B+Up/Down changes channel volume, and the crank controls shared channel pan.
+
+On 2026-08-02 this matrix passed audible interaction in the official Windows
+Simulator and on a physical Playdate. The conservative hard-float device
+artifact uses 273,456 bytes of static RAM and produces a 146,771-byte PDX; USB
+installation through COM3 and launch succeeded. macOS/Linux SDK integration,
+extended soak, memory-growth measurement, lifecycle stress, and post-run
+crashlog inspection remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -721,6 +749,7 @@ toolchain without pretending to verify GUI or USB behavior.
 - macOS and Linux official SDK integration remains unverified.
 - Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
   callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
-  covers P2.4 sound effects/file players, P5.1 advanced sample controls, and
-  P5.2 timed fades/completion callbacks; routing, synthesis, and sequencing
-  remain open.
+  covers P2.4 sound effects/file players, P5.1 advanced sample controls, P5.2
+  timed fades/completion callbacks, and P5.3 owned routing, waveform synths,
+  and modulation signals; instruments, sequencing, effects, and microphone
+  input remain open.

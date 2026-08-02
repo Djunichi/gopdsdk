@@ -353,6 +353,7 @@ func FontHandle(value playdate.Font) (uintptr, error) {
 
 // AudioDriver contains the common native operations for either accepted player.
 type AudioDriver struct {
+	Source            func(uintptr) uintptr
 	Play              func(uintptr) bool
 	PlayRepeated      func(uintptr, int, float32) bool
 	Stop              func(uintptr)
@@ -378,6 +379,153 @@ type audioPlayer struct {
 	closed         bool
 	finishCallback uint32
 	fadeCallback   uint32
+	channels       map[*audioChannel]struct{}
+}
+
+// AudioChannelDriver contains native operations for an explicitly owned
+// routing node.
+type AudioChannelDriver struct {
+	AddSource    func(uintptr, uintptr) bool
+	RemoveSource func(uintptr, uintptr) bool
+	SetVolume    func(uintptr, float32)
+	Volume       func(uintptr) float32
+	SetPan       func(uintptr, float32)
+	Remove       func(uintptr) bool
+	Free         func(uintptr)
+}
+
+type audioChannel struct {
+	handle  uintptr
+	driver  AudioChannelDriver
+	sources map[*audioPlayer]struct{}
+	closed  bool
+}
+
+// NewAudioChannel wraps a native channel already added to the sound graph.
+func NewAudioChannel(handle uintptr, driver AudioChannelDriver) playdate.AudioChannel {
+	return &audioChannel{handle: handle, driver: driver, sources: make(map[*audioPlayer]struct{})}
+}
+
+func (c *audioChannel) nativeHandle() (uintptr, error) {
+	if c == nil || c.closed || c.handle == 0 {
+		return 0, playdate.ErrAudioChannelClosed
+	}
+	return c.handle, nil
+}
+
+func audioSource(value playdate.AudioSource) (*audioPlayer, error) {
+	switch source := value.(type) {
+	case *audioPlayer:
+		return source, nil
+	case *filePlayer:
+		return source.audioPlayer, nil
+	case *synth:
+		return source.audioPlayer, nil
+	default:
+		return nil, playdate.ErrAudioSourceInvalid
+	}
+}
+
+func (c *audioChannel) AddSource(value playdate.AudioSource) error {
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	source, err := audioSource(value)
+	if err != nil {
+		return err
+	}
+	sourceHandle, err := source.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if _, ok := c.sources[source]; ok {
+		return nil
+	}
+	if !c.driver.AddSource(handle, source.driver.Source(sourceHandle)) {
+		return playdate.ErrAudioRoute
+	}
+	c.sources[source] = struct{}{}
+	if source.channels == nil {
+		source.channels = make(map[*audioChannel]struct{})
+	}
+	source.channels[c] = struct{}{}
+	return nil
+}
+
+func (c *audioChannel) RemoveSource(value playdate.AudioSource) error {
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	source, err := audioSource(value)
+	if err != nil {
+		return err
+	}
+	if _, ok := c.sources[source]; !ok {
+		return nil
+	}
+	sourceHandle, err := source.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !c.driver.RemoveSource(handle, source.driver.Source(sourceHandle)) {
+		return playdate.ErrAudioRoute
+	}
+	delete(c.sources, source)
+	delete(source.channels, c)
+	return nil
+}
+
+func (c *audioChannel) SetVolume(volume float32) error {
+	if err := ValidateAudioVolume(volume, volume); err != nil {
+		return err
+	}
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	c.driver.SetVolume(handle, volume)
+	return nil
+}
+func (c *audioChannel) Volume() (float32, error) {
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	return c.driver.Volume(handle), nil
+}
+func (c *audioChannel) SetPan(pan float32) error {
+	if pan < -1 || pan > 1 || pan != pan {
+		return playdate.ErrAudioPan
+	}
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	c.driver.SetPan(handle, pan)
+	return nil
+}
+func (c *audioChannel) Close() error {
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	for source := range c.sources {
+		sourceHandle, sourceErr := source.nativeHandle()
+		if sourceErr == nil {
+			c.driver.RemoveSource(handle, source.driver.Source(sourceHandle))
+		}
+		delete(source.channels, c)
+	}
+	c.sources = nil
+	if !c.driver.Remove(handle) {
+		return playdate.ErrAudioRoute
+	}
+	c.driver.Free(handle)
+	c.handle = 0
+	c.closed = true
+	return nil
 }
 
 type filePlayer struct{ *audioPlayer }
@@ -590,6 +738,14 @@ func (p *audioPlayer) Close() error {
 		return err
 	}
 	p.driver.Stop(handle)
+	for channel := range p.channels {
+		if !channel.driver.RemoveSource(channel.handle, p.driver.Source(handle)) {
+			return playdate.ErrAudioRoute
+		}
+		delete(channel.sources, p)
+		delete(p.channels, channel)
+	}
+	p.channels = nil
 	if p.driver.SetFinishCallback != nil {
 		p.driver.SetFinishCallback(handle, 0)
 	}
@@ -1023,6 +1179,43 @@ func (context *applicationContext) LoadSamplePlayer(path string) (playdate.Sampl
 		return nil, playdate.ErrAudioUnavailable
 	}
 	return samples.LoadSamplePlayer(path)
+}
+
+func (context *applicationContext) NewAudioChannel() (playdate.AudioChannel, error) {
+	channels, _ := context.Context.(playdate.AudioChannels)
+	if channels == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return channels.NewAudioChannel()
+}
+
+func (context *applicationContext) NewSynth(waveform playdate.Waveform) (playdate.Synth, error) {
+	synths, _ := context.Context.(playdate.Synthesizers)
+	if synths == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return synths.NewSynth(waveform)
+}
+func (context *applicationContext) NewLFO(lfoType playdate.LFOType) (playdate.LFO, error) {
+	synths, _ := context.Context.(playdate.Synthesizers)
+	if synths == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return synths.NewLFO(lfoType)
+}
+func (context *applicationContext) NewEnvelope(a, d, s, r float32) (playdate.Envelope, error) {
+	synths, _ := context.Context.(playdate.Synthesizers)
+	if synths == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return synths.NewEnvelope(a, d, s, r)
+}
+func (context *applicationContext) NewControlSignal() (playdate.ControlSignal, error) {
+	synths, _ := context.Context.(playdate.Synthesizers)
+	if synths == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return synths.NewControlSignal()
 }
 
 func (context *applicationContext) PollDebugMessage() (string, bool) {

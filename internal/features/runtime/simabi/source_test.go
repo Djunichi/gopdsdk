@@ -104,6 +104,11 @@ func TestRender(t *testing.T) {
 		"sdkRuntime.NewSoundEffect",
 		"sdkRuntime.NewSamplePlayer",
 		"sdkRuntime.NewFilePlayer",
+		"sdkRuntime.NewAudioChannel",
+		"sdkRuntime.NewSynth",
+		"sdkRuntime.NewLFO",
+		"sdkRuntime.NewEnvelope",
+		"sdkRuntime.NewControlSignal",
 	} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q:\n%s", want, sources.Go)
@@ -126,6 +131,11 @@ func TestRender(t *testing.T) {
 		"system->realloc((void*)font, 0)",
 		"system->getCurrentTimeMilliseconds()",
 		"sound->getCurrentTime()",
+		"sound->channel->newChannel",
+		"sound->synth->newSynth",
+		"sound->lfo->newLFO",
+		"sound->envelope->newEnvelope",
+		"sound->controlsignal->newSignal",
 		"fileplayer->fadeVolume",
 		"sampleplayer->setFinishCallback",
 		"system->exitToLauncher()",

@@ -54,12 +54,58 @@ func (p *player) FadeVolume(left, _ float32, frames uint32, callback func()) err
 	p.volume, p.fadeFrames, p.fade = left, frames, callback
 	return nil
 }
+func (*player) SetWaveform(playdate.Waveform) error                  { return nil }
+func (*player) SetEnvelope(float32, float32, float32, float32) error { return nil }
+func (*player) SetTranspose(float32) error                           { return nil }
+func (*player) SetFrequencyModulator(playdate.Signal) error          { return nil }
+func (*player) SetAmplitudeModulator(playdate.Signal) error          { return nil }
+func (p *player) PlayMIDINote(float32, float32, float32, uint32) error {
+	p.state = playdate.PlaybackPlaying
+	p.plays++
+	return nil
+}
+func (*player) NoteOff(uint32) error { return nil }
+
+type signal struct{ closed bool }
+
+func (*signal) Value() (float32, error)           { return 0, nil }
+func (*signal) SetScale(float32) error            { return nil }
+func (*signal) SetOffset(float32) error           { return nil }
+func (s *signal) Close() error                    { s.closed = true; return nil }
+func (*signal) SetRate(float32) error             { return nil }
+func (*signal) SetPhase(float32) error            { return nil }
+func (*signal) SetCenter(float32) error           { return nil }
+func (*signal) SetDepth(float32) error            { return nil }
+func (*signal) SetRetrigger(bool) error           { return nil }
+func (*signal) SetAttack(float32) error           { return nil }
+func (*signal) SetDecay(float32) error            { return nil }
+func (*signal) SetSustain(float32) error          { return nil }
+func (*signal) SetRelease(float32) error          { return nil }
+func (*signal) SetLegato(bool) error              { return nil }
+func (*signal) AddEvent(int, float32, bool) error { return nil }
+func (*signal) RemoveEvent(int) error             { return nil }
+func (*signal) ClearEvents() error                { return nil }
+
+type channel struct {
+	source playdate.AudioSource
+	closed bool
+}
+
+func (c *channel) AddSource(s playdate.AudioSource) error  { c.source = s; return nil }
+func (c *channel) RemoveSource(playdate.AudioSource) error { c.source = nil; return nil }
+func (*channel) SetVolume(float32) error                   { return nil }
+func (*channel) Volume() (float32, error)                  { return 1, nil }
+func (*channel) SetPan(float32) error                      { return nil }
+func (c *channel) Close() error                            { c.closed = true; return nil }
 
 type context struct {
 	effect   *player
 	music    *player
 	input    playdate.Input
 	musicErr error
+	synth    *player
+	lfo      *signal
+	channel  *channel
 }
 
 func (*context) CurrentTimeMilliseconds() uint32                                    { return 0 }
@@ -101,6 +147,22 @@ func (c *context) LoadFilePlayer(path string) (playdate.FilePlayer, error) {
 	c.music = &player{}
 	return c.music, nil
 }
+func (c *context) NewAudioChannel() (playdate.AudioChannel, error) {
+	c.channel = &channel{}
+	return c.channel, nil
+}
+func (c *context) NewSynth(playdate.Waveform) (playdate.Synth, error) {
+	c.synth = &player{}
+	return c.synth, nil
+}
+func (c *context) NewLFO(playdate.LFOType) (playdate.LFO, error) {
+	c.lfo = &signal{}
+	return c.lfo, nil
+}
+func (*context) NewEnvelope(float32, float32, float32, float32) (playdate.Envelope, error) {
+	return &signal{}, nil
+}
+func (*context) NewControlSignal() (playdate.ControlSignal, error) { return &signal{}, nil }
 
 func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	c := &context{}
@@ -109,7 +171,7 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		c.input.Pressed = playdate.ButtonA
+		c.input.Pressed = playdate.ButtonB
 		if _, err := g.Update(c); err != nil {
 			t.Fatal(err)
 		}
@@ -120,25 +182,25 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	if c.effect.repeat != 3 || c.effect.rate != 1 {
 		t.Fatalf("sample repeat/rate = %d/%v", c.effect.repeat, c.effect.rate)
 	}
+	c.input.Pressed = playdate.ButtonA
+	if _, err := g.Update(c); err != nil {
+		t.Fatal(err)
+	}
+	if c.synth.plays != 1 {
+		t.Fatalf("synth plays = %d", c.synth.plays)
+	}
 	c.input.Pressed = playdate.ButtonRight
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
 	}
-	if c.effect.rate != 1.25 {
-		t.Fatalf("sample rate = %v", c.effect.rate)
+	if g.waveform != playdate.WaveformSine {
+		t.Fatalf("waveform = %v", g.waveform)
 	}
-	c.input.Pressed = playdate.ButtonUp
+	c.input.Pressed = playdate.ButtonA | playdate.ButtonB
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
 	}
-	if c.music.rate != 1.25 {
-		t.Fatalf("music rate = %v", c.music.rate)
-	}
-	c.input.Pressed = playdate.ButtonB
-	if _, err := g.Update(c); err != nil {
-		t.Fatal(err)
-	}
-	c.input.Pressed = playdate.ButtonB
+	c.input.Pressed = playdate.ButtonA | playdate.ButtonB
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
 	}
@@ -167,6 +229,9 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	}
 	if !c.effect.closed || !c.music.closed {
 		t.Fatal("players were not closed")
+	}
+	if !c.synth.closed || !g.lfo.(*signal).closed || !g.envelope.(*signal).closed || !g.control.(*signal).closed || !c.channel.closed {
+		t.Fatal("music graph was not closed")
 	}
 }
 
