@@ -196,6 +196,7 @@ type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; 
 type GraphicsState interface{ClearClipRect(); SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
+type Launcher interface{ExitToLauncher()}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}

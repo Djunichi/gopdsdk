@@ -42,6 +42,13 @@ Helpers should accept the narrowest interface they need. This keeps pure game
 logic independent from runtime callbacks and makes deterministic testing
 straightforward.
 
+Games that offer an explicit quit action assert the optional `Launcher`
+capability and call `ExitToLauncher`. The official runtime sends
+`LifecycleTerminate` before starting the Launcher, so cleanup remains in the
+normal lifecycle path. An in-game title or pause menu is application state:
+switching from gameplay back to that menu does not terminate or restart the
+process.
+
 Games that draw immediate-mode geometry assert `PrimitiveGraphics`; games that
 change clipping, draw offset, or bitmap compositing assert `GraphicsState`.
 These optional capabilities keep existing graphics fakes small. Primitive

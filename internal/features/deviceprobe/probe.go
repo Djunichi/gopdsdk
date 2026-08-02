@@ -607,6 +607,9 @@ func bridgeFreeFont(font uintptr)
 //go:linkname bridgeCurrentTimeMilliseconds bridgeCurrentTimeMilliseconds
 func bridgeCurrentTimeMilliseconds() uint32
 
+//go:linkname bridgeExitToLauncher bridgeExitToLauncher
+func bridgeExitToLauncher()
+
 //go:linkname bridgeButtons bridgeButtons
 func bridgeButtons() uint32
 
@@ -741,6 +744,7 @@ var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
 var _ sdkPlaydate.GraphicsState = playdateContext{}
 var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
 var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
+var _ sdkPlaydate.Launcher = playdateContext{}
 
 func (playdateContext) Clear() { bridgeClear() }
 func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
@@ -775,6 +779,8 @@ func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return bridgeCurrentTimeMilliseconds()
 }
+
+func (playdateContext) ExitToLauncher() { bridgeExitToLauncher() }
 
 func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
 
@@ -1009,6 +1015,8 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 	return activePlaydate->system->getCurrentTimeMilliseconds();
 }
 
+void bridgeExitToLauncher(void) { activePlaydate->system->exitToLauncher(); }
+
 uint32_t bridgeButtons(void) { PDButtons value = 0; activePlaydate->system->getButtonState(&value, NULL, NULL); return (uint32_t)value; }
 static uint32_t bridgeFloatBits(float value) { union { float value; uint32_t bits; } conversion = { .value = value }; return conversion.bits; }
 uint32_t bridgeCrankAngleBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankAngle()); }
@@ -1150,6 +1158,8 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return activePlaydate->system->getCurrentTimeMilliseconds();
 }
+
+void bridgeExitToLauncher(void) { activePlaydate->system->exitToLauncher(); }
 
 uint32_t bridgeButtons(void) { PDButtons value = 0; activePlaydate->system->getButtonState(&value, NULL, NULL); return (uint32_t)value; }
 static uint32_t bridgeFloatBits(float value) { union { float value; uint32_t bits; } conversion = { .value = value }; return conversion.bits; }

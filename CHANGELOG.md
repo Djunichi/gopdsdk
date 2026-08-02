@@ -8,6 +8,13 @@ that out.
 
 ### Added
 
+- An optional `playdate.Launcher` capability that forwards the official
+  `exitToLauncher` operation through Simulator and device adapters; Playdate
+  delivers normal termination cleanup before returning to the Launcher.
+- A deterministic `examples/navigation` scene covering `Play`, an in-process
+  return from gameplay to the main menu, and `Exit` through `Launcher`.
+- Documented launcher artwork packaging through `pdxinfo.imagePath` and the
+  existing `resources/` staging boundary.
 - A copied-data tile layer and clamped camera with per-frame work bounded to
   visible cells, observable draw statistics, and separate static tile overlap.
 - A deterministic `examples/tilemap` P3.3 acceptance scene using owned bitmap
@@ -27,9 +34,17 @@ that out.
 - `playdate` sentinel errors remain centralized in `errors.go` but are now
   classified by bitmap, graphics, framebuffer, offscreen, tile-map, animation,
   sprite, audio, and font domains instead of reusing the bitmap error type.
+- P3.4 retained scene-local single ownership after its audit found no two real
+  consumers sharing loading, caching, rollback, transition, and shutdown
+  semantics; no speculative resource manager or reference counting was added.
 
 ### Compatibility
 
+- The P3 navigation scene passed Windows SDK 3.1.1 Simulator Play/menu-return/
+  Exit interaction. Its launcher artwork packaged successfully; conservative-GC
+  hard-float build, USB deployment on COM3, and device launch passed. Matching
+  Play/menu-return/Exit interaction and correct card, icon, and launch-image
+  display were confirmed on the physical Playdate.
 - The P3.3 scene passed Windows SDK 3.1.1 Simulator visual acceptance and a
   conservative-GC physical-device build, USB deployment, controls, jump,
   collision, camera, and matching scene execution. Soak remains unverified.
