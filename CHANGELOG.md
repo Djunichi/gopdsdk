@@ -8,6 +8,11 @@ that out.
 
 ### Added
 
+- A copied-data tile layer and clamped camera with per-frame work bounded to
+  visible cells, observable draw statistics, and separate static tile overlap.
+- A deterministic `examples/tilemap` P3.3 acceptance scene using owned bitmap
+  tiles without coupling tile geometry to sprite collision.
+
 - Optional immediate-mode line, rectangle, ellipse, and triangle
   drawing on Simulator and device adapters.
 - Value-owned solid, XOR, and 8x8 pattern paints, plus clipping, draw offsets,
@@ -17,8 +22,17 @@ that out.
 - A deterministic `examples/primitives` acceptance scene covering every P3.1
   drawing and state operation.
 
+### Changed
+
+- `playdate` sentinel errors remain centralized in `errors.go` but are now
+  classified by bitmap, graphics, framebuffer, offscreen, tile-map, animation,
+  sprite, audio, and font domains instead of reusing the bitmap error type.
+
 ### Compatibility
 
+- The P3.3 scene passed Windows SDK 3.1.1 Simulator visual acceptance and a
+  conservative-GC physical-device build, USB deployment, controls, jump,
+  collision, camera, and matching scene execution. Soak remains unverified.
 - Windows SDK 3.1.1 Simulator and physical-device visual acceptance passed for
   P3.1 with matching output. Hard-float build and USB deployment passed; soak
   and memory-growth evidence remain unverified.

@@ -156,6 +156,11 @@ func (*Animation).Resume()
 func (*Animation).SetFixedFrame(frame int) error
 func (*Animation).Update(deltaSeconds float32)
 func (*Animation).UseDeltaTime()
+func (*Camera).Clamp(worldWidth int, worldHeight int)
+func (*TileMap).Draw(graphics Graphics, bitmaps []Bitmap, camera Camera) (TileDrawStats, error)
+func (*TileMap).IntersectsSolid(rect Rect) bool
+func (*TileMap).TileAt(column int, row int) (uint8, bool)
+func (*TileMap).WorldSize() (width int, height int)
 func (AudioLoadError).Error() string
 func (BitmapLoadError).Error() string
 func (Buttons).Has(requested Buttons) bool
@@ -163,6 +168,7 @@ func (FontLoadError).Error() string
 func (FontLoadError).Is(target error) bool
 func (Paint).Components() (solid uint8, pattern [16]byte, patterned bool)
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
+func NewTileMap(config TileMapConfig) (*TileMap, error)
 func PatternPaint(image [8]byte, mask [8]byte) Paint
 func SolidPaint(color Color) (Paint, error)
 func XORPaint() Paint
@@ -173,6 +179,7 @@ type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() 
 type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Buttons uint8
+type Camera struct{X int; Y int; Width int; Height int}
 type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
 type CollisionResponse uint8
 type Color uint8
@@ -202,6 +209,9 @@ type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() 
 type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
+type TileDrawStats struct{Visited int; Drawn int}
+type TileMap struct{columns int; rows int; tileWidth int; tileHeight int; tiles []uint8; solid []bool}
+type TileMapConfig struct{Columns int; Rows int; TileWidth int; TileHeight int; Tiles []uint8; Solid []bool}
 var ErrAnimationConfig error
 var ErrAudioClosed error
 var ErrAudioCreate error
@@ -231,4 +241,7 @@ var ErrOffscreenCallback error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error
+var ErrTileMapBitmap error
+var ErrTileMapConfig error
+var ErrTileMapDraw error
 `

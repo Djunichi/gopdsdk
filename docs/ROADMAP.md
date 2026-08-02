@@ -45,7 +45,7 @@ cross-build does not promote a capability to device-ready.
 | P0 | foundation | Cross-platform CLI, Simulator and device build foundations | Complete |
 | P1 | `v0.1.x` | Lifecycle, input, bitmap graphics, resources, device runtime | Complete |
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
-| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | In progress; P3.1 implemented |
+| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | In progress; P3.1–P3.3 implemented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Planned |
 | P5 | `v0.5.0` | Advanced audio and music | Planned |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
@@ -100,12 +100,20 @@ P3.1 evidence does not complete P3.0 or later P3 scopes.
 - Add drawing into owned bitmaps only when the framebuffer or world consumer
   proves the required context and cleanup model.
 
-### P3.3 — tile map and camera
+### P3.3 — tile map and camera — implemented
 
 - Build a tile-map and camera vertical slice with visible-range work bounded per
   frame and simple static collision geometry.
 - Keep tile collision separate from the P2 sprite collision contract and avoid
   a general physics abstraction.
+
+The portable camera and tile layer copy their configuration, clamp world-space
+viewports, bound each draw pass to visible cells, and expose static tile overlap
+queries independently of sprites. Deterministic pure-Go tests and
+`examples/tilemap` cover the vertical slice. Windows SDK 3.1.1 Simulator visual
+acceptance and conservative-GC physical-device build, USB deployment, input,
+jump, collision, camera, and matching scene execution passed on 2026-08-02.
+Soak and memory-growth measurement remain unverified.
 
 ### P3.4 — repeated resource ownership
 

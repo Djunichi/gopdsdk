@@ -66,6 +66,13 @@ physical hardware work on that host. Docker does not promote those levels.
   matching physical Playdate execution on 2026-08-02. The measured artifact
   used 266,556 bytes of static RAM and produced a 29,160-byte PDX. A
   conservative-GC soak and memory-growth measurement remain unverified.
+- P3.3 implemented: camera clamping, visible-range tile traversal, bitmap
+  placement, configuration ownership, and independent static tile overlap are
+  covered by deterministic pure-Go tests. Windows SDK 3.1.1 Simulator visual
+  acceptance and conservative-GC physical-device build, USB deployment, input,
+  jump, collision, camera, and matching scene execution passed on 2026-08-02.
+  The device artifact used 270,908 bytes of static RAM and produced a
+  37,440-byte PDX. Soak and memory-growth measurement remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
