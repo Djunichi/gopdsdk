@@ -3,7 +3,7 @@ package build
 import "testing"
 
 func TestValidatePDXInfo(t *testing.T) {
-	contents := []byte("name=Game\nauthor=Author\nbundleID=com.example.game\nversion=1.0\nbuildNumber=1\ndescription=Optional\n")
+	contents := []byte("name=Game\nauthor=Author\nbundleID=com.example.game\nversion=1.0\nbuildNumber=1\ndescription=Optional\nimagePath=images/launcher\n")
 	if err := validatePDXInfo(contents); err != nil {
 		t.Fatal(err)
 	}

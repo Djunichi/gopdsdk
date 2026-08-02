@@ -45,7 +45,7 @@ cross-build does not promote a capability to device-ready.
 | P0 | foundation | Cross-platform CLI, Simulator and device build foundations | Complete |
 | P1 | `v0.1.x` | Lifecycle, input, bitmap graphics, resources, device runtime | Complete |
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
-| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | In progress; P3.1–P3.3 implemented |
+| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | In progress; P3.1–P3.3 implemented, P3.4 assessed, P3.5 navigation foundation accepted |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Planned |
 | P5 | `v0.5.0` | Advanced audio and music | Planned |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
@@ -115,19 +115,40 @@ acceptance and conservative-GC physical-device build, USB deployment, input,
 jump, collision, camera, and matching scene execution passed on 2026-08-02.
 Soak and memory-growth measurement remain unverified.
 
-### P3.4 — repeated resource ownership
+### P3.4 — repeated resource ownership — assessed
 
 - Introduce a higher-level resource owner only after two real consumers expose
   the same loading, caching, rollback, transition, and shutdown behavior.
 - Do not require reference counting if a simpler single-owner scene contract is
   sufficient.
 
+The P1–P3 acceptance scenes repeat explicit initialization rollback and
+idempotent termination cleanup, but they do not yet have two consumers with the
+same cache keys, scene-transition lifetime, or heterogeneous loading policy.
+P3.4 therefore keeps resources directly owned by each scene and adds no public
+manager or reference counting. P3.5 must use that contract for its first
+integrated scene; a higher-level owner is justified only if a second real
+consumer duplicates the complete behavior above.
+
 ### P3.5 — integrated acceptance game
 
 - Build one external scene using primitives, framebuffer or offscreen drawing,
   camera, tiles, sprites, collisions, animation, audio, fonts, and lifecycle.
+- Include an in-game main menu with `Play` and `Exit`, a gameplay action that
+  returns to that menu without restarting the process, and `Exit` backed by
+  the official `exitToLauncher` lifecycle path.
+- Package the official launcher artwork baseline through `pdxinfo.imagePath`:
+  a 350x155 `card.png`, 32x32 `icon.png`, and 400x240 `launchImage.png`.
 - Pass fixed frame-time, bounded-memory, cleanup, Simulator parity, physical
   device, and soak gates without promoting unrun host capabilities.
+
+The navigation foundation is accepted: `examples/navigation` covers `Play`, an
+in-process B-button return to the main menu, and `ExitToLauncher`. Matching
+interaction passed Windows SDK 3.1.1 Simulator and physical Playdate on
+2026-08-02. The generated 1-bit card, icon, and launch image also displayed
+correctly in the device Launcher. This does not complete P3.5: the integrated
+all-subsystem game, resource-cleanup observation, fixed budgets, and soak gates
+remain.
 
 ### P3.6 — `v0.3.0` release
 

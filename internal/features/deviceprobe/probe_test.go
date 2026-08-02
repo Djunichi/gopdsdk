@@ -98,7 +98,7 @@ func TestBootstrapReservesBoundedAlignedHeap(t *testing.T) {
 
 func TestBootstrapDelegatesUpdateAndGraphicsToGo(t *testing.T) {
 	for _, source := range []string{bootstrapSource, conservativeBootstrapSource} {
-		for _, want := range []string{"result = goEventHandler(playdate, event, arg);", "setUpdateCallback(bridgeUpdate, playdate)", "return goUpdate();", "void bridgeClear(void)", "void bridgeDrawText", "graphics->drawText", "bridgeCurrentTimeMilliseconds", "system->getCurrentTimeMilliseconds()", "bridgeButtons", "getButtonState", "bridgeFloatBits", "bridgeCrankAngleBits", "getCrankAngle", "bridgeCrankDeltaBits", "getCrankChange", "bridgeCrankDocked", "isCrankDocked", "bridgeFrameDeltaBits", "getElapsedTime", "resetElapsedTime"} {
+		for _, want := range []string{"result = goEventHandler(playdate, event, arg);", "setUpdateCallback(bridgeUpdate, playdate)", "return goUpdate();", "void bridgeClear(void)", "void bridgeDrawText", "graphics->drawText", "bridgeCurrentTimeMilliseconds", "system->getCurrentTimeMilliseconds()", "bridgeExitToLauncher", "system->exitToLauncher()", "bridgeButtons", "getButtonState", "bridgeFloatBits", "bridgeCrankAngleBits", "getCrankAngle", "bridgeCrankDeltaBits", "getCrankChange", "bridgeCrankDocked", "isCrankDocked", "bridgeFrameDeltaBits", "getElapsedTime", "resetElapsedTime"} {
 			if !strings.Contains(source, want) {
 				t.Errorf("bootstrap source does not contain %q", want)
 			}

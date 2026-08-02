@@ -731,6 +731,13 @@ type applicationContext struct {
 
 func (context *applicationContext) Input() playdate.Input { return context.input }
 
+func (context *applicationContext) ExitToLauncher() {
+	launcher, ok := context.Context.(playdate.Launcher)
+	if ok {
+		launcher.ExitToLauncher()
+	}
+}
+
 func (context *applicationContext) LoadFont(path string) (playdate.Font, error) {
 	graphics, ok := context.Context.(playdate.FontGraphics)
 	if !ok {

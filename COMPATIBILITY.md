@@ -73,6 +73,21 @@ physical hardware work on that host. Docker does not promote those levels.
   jump, collision, camera, and matching scene execution passed on 2026-08-02.
   The device artifact used 270,908 bytes of static RAM and produced a
   37,440-byte PDX. Soak and memory-growth measurement remain unverified.
+- P3.4 assessed: existing acceptance scenes prove explicit single-owner
+  rollback and shutdown, but no two real consumers yet share caching and
+  scene-transition semantics. Resource ownership therefore remains local to
+  each scene; no new runtime, Simulator, or device capability is claimed.
+- P3.5 foundation: the `Launcher` capability and its `NewApplication` forwarding
+  path are unit-tested in both generated adapters. The `examples/navigation`
+  Play/menu-return/Exit scene passed Windows SDK 3.1.1 Simulator interaction,
+  including return to the Launcher, on 2026-08-02. Its 1-bit 350x155 card,
+  32x32 icon, and 400x240 launch image were packaged through `imagePath`; a
+  conservative-GC hard-float build, USB deployment on COM3, and launch command
+  passed the same day. Physical Play/menu-return/Exit interaction and correct
+  card, icon, and launch-image display in the Launcher were then confirmed on
+  the connected Playdate. The OS returned to the Launcher through the official
+  exit path; resource-cleanup behavior inside `LifecycleTerminate` was not
+  separately observed because this scene owns no native resources.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

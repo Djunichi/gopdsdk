@@ -66,6 +66,7 @@ int bridgeTextWidth(uintptr_t font, const char* text, size_t length);
 int bridgeFontHeight(uintptr_t font);
 void bridgeFreeFont(uintptr_t font);
 uint32_t bridgeCurrentTimeMilliseconds(void);
+void bridgeExitToLauncher(void);
 uint32_t bridgeButtons(void);
 float bridgeCrankAngle(void);
 float bridgeCrankDelta(void);
@@ -188,6 +189,7 @@ var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
 var _ sdkPlaydate.GraphicsState = playdateContext{}
 var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
 var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
+var _ sdkPlaydate.Launcher = playdateContext{}
 
 func (playdateContext) Clear() { C.bridgeClear() }
 func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
@@ -228,6 +230,8 @@ func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return uint32(C.bridgeCurrentTimeMilliseconds())
 }
+
+func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }
 
 func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
 
@@ -409,6 +413,8 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return bridgePlaydate->system->getCurrentTimeMilliseconds();
 }
+
+void bridgeExitToLauncher(void) { bridgePlaydate->system->exitToLauncher(); }
 
 uint32_t bridgeButtons(void)
 {

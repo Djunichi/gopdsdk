@@ -275,6 +275,20 @@ For example, `resources/images/player.png` is compiled into the PDX as
 `images/player.pdi` and loaded with `LoadBitmap("images/player")`. Files outside
 `resources` are never copied into the package.
 
+Launcher artwork uses the same staging rule. Set, for example,
+`imagePath=images/launcher` in `pdxinfo`, then provide:
+
+```text
+resources/images/launcher/
+  card.png        # 350x155
+  icon.png        # 32x32
+  launchImage.png # 400x240
+```
+
+The compiler places these files at the PDX paths named by `imagePath`. The
+official format also permits highlighted/pressed artwork and launch animation
+directories; these can be added under the same resource directory.
+
 The `examples/bitmap` game loads a packaged 64x64 bitmap, creates and fills an
 owned bitmap, draws both bitmaps, draws a scaled copy, reports the loaded
 dimensions, and closes both resources on termination. Run the same package on
@@ -464,6 +478,45 @@ memory-growth measurement remain unverified.
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/tilemap
 ```
+
+## P3.4 repeated resource ownership
+
+Resources remain explicitly owned by the scene that loads or creates them.
+Initialization closes already acquired resources when a later step fails, and
+termination closes each owned resource once in dependency-safe order. Borrowed
+handles, such as bitmap-table frames, are never independently closed.
+
+The P3.4 audit found no two real consumers with matching cache and transition
+semantics, so the SDK does not yet expose a resource manager or reference
+counting API. The integrated P3.5 scene is the next consumer evidence; an
+abstraction will be added only after another real scene repeats its complete
+loading, caching, rollback, transition, and shutdown policy.
+
+## P3 application navigation
+
+The P3 integrated game will begin at an in-game menu with `Play` and `Exit`.
+Gameplay can transition back to that menu without restarting the application.
+`Exit` asserts `playdate.Launcher` and calls `ExitToLauncher`; Playdate sends
+`LifecycleTerminate` before returning to the Launcher, preserving normal owned
+resource cleanup. Both generated native adapters implement and forward this
+capability.
+
+`examples/navigation` is the deterministic acceptance scene for this slice:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/navigation
+```
+
+The example includes generated 1-bit launcher artwork at the three baseline
+sizes under `resources/images/launcher` and selects it with
+`imagePath=images/launcher`.
+
+Windows SDK 3.1.1 Simulator and physical-device acceptance passed on
+2026-08-02: `Play`, B-button return to the menu, `Exit` back to the Launcher,
+and the packaged card, icon, and launch image all behaved as intended. The
+device path used a conservative-GC hard-float build and USB deployment on COM3.
+This navigation slice does not replace the remaining P3.5 integrated-game,
+resource-cleanup, fixed-budget, or soak evidence.
 
 ## Development and CI
 

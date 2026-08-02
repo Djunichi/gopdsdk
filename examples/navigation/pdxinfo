@@ -1,0 +1,7 @@
+name=P3 Application Navigation Acceptance
+author=gopdsdk
+description=Play, in-game menu return, and Launcher exit acceptance
+bundleID=dev.gopdsdk.navigation
+version=1.0.0
+buildNumber=1
+imagePath=images/launcher

@@ -67,6 +67,13 @@ func (testContext) UpdateAndDrawSprites()                                {}
 func (testContext) LoadSoundEffect(string) (playdate.SoundEffect, error) { return nil, nil }
 func (testContext) LoadFilePlayer(string) (playdate.FilePlayer, error)   { return nil, nil }
 
+type launcherContext struct {
+	testContext
+	exited bool
+}
+
+func (context *launcherContext) ExitToLauncher() { context.exited = true }
+
 type graphicsCapabilityContext struct {
 	testContext
 	draws, framebuffers, offscreen int
@@ -527,7 +534,7 @@ func TestRuntimeFailedInitializationCannotUpdate(t *testing.T) {
 
 func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 	var calls []string
-	context := testContext{}
+	context := &launcherContext{}
 	application, err := NewApplication(testGame{
 		init: func(got playdate.Context) error {
 			calls = append(calls, "init")
@@ -538,6 +545,11 @@ func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 			if _, fontErr := fonts.LoadFont("fonts/test"); fontErr != nil {
 				return fontErr
 			}
+			launcher, ok := got.(playdate.Launcher)
+			if !ok {
+				return errors.New("launcher not forwarded")
+			}
+			launcher.ExitToLauncher()
 			return nil
 		},
 		update: func(got playdate.Context) (bool, error) {
@@ -566,6 +578,9 @@ func TestApplicationIsCommonLifecycleEntryPoint(t *testing.T) {
 		if calls[index] != wantCalls[index] {
 			t.Fatalf("calls = %v, want %v", calls, wantCalls)
 		}
+	}
+	if !context.exited {
+		t.Fatal("ExitToLauncher was not forwarded")
 	}
 }
 
