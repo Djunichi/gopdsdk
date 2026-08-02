@@ -32,9 +32,6 @@ physical hardware work on that host. Docker does not promote those levels.
   Windows Simulator and physical Playdate.
 - P1.2: packaged bitmap load/create/draw/scale and explicit ownership cleanup
   on both accepted targets.
-- P1.3: an external crank-controlled module using only public API, with real
-  Simulator launch, physical-device deployment, a 65-second soak, and no new
-  `errorlog.txt` or `crashlog.txt` entry.
 - P1.4 candidate: Windows `doctor --probe` promoted Simulator and device-build
   to `READY`; the versioned external consumer repeated physical deployment and
   a 65-second soak with both device logs unchanged.
@@ -133,6 +130,17 @@ physical hardware work on that host. Docker does not promote those levels.
   changed their settings and the values survived a game restart. Extended
   conservative-GC soak, memory-growth measurement, and post-run crashlog
   inspection remain unverified.
+- P4.4 implemented: optional accelerometer, power-monitor, and read-only system-
+  preference capabilities are forwarded through `NewApplication`; termination
+  disables an enabled accelerometer, and the existing `Launcher` capability is
+  covered in the same deterministic flow. `examples/systemstatus` passed SDK
+  3.1.1 Simulator build and launch and the conservative device gate on
+  2026-08-02 at 283,884 bytes of static RAM and a 55,193-byte PDX, including USB
+  deployment and physical execution. Hardware confirmed accelerometer, battery,
+  volume, timezone, clock format, reduce-flashing, and `NONE`/`USB` power states.
+  The device run exposed and verified the correction for direct float-return ABI
+  corruption across TinyGo/C. `CHARGE`, `SCREWS`, soak, memory growth, and
+  post-run crashlog inspection remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

@@ -155,6 +155,9 @@ const LifecycleUnlock LifecycleEvent
 const PlaybackPaused PlaybackState
 const PlaybackPlaying PlaybackState
 const PlaybackStopped PlaybackState
+const PowerCharging PowerStatus
+const PowerScrews PowerStatus
+const PowerUSB PowerStatus
 func (*Animation).Bitmap() (Bitmap, error)
 func (*Animation).Frame() int
 func (*Animation).Pause()
@@ -176,11 +179,13 @@ func (FileOperationError).Unwrap() error
 func (FontLoadError).Error() string
 func (FontLoadError).Is(target error) bool
 func (Paint).Components() (solid uint8, pattern [16]byte, patterned bool)
+func (PowerStatus).Has(requested PowerStatus) bool
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
 func NewTileMap(config TileMapConfig) (*TileMap, error)
 func PatternPaint(image [8]byte, mask [8]byte) Paint
 func SolidPaint(color Color) (Paint, error)
 func XORPaint() Paint
+type Accelerometer interface{AccelerometerXYZ() (x float32, y float32, z float32); SetAccelerometerEnabled(bool)}
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
 type AudioLoadError string
@@ -223,6 +228,8 @@ type OptionsMenuItem interface{SetValue(int) error; Value() int; MenuItem}
 type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
+type PowerMonitor interface{BatteryPercentage() float32; BatteryVoltage() float32; PowerStatus() PowerStatus}
+type PowerStatus uint8
 type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
@@ -230,6 +237,7 @@ type Sprite interface{Add() error; ClearCollideRect() error; Close() error; Move
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
 type SystemMenu interface{AddActionMenuItem(title string, callback func()) (MenuItem, error); AddCheckmarkMenuItem(title string, value bool, callback func()) (CheckmarkMenuItem, error); AddOptionsMenuItem(title string, options []string, callback func()) (OptionsMenuItem, error)}
+type SystemPreferences interface{ReduceFlashing() bool; SystemVolume() float32; TimezoneOffsetSeconds() int32; Uses24HourTime() bool}
 type TileDrawStats struct{Visited int; Drawn int}
 type TileMap struct{columns int; rows int; tileWidth int; tileHeight int; tiles []uint8; solid []bool}
 type TileMapConfig struct{Columns int; Rows int; TileWidth int; TileHeight int; Tiles []uint8; Solid []bool}

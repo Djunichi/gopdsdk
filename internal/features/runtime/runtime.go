@@ -870,8 +870,9 @@ type Application struct {
 
 type applicationContext struct {
 	playdate.Context
-	input     playdate.Input
-	menuItems []playdate.MenuItem
+	input                playdate.Input
+	menuItems            []playdate.MenuItem
+	accelerometerEnabled bool
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }
@@ -880,6 +881,73 @@ func (context *applicationContext) ExitToLauncher() {
 	launcher, ok := context.Context.(playdate.Launcher)
 	if ok {
 		launcher.ExitToLauncher()
+	}
+}
+
+func (context *applicationContext) SetAccelerometerEnabled(enabled bool) {
+	accelerometer, ok := context.Context.(playdate.Accelerometer)
+	if !ok {
+		return
+	}
+	accelerometer.SetAccelerometerEnabled(enabled)
+	context.accelerometerEnabled = enabled
+}
+
+func (context *applicationContext) AccelerometerXYZ() (x, y, z float32) {
+	accelerometer, ok := context.Context.(playdate.Accelerometer)
+	if !ok || !context.accelerometerEnabled {
+		return 0, 0, 0
+	}
+	return accelerometer.AccelerometerXYZ()
+}
+
+func (context *applicationContext) PowerStatus() playdate.PowerStatus {
+	monitor, _ := context.Context.(playdate.PowerMonitor)
+	if monitor == nil {
+		return 0
+	}
+	return monitor.PowerStatus()
+}
+func (context *applicationContext) BatteryPercentage() float32 {
+	monitor, _ := context.Context.(playdate.PowerMonitor)
+	if monitor == nil {
+		return 0
+	}
+	return monitor.BatteryPercentage()
+}
+func (context *applicationContext) BatteryVoltage() float32 {
+	monitor, _ := context.Context.(playdate.PowerMonitor)
+	if monitor == nil {
+		return 0
+	}
+	return monitor.BatteryVoltage()
+}
+func (context *applicationContext) SystemVolume() float32 {
+	settings, _ := context.Context.(playdate.SystemPreferences)
+	if settings == nil {
+		return 0
+	}
+	return settings.SystemVolume()
+}
+func (context *applicationContext) ReduceFlashing() bool {
+	settings, _ := context.Context.(playdate.SystemPreferences)
+	return settings != nil && settings.ReduceFlashing()
+}
+func (context *applicationContext) TimezoneOffsetSeconds() int32 {
+	settings, _ := context.Context.(playdate.SystemPreferences)
+	if settings == nil {
+		return 0
+	}
+	return settings.TimezoneOffsetSeconds()
+}
+func (context *applicationContext) Uses24HourTime() bool {
+	settings, _ := context.Context.(playdate.SystemPreferences)
+	return settings != nil && settings.Uses24HourTime()
+}
+
+func (context *applicationContext) disableAccelerometer() {
+	if context.accelerometerEnabled {
+		context.SetAccelerometerEnabled(false)
 	}
 }
 
@@ -1147,6 +1215,7 @@ func NewApplication(game playdate.Game, context playdate.Context, beforeInit fun
 				err = lifecycle.HandleLifecycle(gameContext, event)
 			}
 			if event == playdate.LifecycleTerminate {
+				gameContext.disableAccelerometer()
 				gameContext.removeMenuItems()
 			}
 			return err

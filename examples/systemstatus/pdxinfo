@@ -1,0 +1,6 @@
+name=P4 System Status
+author=gopdsdk
+description=P4.4 device and system status acceptance
+bundleID=dev.gopdsdk.systemstatus
+version=1.0.0
+buildNumber=1
