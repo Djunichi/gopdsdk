@@ -356,11 +356,11 @@ go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK
 
 ## P2.4 audio
 
-`examples/audio` uses two deliberately narrow vertical APIs: a memory-backed
-short sound effect and one streaming file/music player. A repeats the same
-effect; B starts or stops the music. Both players expose stereo volume,
+P2.4 established two deliberately narrow vertical APIs: a memory-backed short
+sound effect and one streaming file/music player. Both expose stereo volume,
 stopped/playing/paused status, lifecycle pause/resume, and explicit close.
-Initialization rolls back an already loaded effect when the music load fails.
+`examples/audio` now retains those paths while also serving as the P5.1
+advanced-audio acceptance game described below.
 
 Run the same package on both targets:
 
@@ -369,11 +369,9 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/audio
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/audio
 ```
 
-The implementation and generated ABI are unit-tested. Audible parity for both
-bundled sounds in Simulator and device, repeated A playback, pause/resume, and
-a 10-minute physical-device soak with stable memory and no new device log
-entries remain unverified evidence levels. Synthesis, microphone input, and the
-full Playdate sound binding remain out of scope.
+The original P2 implementation and generated ABI remain regression-tested.
+Synthesis, microphone input, and the full Playdate sound binding remain outside
+that base slice.
 
 ## P2.5 fonts and game UI
 
@@ -644,6 +642,29 @@ RAM and produced a 948,032-byte PDX. Physical multi-session restart/update,
 injected power loss, corrupt-save recovery, soak, memory-growth measurement,
 and post-run crashlog inspection remain unverified.
 
+## P5.1 advanced sample playback
+
+Games can capability-assert `playdate.SamplePlayers` from their context and
+load an explicitly owned `SamplePlayer`. It preserves the P2 sound-effect
+controls and adds bounded repeats, forward or reverse rates, sample duration,
+and playback-position control. Streaming `FilePlayer` values optionally expose
+`VariableRatePlayer` for positive pitch/speed changes. Negative file-player
+rates return `ErrAudioReverseUnsupported`, matching the official streaming API.
+Sample reverse is available for PCM assets, but not ADPCM. `Close` releases
+native ownership.
+
+`examples/audio` maps A to three sample repeats, Left/Right to forward and
+reverse sample rates, B to streaming-music start/stop, and Up/Down to music
+rates from 0.25x through 2x. It redraws only on input or playback-state changes;
+reverse sample playback seeks to the sample end before starting.
+
+The runtime and generated Simulator/device ABI paths are regression-tested. On
+2026-08-02 the example passed audible interaction in Windows Simulator and on a
+physical Playdate after conservative hard-float build, USB installation on
+COM3, and launch. The device artifact used 268,940 bytes of static RAM and
+produced a 125,340-byte PDX. Extended soak, memory-growth measurement, lifecycle
+stress, and post-run crashlog inspection remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -677,4 +698,5 @@ toolchain without pretending to verify GUI or USB behavior.
 - macOS and Linux official SDK integration remains unverified.
 - Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
   callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
-  covers the narrow P2.4 sound-effect and file-player slice.
+  covers P2.4 sound effects/file players and the P5.1 advanced sample-player
+  controls; routing, fades, callbacks, synthesis, and sequencing remain open.

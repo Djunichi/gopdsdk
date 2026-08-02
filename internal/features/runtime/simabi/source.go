@@ -160,11 +160,17 @@ void bridgeSpriteRemove(uintptr_t sprite);
 void bridgeUpdateAndDrawSprites(void);
 uintptr_t bridgeLoadSoundEffect(const char* path);
 int bridgeSoundEffectPlay(uintptr_t effect);
+int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate);
 void bridgeSoundEffectStop(uintptr_t effect);
 void bridgeSoundEffectSetVolume(uintptr_t effect, float left, float right);
 void bridgeSoundEffectVolume(uintptr_t effect, float* left, float* right);
 int bridgeSoundEffectIsPlaying(uintptr_t effect);
 void bridgeSoundEffectPause(uintptr_t effect, int paused);
+float bridgeSamplePlayerLength(uintptr_t effect);
+void bridgeSamplePlayerSetOffset(uintptr_t effect, float offset);
+float bridgeSamplePlayerOffset(uintptr_t effect);
+void bridgeSamplePlayerSetRate(uintptr_t effect, float rate);
+float bridgeSamplePlayerRate(uintptr_t effect);
 void bridgeFreeSoundEffect(uintptr_t effect);
 uintptr_t bridgeLoadFilePlayer(const char* path);
 int bridgeFilePlayerPlay(uintptr_t player);
@@ -173,6 +179,8 @@ void bridgeFilePlayerSetVolume(uintptr_t player, float left, float right);
 void bridgeFilePlayerVolume(uintptr_t player, float* left, float* right);
 int bridgeFilePlayerIsPlaying(uintptr_t player);
 void bridgeFilePlayerPause(uintptr_t player, int paused);
+void bridgeFilePlayerSetRate(uintptr_t player, float rate);
+float bridgeFilePlayerRate(uintptr_t player);
 void bridgeFreeFilePlayer(uintptr_t player);
 */
 import "C"
@@ -444,11 +452,17 @@ func (playdateContext) UpdateAndDrawSprites() { C.bridgeUpdateAndDrawSprites() }
 
 var soundEffectDriver = sdkRuntime.AudioDriver{
 	Play: func(handle uintptr) bool { return C.bridgeSoundEffectPlay(C.uintptr_t(handle)) != 0 },
+	PlayRepeated: func(handle uintptr, repeat int, rate float32) bool { return C.bridgeSamplePlayerPlay(C.uintptr_t(handle), C.int(repeat), C.float(rate)) != 0 },
 	Stop: func(handle uintptr) { C.bridgeSoundEffectStop(C.uintptr_t(handle)) },
 	SetVolume: func(handle uintptr, left, right float32) { C.bridgeSoundEffectSetVolume(C.uintptr_t(handle), C.float(left), C.float(right)) },
 	Volume: func(handle uintptr) (float32, float32) { var left, right C.float; C.bridgeSoundEffectVolume(C.uintptr_t(handle), &left, &right); return float32(left), float32(right) },
 	IsPlaying: func(handle uintptr) bool { return C.bridgeSoundEffectIsPlaying(C.uintptr_t(handle)) != 0 },
 	Pause: func(handle uintptr, paused bool) { value := C.int(0); if paused { value = 1 }; C.bridgeSoundEffectPause(C.uintptr_t(handle), value) },
+	Length: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerLength(C.uintptr_t(handle))) },
+	SetOffset: func(handle uintptr, offset float32) { C.bridgeSamplePlayerSetOffset(C.uintptr_t(handle), C.float(offset)) },
+	Offset: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerOffset(C.uintptr_t(handle))) },
+	SetRate: func(handle uintptr, rate float32) { C.bridgeSamplePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
+	Rate: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerRate(C.uintptr_t(handle))) },
 	Free: func(handle uintptr) { C.bridgeFreeSoundEffect(C.uintptr_t(handle)) },
 }
 var filePlayerDriver = sdkRuntime.AudioDriver{
@@ -458,12 +472,19 @@ var filePlayerDriver = sdkRuntime.AudioDriver{
 	Volume: func(handle uintptr) (float32, float32) { var left, right C.float; C.bridgeFilePlayerVolume(C.uintptr_t(handle), &left, &right); return float32(left), float32(right) },
 	IsPlaying: func(handle uintptr) bool { return C.bridgeFilePlayerIsPlaying(C.uintptr_t(handle)) != 0 },
 	Pause: func(handle uintptr, _ bool) { C.bridgeFilePlayerPause(C.uintptr_t(handle), 1) },
+	SetRate: func(handle uintptr, rate float32) { C.bridgeFilePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
+	Rate: func(handle uintptr) float32 { return float32(C.bridgeFilePlayerRate(C.uintptr_t(handle))) },
 	Free: func(handle uintptr) { C.bridgeFreeFilePlayer(C.uintptr_t(handle)) },
 }
 func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) {
 	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadSoundEffect(cPath))
 	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
 	return sdkRuntime.NewSoundEffect(handle, soundEffectDriver), nil
+}
+func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadSoundEffect(cPath))
+	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
+	return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil
 }
 func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) {
 	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadFilePlayer(cPath))
@@ -670,11 +691,17 @@ uintptr_t bridgeLoadSoundEffect(const char* path)
 }
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect) { return (BridgeSoundEffect*)effect; }
 int bridgeSoundEffectPlay(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, 1, 1.0f); }
+int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, repeat, rate); }
 void bridgeSoundEffectStop(uintptr_t effect) { bridgePlaydate->sound->sampleplayer->stop(bridgeEffect(effect)->player); }
 void bridgeSoundEffectSetVolume(uintptr_t effect, float left, float right) { bridgePlaydate->sound->sampleplayer->setVolume(bridgeEffect(effect)->player, left, right); }
 void bridgeSoundEffectVolume(uintptr_t effect, float* left, float* right) { bridgePlaydate->sound->sampleplayer->getVolume(bridgeEffect(effect)->player, left, right); }
 int bridgeSoundEffectIsPlaying(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->isPlaying(bridgeEffect(effect)->player); }
 void bridgeSoundEffectPause(uintptr_t effect, int paused) { bridgePlaydate->sound->sampleplayer->setPaused(bridgeEffect(effect)->player, paused); }
+float bridgeSamplePlayerLength(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getLength(bridgeEffect(effect)->player); }
+void bridgeSamplePlayerSetOffset(uintptr_t effect, float offset) { bridgePlaydate->sound->sampleplayer->setOffset(bridgeEffect(effect)->player, offset); }
+float bridgeSamplePlayerOffset(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getOffset(bridgeEffect(effect)->player); }
+void bridgeSamplePlayerSetRate(uintptr_t effect, float rate) { bridgePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player, rate); }
+float bridgeSamplePlayerRate(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player); }
 void bridgeFreeSoundEffect(uintptr_t effect) { BridgeSoundEffect* value = bridgeEffect(effect); bridgePlaydate->sound->sampleplayer->freePlayer(value->player); bridgePlaydate->sound->sample->freeSample(value->sample); bridgePlaydate->system->realloc(value, 0); }
 
 uintptr_t bridgeLoadFilePlayer(const char* path) { FilePlayer* player = bridgePlaydate->sound->fileplayer->newPlayer(); if (!player) return 0; if (!bridgePlaydate->sound->fileplayer->loadIntoPlayer(player, path)) { bridgePlaydate->sound->fileplayer->freePlayer(player); return 0; } return (uintptr_t)player; }
@@ -684,6 +711,8 @@ void bridgeFilePlayerSetVolume(uintptr_t player, float left, float right) { brid
 void bridgeFilePlayerVolume(uintptr_t player, float* left, float* right) { bridgePlaydate->sound->fileplayer->getVolume((FilePlayer*)player, left, right); }
 int bridgeFilePlayerIsPlaying(uintptr_t player) { return bridgePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player); }
 void bridgeFilePlayerPause(uintptr_t player, int paused) { (void)paused; bridgePlaydate->sound->fileplayer->pause((FilePlayer*)player); }
+void bridgeFilePlayerSetRate(uintptr_t player, float rate) { bridgePlaydate->sound->fileplayer->setRate((FilePlayer*)player, rate); }
+float bridgeFilePlayerRate(uintptr_t player) { return bridgePlaydate->sound->fileplayer->getRate((FilePlayer*)player); }
 void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player); }
 `, filepath.ToSlash(apiHeader))
 }

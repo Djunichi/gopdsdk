@@ -221,6 +221,110 @@ func TestAudioPlayFailure(t *testing.T) {
 	}
 }
 
+func TestFilePlayerVariableRate(t *testing.T) {
+	rate := float32(1)
+	player := NewFilePlayer(1, AudioDriver{
+		SetRate: func(_ uintptr, value float32) { rate = value },
+		Rate:    func(uintptr) float32 { return rate },
+	})
+	variable, ok := player.(playdate.VariableRatePlayer)
+	if !ok {
+		t.Fatal("FilePlayer does not expose VariableRatePlayer")
+	}
+	if err := variable.SetRate(.75); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := variable.Rate(); err != nil || value != .75 {
+		t.Fatalf("Rate() = %v, %v", value, err)
+	}
+	if err := variable.SetRate(-1); !errors.Is(err, playdate.ErrAudioReverseUnsupported) {
+		t.Fatalf("reverse file rate = %v", err)
+	}
+	if rate != .75 {
+		t.Fatalf("native rate changed after rejected reverse = %v", rate)
+	}
+}
+
+func TestSamplePlayerControls(t *testing.T) {
+	playingRepeat := 0
+	playingRate := float32(0)
+	offset := float32(0)
+	rate := float32(1)
+	player := NewSamplePlayer(9, AudioDriver{
+		PlayRepeated: func(_ uintptr, repeat int, value float32) bool {
+			playingRepeat, playingRate = repeat, value
+			return true
+		},
+		Length:    func(uintptr) float32 { return 2.5 },
+		SetOffset: func(_ uintptr, value float32) { offset = value }, Offset: func(uintptr) float32 { return offset },
+		SetRate: func(_ uintptr, value float32) { rate = value }, Rate: func(uintptr) float32 { return rate },
+		Stop: func(uintptr) {}, Free: func(uintptr) {},
+	})
+	if err := player.PlayRepeated(3, .5); err != nil || playingRepeat != 3 || playingRate != .5 {
+		t.Fatalf("PlayRepeated() = %v, %d, %v", err, playingRepeat, playingRate)
+	}
+	if length, err := player.Length(); err != nil || length != 2.5 {
+		t.Fatalf("Length() = %v, %v", length, err)
+	}
+	if err := player.SetOffset(1.25); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := player.Offset(); err != nil || value != 1.25 {
+		t.Fatalf("Offset() = %v, %v", value, err)
+	}
+	if err := player.SetRate(-1); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := player.Rate(); err != nil || value != -1 {
+		t.Fatalf("Rate() = %v, %v", value, err)
+	}
+	if err := player.PlayRepeated(-1, 1); !errors.Is(err, playdate.ErrAudioRepeat) {
+		t.Fatalf("negative repeat = %v", err)
+	}
+	if int(^uint(0)>>63) == 1 {
+		if err := player.PlayRepeated(int(int64(2147483648)), 1); !errors.Is(err, playdate.ErrAudioRepeat) {
+			t.Fatalf("large repeat = %v", err)
+		}
+	}
+	if err := player.SetRate(0); !errors.Is(err, playdate.ErrAudioRate) {
+		t.Fatalf("zero rate = %v", err)
+	}
+	if err := player.SetOffset(-1); !errors.Is(err, playdate.ErrAudioOffset) {
+		t.Fatalf("negative offset = %v", err)
+	}
+}
+
+type samplePlayerContext struct {
+	testContext
+	loaded string
+}
+
+func (context *samplePlayerContext) LoadSamplePlayer(path string) (playdate.SamplePlayer, error) {
+	context.loaded = path
+	return NewSamplePlayer(1, AudioDriver{Stop: func(uintptr) {}, Free: func(uintptr) {}}), nil
+}
+
+func TestApplicationForwardsSamplePlayers(t *testing.T) {
+	context := &samplePlayerContext{}
+	application, err := NewApplication(testGame{init: func(got playdate.Context) error {
+		samples, ok := got.(playdate.SamplePlayers)
+		if !ok {
+			return errors.New("sample players not forwarded")
+		}
+		_, loadErr := samples.LoadSamplePlayer("audio/hit")
+		return loadErr
+	}}, context, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	if context.loaded != "audio/hit" {
+		t.Fatalf("loaded = %q", context.loaded)
+	}
+}
+
 func TestBitmapOwnershipLifecycle(t *testing.T) {
 	var freed []uintptr
 	var fills []playdate.Color

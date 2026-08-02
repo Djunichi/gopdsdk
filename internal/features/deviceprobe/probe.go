@@ -796,6 +796,8 @@ func bridgeUpdateAndDrawSprites()
 func bridgeLoadSoundEffect(path *byte) uintptr
 //go:linkname bridgeSoundEffectPlay bridgeSoundEffectPlay
 func bridgeSoundEffectPlay(effect uintptr) int32
+//go:linkname bridgeSamplePlayerPlayBits bridgeSamplePlayerPlayBits
+func bridgeSamplePlayerPlayBits(effect uintptr, repeat int32, rate uint32) int32
 //go:linkname bridgeSoundEffectStop bridgeSoundEffectStop
 func bridgeSoundEffectStop(effect uintptr)
 //go:linkname bridgeSoundEffectSetVolumeBits bridgeSoundEffectSetVolumeBits
@@ -806,6 +808,16 @@ func bridgeSoundEffectVolumeBits(effect uintptr, left, right *uint32)
 func bridgeSoundEffectIsPlaying(effect uintptr) int32
 //go:linkname bridgeSoundEffectPause bridgeSoundEffectPause
 func bridgeSoundEffectPause(effect uintptr, paused int32)
+//go:linkname bridgeSamplePlayerLengthBits bridgeSamplePlayerLengthBits
+func bridgeSamplePlayerLengthBits(effect uintptr) uint32
+//go:linkname bridgeSamplePlayerSetOffsetBits bridgeSamplePlayerSetOffsetBits
+func bridgeSamplePlayerSetOffsetBits(effect uintptr, offset uint32)
+//go:linkname bridgeSamplePlayerOffsetBits bridgeSamplePlayerOffsetBits
+func bridgeSamplePlayerOffsetBits(effect uintptr) uint32
+//go:linkname bridgeSamplePlayerSetRateBits bridgeSamplePlayerSetRateBits
+func bridgeSamplePlayerSetRateBits(effect uintptr, rate uint32)
+//go:linkname bridgeSamplePlayerRateBits bridgeSamplePlayerRateBits
+func bridgeSamplePlayerRateBits(effect uintptr) uint32
 //go:linkname bridgeFreeSoundEffect bridgeFreeSoundEffect
 func bridgeFreeSoundEffect(effect uintptr)
 //go:linkname bridgeLoadFilePlayer bridgeLoadFilePlayer
@@ -822,6 +834,10 @@ func bridgeFilePlayerVolumeBits(player uintptr, left, right *uint32)
 func bridgeFilePlayerIsPlaying(player uintptr) int32
 //go:linkname bridgeFilePlayerPause bridgeFilePlayerPause
 func bridgeFilePlayerPause(player uintptr)
+//go:linkname bridgeFilePlayerSetRateBits bridgeFilePlayerSetRateBits
+func bridgeFilePlayerSetRateBits(player uintptr, rate uint32)
+//go:linkname bridgeFilePlayerRateBits bridgeFilePlayerRateBits
+func bridgeFilePlayerRateBits(player uintptr) uint32
 //go:linkname bridgeFreeFilePlayer bridgeFreeFilePlayer
 func bridgeFreeFilePlayer(player uintptr)
 
@@ -1017,19 +1033,25 @@ func (playdateContext) UpdateAndDrawSprites() { bridgeUpdateAndDrawSprites() }
 
 var soundEffectDriver = sdkRuntime.AudioDriver{
 	Play: func(handle uintptr) bool { return bridgeSoundEffectPlay(handle) != 0 }, Stop: bridgeSoundEffectStop,
+	PlayRepeated: func(handle uintptr, repeat int, rate float32) bool { return bridgeSamplePlayerPlayBits(handle, int32(repeat), float32Bits(rate)) != 0 },
 	SetVolume: func(handle uintptr, left, right float32) { bridgeSoundEffectSetVolumeBits(handle, float32Bits(left), float32Bits(right)) },
 	Volume: func(handle uintptr) (float32, float32) { var left, right uint32; bridgeSoundEffectVolumeBits(handle, &left, &right); return float32FromBits(left), float32FromBits(right) },
 	IsPlaying: func(handle uintptr) bool { return bridgeSoundEffectIsPlaying(handle) != 0 },
-	Pause: func(handle uintptr, paused bool) { value := int32(0); if paused { value = 1 }; bridgeSoundEffectPause(handle, value) }, Free: bridgeFreeSoundEffect,
+	Pause: func(handle uintptr, paused bool) { value := int32(0); if paused { value = 1 }; bridgeSoundEffectPause(handle, value) },
+	Length: func(handle uintptr) float32 { return float32FromBits(bridgeSamplePlayerLengthBits(handle)) },
+	SetOffset: func(handle uintptr, offset float32) { bridgeSamplePlayerSetOffsetBits(handle, float32Bits(offset)) }, Offset: func(handle uintptr) float32 { return float32FromBits(bridgeSamplePlayerOffsetBits(handle)) },
+	SetRate: func(handle uintptr, rate float32) { bridgeSamplePlayerSetRateBits(handle, float32Bits(rate)) }, Rate: func(handle uintptr) float32 { return float32FromBits(bridgeSamplePlayerRateBits(handle)) }, Free: bridgeFreeSoundEffect,
 }
 var filePlayerDriver = sdkRuntime.AudioDriver{
 	Play: func(handle uintptr) bool { return bridgeFilePlayerPlay(handle) != 0 }, Stop: bridgeFilePlayerStop,
 	SetVolume: func(handle uintptr, left, right float32) { bridgeFilePlayerSetVolumeBits(handle, float32Bits(left), float32Bits(right)) },
 	Volume: func(handle uintptr) (float32, float32) { var left, right uint32; bridgeFilePlayerVolumeBits(handle, &left, &right); return float32FromBits(left), float32FromBits(right) },
 	IsPlaying: func(handle uintptr) bool { return bridgeFilePlayerIsPlaying(handle) != 0 },
-	Pause: func(handle uintptr, _ bool) { bridgeFilePlayerPause(handle) }, Free: bridgeFreeFilePlayer,
+	Pause: func(handle uintptr, _ bool) { bridgeFilePlayerPause(handle) },
+	SetRate: func(handle uintptr, rate float32) { bridgeFilePlayerSetRateBits(handle, float32Bits(rate)) }, Rate: func(handle uintptr) float32 { return float32FromBits(bridgeFilePlayerRateBits(handle)) }, Free: bridgeFreeFilePlayer,
 }
 func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSoundEffect(handle, soundEffectDriver), nil }
+func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil }
 func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadFilePlayer(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil }
 
 var gameContext playdateContext
@@ -1280,11 +1302,17 @@ typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
 uintptr_t bridgeLoadSoundEffect(const char* path) { AudioSample* sample=activePlaydate->sound->sample->load(path); if(!sample)return 0; SamplePlayer* player=activePlaydate->sound->sampleplayer->newPlayer(); if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;} BridgeSoundEffect* effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect)); if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;} effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect; }
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect){return(BridgeSoundEffect*)effect;}
 int32_t bridgeSoundEffectPlay(uintptr_t effect){return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,1,1.0f);}
+int32_t bridgeSamplePlayerPlayBits(uintptr_t effect,int32_t repeat,uint32_t rate){union{uint32_t bits;float value;}r={.bits=rate};return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,repeat,r.value);}
 void bridgeSoundEffectStop(uintptr_t effect){activePlaydate->sound->sampleplayer->stop(bridgeEffect(effect)->player);}
 void bridgeSoundEffectSetVolumeBits(uintptr_t effect,uint32_t left,uint32_t right){union{uint32_t bits;float value;}l={.bits=left},r={.bits=right};activePlaydate->sound->sampleplayer->setVolume(bridgeEffect(effect)->player,l.value,r.value);}
 void bridgeSoundEffectVolumeBits(uintptr_t effect,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->sampleplayer->getVolume(bridgeEffect(effect)->player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
 int32_t bridgeSoundEffectIsPlaying(uintptr_t effect){return activePlaydate->sound->sampleplayer->isPlaying(bridgeEffect(effect)->player);}
 void bridgeSoundEffectPause(uintptr_t effect,int32_t paused){activePlaydate->sound->sampleplayer->setPaused(bridgeEffect(effect)->player,paused);}
+uint32_t bridgeSamplePlayerLengthBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getLength(bridgeEffect(effect)->player)};return v.bits;}
+void bridgeSamplePlayerSetOffsetBits(uintptr_t effect,uint32_t offset){union{uint32_t bits;float value;}v={.bits=offset};activePlaydate->sound->sampleplayer->setOffset(bridgeEffect(effect)->player,v.value);}
+uint32_t bridgeSamplePlayerOffsetBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getOffset(bridgeEffect(effect)->player)};return v.bits;}
+void bridgeSamplePlayerSetRateBits(uintptr_t effect,uint32_t rate){union{uint32_t bits;float value;}v={.bits=rate};activePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player,v.value);}
+uint32_t bridgeSamplePlayerRateBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player)};return v.bits;}
 void bridgeFreeSoundEffect(uintptr_t effect){BridgeSoundEffect* value=bridgeEffect(effect);activePlaydate->sound->sampleplayer->freePlayer(value->player);activePlaydate->sound->sample->freeSample(value->sample);activePlaydate->system->realloc(value,0);}
 uintptr_t bridgeLoadFilePlayer(const char* path){FilePlayer* player=activePlaydate->sound->fileplayer->newPlayer();if(!player)return 0;if(!activePlaydate->sound->fileplayer->loadIntoPlayer(player,path)){activePlaydate->sound->fileplayer->freePlayer(player);return 0;}return(uintptr_t)player;}
 int32_t bridgeFilePlayerPlay(uintptr_t player){return activePlaydate->sound->fileplayer->play((FilePlayer*)player,1);}
@@ -1293,6 +1321,8 @@ void bridgeFilePlayerSetVolumeBits(uintptr_t player,uint32_t left,uint32_t right
 void bridgeFilePlayerVolumeBits(uintptr_t player,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->fileplayer->getVolume((FilePlayer*)player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
 int32_t bridgeFilePlayerIsPlaying(uintptr_t player){return activePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player);}
 void bridgeFilePlayerPause(uintptr_t player){activePlaydate->sound->fileplayer->pause((FilePlayer*)player);}
+void bridgeFilePlayerSetRateBits(uintptr_t player,uint32_t rate){union{uint32_t bits;float value;}v={.bits=rate};activePlaydate->sound->fileplayer->setRate((FilePlayer*)player,v.value);}
+uint32_t bridgeFilePlayerRateBits(uintptr_t player){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->fileplayer->getRate((FilePlayer*)player)};return v.bits;}
 void bridgeFreeFilePlayer(uintptr_t player){activePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player);}
 `
 
@@ -1482,11 +1512,17 @@ typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
 uintptr_t bridgeLoadSoundEffect(const char* path) { AudioSample* sample=activePlaydate->sound->sample->load(path); if(!sample)return 0; SamplePlayer* player=activePlaydate->sound->sampleplayer->newPlayer(); if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;} BridgeSoundEffect* effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect)); if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;} effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect; }
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect){return(BridgeSoundEffect*)effect;}
 int32_t bridgeSoundEffectPlay(uintptr_t effect){return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,1,1.0f);}
+int32_t bridgeSamplePlayerPlayBits(uintptr_t effect,int32_t repeat,uint32_t rate){union{uint32_t bits;float value;}r={.bits=rate};return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,repeat,r.value);}
 void bridgeSoundEffectStop(uintptr_t effect){activePlaydate->sound->sampleplayer->stop(bridgeEffect(effect)->player);}
 void bridgeSoundEffectSetVolumeBits(uintptr_t effect,uint32_t left,uint32_t right){union{uint32_t bits;float value;}l={.bits=left},r={.bits=right};activePlaydate->sound->sampleplayer->setVolume(bridgeEffect(effect)->player,l.value,r.value);}
 void bridgeSoundEffectVolumeBits(uintptr_t effect,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->sampleplayer->getVolume(bridgeEffect(effect)->player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
 int32_t bridgeSoundEffectIsPlaying(uintptr_t effect){return activePlaydate->sound->sampleplayer->isPlaying(bridgeEffect(effect)->player);}
 void bridgeSoundEffectPause(uintptr_t effect,int32_t paused){activePlaydate->sound->sampleplayer->setPaused(bridgeEffect(effect)->player,paused);}
+uint32_t bridgeSamplePlayerLengthBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getLength(bridgeEffect(effect)->player)};return v.bits;}
+void bridgeSamplePlayerSetOffsetBits(uintptr_t effect,uint32_t offset){union{uint32_t bits;float value;}v={.bits=offset};activePlaydate->sound->sampleplayer->setOffset(bridgeEffect(effect)->player,v.value);}
+uint32_t bridgeSamplePlayerOffsetBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getOffset(bridgeEffect(effect)->player)};return v.bits;}
+void bridgeSamplePlayerSetRateBits(uintptr_t effect,uint32_t rate){union{uint32_t bits;float value;}v={.bits=rate};activePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player,v.value);}
+uint32_t bridgeSamplePlayerRateBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player)};return v.bits;}
 void bridgeFreeSoundEffect(uintptr_t effect){BridgeSoundEffect* value=bridgeEffect(effect);activePlaydate->sound->sampleplayer->freePlayer(value->player);activePlaydate->sound->sample->freeSample(value->sample);activePlaydate->system->realloc(value,0);}
 uintptr_t bridgeLoadFilePlayer(const char* path){FilePlayer* player=activePlaydate->sound->fileplayer->newPlayer();if(!player)return 0;if(!activePlaydate->sound->fileplayer->loadIntoPlayer(player,path)){activePlaydate->sound->fileplayer->freePlayer(player);return 0;}return(uintptr_t)player;}
 int32_t bridgeFilePlayerPlay(uintptr_t player){return activePlaydate->sound->fileplayer->play((FilePlayer*)player,1);}
@@ -1495,6 +1531,8 @@ void bridgeFilePlayerSetVolumeBits(uintptr_t player,uint32_t left,uint32_t right
 void bridgeFilePlayerVolumeBits(uintptr_t player,uint32_t* left,uint32_t* right){union{float value;uint32_t bits;}l,r;activePlaydate->sound->fileplayer->getVolume((FilePlayer*)player,&l.value,&r.value);*left=l.bits;*right=r.bits;}
 int32_t bridgeFilePlayerIsPlaying(uintptr_t player){return activePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player);}
 void bridgeFilePlayerPause(uintptr_t player){activePlaydate->sound->fileplayer->pause((FilePlayer*)player);}
+void bridgeFilePlayerSetRateBits(uintptr_t player,uint32_t rate){union{uint32_t bits;float value;}v={.bits=rate};activePlaydate->sound->fileplayer->setRate((FilePlayer*)player,v.value);}
+uint32_t bridgeFilePlayerRateBits(uintptr_t player){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->fileplayer->getRate((FilePlayer*)player)};return v.bits;}
 void bridgeFreeFilePlayer(uintptr_t player){activePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player);}
 `
 
