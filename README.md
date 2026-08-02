@@ -556,11 +556,52 @@ defer file.Close()
 Paths are game-relative. Native diagnostics are copied into
 `playdate.FileOperationError`; callers can use `errors.Is(err,
 playdate.ErrFileIO)` without parsing diagnostic text. `rename` follows the
-official overwrite behavior and will be the atomic replacement primitive for
+official overwrite behavior and is the atomic replacement primitive used by
 P4.2. The focused `examples/filesystem` flow passed Windows SDK 3.1.1 Simulator
 and physical Playdate execution on 2026-08-02, including write, flush, close,
 rename, Data read, stat, list, and recursive remove. Multi-session durability,
 interrupted replacement, soak, and memory-growth evidence remain unverified.
+
+## P4.2 versioned store
+
+`playdate/store` adds bounded, versioned persistence above `FileSystem`. It
+writes a binary envelope with a payload checksum to a sibling temporary file,
+flushes and closes it, and first attempts the documented overwriting rename.
+On hardware that rejects an existing destination, it falls back to a recoverable
+`final → backup`, `temporary → final` swap. `Load` recovers the backup if power
+was lost between those operations, and never selects a stale temporary file.
+
+```go
+save, err := store.New(files, store.Config{
+	Path:        "save.bin",
+	Version:     2,
+	MaximumSize: 4096,
+	Migrations: []store.VersionMigration{
+		{From: 1, Migrate: migrateVersion1},
+	},
+})
+if err != nil {
+	return err
+}
+payload, err := save.Load()
+```
+
+Each migration advances exactly one version and a successfully migrated value
+is atomically rewritten at the current version before it is returned. Callers
+choose their own payload encoding; the SDK does not impose JSON. Pure-Go unit
+tests cover first save, replacement, migrations, future versions, corruption,
+size bounds, interrupted rename, short writes, and preservation of the last
+valid value.
+
+The `examples/persistence` flow passed Windows SDK 3.1.1 Simulator and physical
+Playdate execution on 2026-08-02, displaying `P4.2 STORE OK` after save,
+migration, replacement, and reload. The first hardware run exposed that device
+`rename` rejected an existing destination despite the documented overwrite
+contract; it preserved both the valid final file and completed temporary file.
+The backup-swap fallback was then added, passed the conservative-GC device gate
+at 267,116 bytes of static RAM and a 30,269-byte PDX, and passed repeated USB
+deployment and physical execution. Cross-launch durability, power-loss injection,
+soak, and memory-growth evidence remain unverified.
 
 ## Development and CI
 
