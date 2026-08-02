@@ -251,7 +251,7 @@ freeing bridge memory, and the repeated hardware run displayed the expected
 produced a 28,737-byte PDX. Multi-session durability, interrupted writes, soak,
 and memory-growth measurement remain P4.2 or later evidence.
 
-### P4.2 — save and configuration store
+### P4.2 — save and configuration store — implemented
 
 - Implement versioned save/load above P4.1 with atomic temporary-file
   replacement, explicit migration, size bounds, and deterministic corrupt-save
@@ -261,6 +261,27 @@ and memory-growth measurement remain P4.2 or later evidence.
 - Test first save, replacement, migration, unsupported future versions,
   interrupted replacement, short I/O, and recovery without silently discarding
   the last valid state.
+
+The implemented `playdate/store` package keeps serialization in the consumer
+and adds a bounded binary envelope containing schema version, payload length,
+and checksum. Writes use a sibling temporary file followed by flush and close,
+then attempt the documented overwriting rename. If the target cannot be
+overwritten, a backup swap preserves a recoverable valid generation across
+each rename boundary. Loads ignore stale temporary files, recover an orphaned
+backup, reject malformed or future-version data deterministically, and run an
+explicit migration for every schema step before persisting the upgrade.
+
+Deterministic pure-Go tests cover the required failure matrix, device-style
+non-overwriting rename, backup recovery, and preservation of the last valid
+value. `examples/persistence` passed Windows SDK 3.1.1 Simulator and physical
+Playdate execution on 2026-08-02, displaying `P4.2 STORE OK` after save,
+migration, replacement, and reload. The first hardware run preserved the valid
+final and completed temporary file but showed that device `rename` rejected an
+existing destination despite the documented overwrite contract. The corrected
+fallback passed the conservative-GC device gate at 267,116 bytes of static RAM
+and a 30,269-byte PDX, USB deployment, and physical execution. Cross-launch
+durability, injected power loss, soak, and memory-growth evidence remain
+unverified.
 
 ### P4.3 — system menu and localization
 

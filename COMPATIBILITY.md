@@ -111,6 +111,18 @@ physical hardware work on that host. Docker does not promote those levels.
   was fixed by copying it before bridge-memory release. The repeated device
   flow displayed `P4.1 filesystem OK`; multi-session durability, interrupted
   writes, soak, and memory-growth measurement remain unverified.
+- P4.2 implemented: the portable `playdate/store` layer provides bounded
+  versioned values, checksummed corruption detection, explicit stepwise
+  migrations, and recoverable temporary/backup replacement. Pure-Go tests cover
+  first save, replacement, future versions, interrupted rename, short writes,
+  device-style non-overwriting rename, backup recovery, and preservation of the
+  last valid value. The `examples/persistence` flow passed Windows SDK 3.1.1
+  Simulator and physical Playdate save, migration, replacement, and reload on
+  2026-08-02. The first hardware run exposed non-overwriting device `rename`;
+  the backup-swap correction then passed the conservative-GC gate at 267,116
+  bytes of static RAM and a 30,269-byte PDX, USB deployment, and physical
+  execution with `P4.2 STORE OK`. Cross-launch durability, injected power loss,
+  soak, and memory-growth measurement remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

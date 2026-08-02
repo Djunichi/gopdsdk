@@ -1,0 +1,6 @@
+name=P4.2 Persistence Acceptance
+author=gopdsdk
+description=Versioned migration and atomic save replacement
+bundleID=dev.gopdsdk.persistence
+version=1.0.0
+buildNumber=1
