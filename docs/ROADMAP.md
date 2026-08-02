@@ -334,7 +334,7 @@ passing their IEEE-754 bits across the TinyGo/C boundary corrected it. `CHARGE`
 and `SCREWS` power states, conservative-GC soak, memory-growth measurement, and
 post-run crashlog inspection remain unverified.
 
-### P4.5 — optional online and debug facilities
+### P4.5 — optional online and debug facilities — implemented, integration unverified
 
 - Assess official scoreboards as an independent optional online service; add
   them only with a concrete consumer, bounded callbacks, failure handling, and
@@ -342,6 +342,31 @@ post-run crashlog inspection remain unverified.
 - Keep Simulator-only debug input and serial messaging separate from portable
   gameplay contracts and omit them if no acceptance or diagnostic consumer
   justifies their callback and platform boundaries.
+
+The implemented optional `Scoreboards` capability copies every SDK-owned result
+before the native bridge releases it, preserves immediate and callback failure
+diagnostics, and permits at most one pending request of each operation kind.
+Callbacks arriving after lifecycle termination are suppressed.
+`examples/scoreboards` exercises board discovery, score submission, and personal
+best retrieval, but no configured board or live Playdate service has yet been
+used; online SDK integration and physical-device behavior remain unverified.
+This capability implies neither general networking nor multiplayer support.
+On 2026-08-02 both P4.5 examples passed Windows SDK 3.1.1 Simulator builds and
+conservative device packaging. The scoreboards device build used 271,452 bytes
+of static RAM with a 35,288-byte PDX; deployment and execution were not run.
+
+The implemented optional `DebugMessages` capability receives device `msg` and
+Simulator `!msg` input into an eight-message FIFO, copies at most 256 bytes per
+message, drops the oldest message when full, and exposes polling from the normal
+game callback rather than re-entering game code from the native serial callback.
+Termination drains queued input. `examples/debugmessages` is the diagnostic
+consumer and generated-bridge tests cover its callback path. On 2026-08-02 its
+device build used 267,652 bytes of static RAM with a 26,054-byte PDX; USB
+deployment and physical Playdate execution passed. Sending `msg device-hello`
+directly over COM3 reached the native serial callback and displayed
+`device-hello` in the running example. Live Simulator `!msg` delivery,
+conservative-GC soak, memory-growth measurement, and post-run crashlog
+inspection remain unverified.
 
 ### P4.6 — integrated multi-session acceptance game
 

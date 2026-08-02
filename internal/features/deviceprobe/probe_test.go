@@ -68,6 +68,22 @@ func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
 	}
 }
 
+func TestBothDeviceAdaptersContainOnlineAndDebugBridges(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"sdkPlaydate.Scoreboards", "sdkPlaydate.DebugMessages", "goSerialMessage", "goScoreCallback", "sdkRuntime.NewScoreboardService", "bridgeGetScores"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("probe source does not contain %q", want)
+		}
+	}
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{"setSerialMessageCallback(bridgeSerialMessage)", "scoreboards->addScore", "scoreboards->getPersonalBest", "scoreboards->getScoreboards", "scoreboards->getScores", "scoreboards->freeScoresList"} {
+			if !strings.Contains(bootstrap, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+	}
+}
+
 func TestBothDeviceAdaptersContainSystemStatusBridge(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgeSetAccelerometerEnabled", "bridgeAccelerometer", "bridgePowerStatus", "bridgeBatteryPercentageBits", "bridgeBatteryVoltageBits", "bridgeSystemVolumeBits", "float32FromBits(bridgeBatteryPercentageBits())", "bridgeReduceFlashing", "bridgeTimezoneOffsetSeconds", "bridgeUses24HourTime"} {

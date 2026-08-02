@@ -633,6 +633,24 @@ func bridgeLanguage() int32
 func bridgeLocalizedText(key *byte, language int32) uintptr
 //go:linkname bridgeFree bridgeFree
 func bridgeFree(pointer uintptr)
+//go:linkname bridgeAddScore bridgeAddScore
+func bridgeAddScore(board *byte, value uint32) int32
+//go:linkname bridgeGetPersonalBest bridgeGetPersonalBest
+func bridgeGetPersonalBest(board *byte) int32
+//go:linkname bridgeGetScoreboards bridgeGetScoreboards
+func bridgeGetScoreboards() int32
+//go:linkname bridgeGetScores bridgeGetScores
+func bridgeGetScores(board *byte) int32
+//go:linkname bridgeScoreNumber bridgeScoreNumber
+func bridgeScoreNumber(score uintptr, field int32) uint32
+//go:linkname bridgeScoreText bridgeScoreText
+func bridgeScoreText(score uintptr, field int32) uintptr
+//go:linkname bridgeListNumber bridgeListNumber
+func bridgeListNumber(list uintptr, field int32) uint32
+//go:linkname bridgeListText bridgeListText
+func bridgeListText(list uintptr, index, field int32) uintptr
+//go:linkname bridgeListItemNumber bridgeListItemNumber
+func bridgeListItemNumber(list uintptr, index, field int32) uint32
 //go:linkname bridgeAddMenuItem bridgeAddMenuItem
 func bridgeAddMenuItem(title *byte, kind int32, options **byte, count, value int32, callback uint32) uintptr
 //go:linkname bridgeRemoveMenuItem bridgeRemoveMenuItem
@@ -814,6 +832,13 @@ var _ sdkPlaydate.Launcher = playdateContext{}
 var _ sdkPlaydate.FileSystem = playdateContext{}
 var _ sdkPlaydate.SystemMenu = playdateContext{}
 var _ sdkPlaydate.Localization = playdateContext{}
+var _ sdkPlaydate.Scoreboards = playdateContext{}
+var _ sdkPlaydate.DebugMessages = playdateContext{}
+
+var debugMessages=sdkRuntime.NewDebugMessageQueue(8,256)
+//export goSerialMessage
+func goSerialMessage(message uintptr){if message!=0{debugMessages.Push(copiedCString(message))}}
+func (playdateContext) PollDebugMessage()(string,bool){return debugMessages.Poll()}
 
 func (playdateContext) Clear() { bridgeClear() }
 func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
@@ -860,6 +885,23 @@ func (playdateContext) ReduceFlashing()bool{return bridgeReduceFlashing()!=0}
 func (playdateContext) TimezoneOffsetSeconds()int32{return bridgeTimezoneOffsetSeconds()}
 func (playdateContext) Uses24HourTime()bool{return bridgeUses24HourTime()!=0}
 
+var addScoreCallback func(sdkPlaydate.Score,string)
+var personalBestCallback func(sdkPlaydate.Score,string)
+var boardsCallback func(sdkPlaydate.BoardsList,string)
+var scoresCallback func(sdkPlaydate.ScoresList,string)
+func copiedScore(pointer uintptr)sdkPlaydate.Score{return sdkPlaydate.Score{Rank:bridgeScoreNumber(pointer,0),Value:bridgeScoreNumber(pointer,1),Player:copiedCString(bridgeScoreText(pointer,0)),BoardID:copiedCString(bridgeScoreText(pointer,1))}}
+//export goScoreCallback
+func goScoreCallback(kind int32,pointer,message uintptr){callback:=addScoreCallback;if kind==1{callback=personalBestCallback};if callback!=nil{callback(copiedScore(pointer),copiedCString(message))};if kind==0{addScoreCallback=nil}else{personalBestCallback=nil}}
+//export goBoardsCallback
+func goBoardsCallback(pointer,message uintptr){list:=sdkPlaydate.BoardsList{};if pointer!=0{list.LastUpdated=bridgeListNumber(pointer,1);count:=int(bridgeListNumber(pointer,0));list.Boards=make([]sdkPlaydate.Board,count);for i:=range list.Boards{list.Boards[i]=sdkPlaydate.Board{ID:copiedCString(bridgeListText(pointer,int32(i),0)),Name:copiedCString(bridgeListText(pointer,int32(i),1))}}};callback:=boardsCallback;boardsCallback=nil;if callback!=nil{callback(list,copiedCString(message))}}
+//export goScoresCallback
+func goScoresCallback(pointer,message uintptr){list:=sdkPlaydate.ScoresList{};if pointer!=0{list.BoardID=copiedCString(bridgeListText(pointer,-1,0));list.LastUpdated=bridgeListNumber(pointer,1);list.PlayerIncluded=bridgeListNumber(pointer,2)!=0;list.Limit=bridgeListNumber(pointer,3);count:=int(bridgeListNumber(pointer,0));list.Scores=make([]sdkPlaydate.ListScore,count);for i:=range list.Scores{list.Scores[i]=sdkPlaydate.ListScore{Rank:bridgeListItemNumber(pointer,int32(i),0),Value:bridgeListItemNumber(pointer,int32(i),1),Player:copiedCString(bridgeListText(pointer,int32(i),2))}}};callback:=scoresCallback;scoresCallback=nil;if callback!=nil{callback(list,copiedCString(message))}}
+var scoreboardService=sdkRuntime.NewScoreboardService(sdkRuntime.ScoreboardDriver{AddScore:func(board string,value uint32,callback func(sdkPlaydate.Score,string))bool{addScoreCallback=callback;if bridgeAddScore(terminatedPath(board),value)==0{addScoreCallback=nil;return false};return true},PersonalBest:func(board string,callback func(sdkPlaydate.Score,string))bool{personalBestCallback=callback;if bridgeGetPersonalBest(terminatedPath(board))==0{personalBestCallback=nil;return false};return true},Scoreboards:func(callback func(sdkPlaydate.BoardsList,string))bool{boardsCallback=callback;if bridgeGetScoreboards()==0{boardsCallback=nil;return false};return true},Scores:func(board string,callback func(sdkPlaydate.ScoresList,string))bool{scoresCallback=callback;if bridgeGetScores(terminatedPath(board))==0{scoresCallback=nil;return false};return true}})
+func (playdateContext) AddScore(board string,value uint32,callback func(sdkPlaydate.Score,error))error{return scoreboardService.AddScore(board,value,callback)}
+func (playdateContext) GetPersonalBest(board string,callback func(sdkPlaydate.Score,error))error{return scoreboardService.GetPersonalBest(board,callback)}
+func (playdateContext) GetScoreboards(callback func(sdkPlaydate.BoardsList,error))error{return scoreboardService.GetScoreboards(callback)}
+func (playdateContext) GetScores(board string,callback func(sdkPlaydate.ScoresList,error))error{return scoreboardService.GetScores(board,callback)}
+
 var menuCallbackIDs=map[uintptr]uint32{}
 //export goMenuCallback
 func goMenuCallback(id uint32){sdkRuntime.InvokeMenuCallback(id)}
@@ -871,7 +913,7 @@ func (playdateContext) AddOptionsMenuItem(title string,options []string,callback
 func (playdateContext) Language()sdkPlaydate.Language{return sdkPlaydate.Language(bridgeLanguage())}
 func (playdateContext) LocalizedText(key string,language sdkPlaydate.Language)(string,bool){if key==""{return "",false};pointer:=bridgeLocalizedText(terminatedPath(key),int32(language));if pointer==0{return "",false};value:=copiedCString(pointer);bridgeFree(pointer);return value,true}
 
-func copiedCString(pointer uintptr) string { value:=cString(pointer);copy:=make([]byte,len(value));for index:=range copy{copy[index]=value[index]};return string(copy) }
+func copiedCString(pointer uintptr) string { if pointer==0{return ""};value:=cString(pointer);copy:=make([]byte,len(value));for index:=range copy{copy[index]=value[index]};return string(copy) }
 func fileErrorMessage() string { pointer:=bridgeFileError();if pointer==0{return ""};return copiedCString(pointer) }
 var fileDriver=sdkRuntime.FileDriver{
 	Read:func(handle uintptr,buffer []byte)(int,string){result:=int(bridgeFileRead(handle,unsafe.SliceData(buffer),uint32(len(buffer))));if result<0{return result,fileErrorMessage()};return result,""},
@@ -1062,12 +1104,21 @@ _Static_assert(sizeof(float) == 4, "Playdate float samples must be IEEE-754 bina
 extern void runtimeRun(void) __asm__("runtime.run");
 extern int goEventHandler(PlaydateAPI*, PDSystemEvent, uint32_t);
 extern int goUpdate(void);
+static PlaydateAPI* activePlaydate;
 extern void goMenuCallback(uint32_t id);
 static void bridgeMenuCallback(void* userdata){goMenuCallback((uint32_t)(uintptr_t)userdata);}
+extern void goSerialMessage(uintptr_t message);
+extern void goScoreCallback(int32_t kind,uintptr_t score,uintptr_t error);
+extern void goBoardsCallback(uintptr_t list,uintptr_t error);
+extern void goScoresCallback(uintptr_t list,uintptr_t error);
+static void bridgeSerialMessage(const char* message){goSerialMessage((uintptr_t)message);}
+static void bridgeAddScoreCallback(PDScore* score,const char* error){goScoreCallback(0,(uintptr_t)score,(uintptr_t)error);if(score)activePlaydate->scoreboards->freeScore(score);}
+static void bridgePersonalBestCallback(PDScore* score,const char* error){goScoreCallback(1,(uintptr_t)score,(uintptr_t)error);if(score)activePlaydate->scoreboards->freeScore(score);}
+static void bridgeBoardsCallback(PDBoardsList* list,const char* error){goBoardsCallback((uintptr_t)list,(uintptr_t)error);if(list)activePlaydate->scoreboards->freeBoardsList(list);}
+static void bridgeScoresCallback(PDScoresList* list,const char* error){goScoresCallback((uintptr_t)list,(uintptr_t)error);if(list)activePlaydate->scoreboards->freeScoresList(list);}
 void* runtimeAlloc(uintptr_t, void*) __asm__("runtime.alloc");
 
 static int booted;
-static PlaydateAPI* activePlaydate;
 static int bridgeUpdate(void* userdata);
 
 void* runtimeAlloc(uintptr_t size, void* layout)
@@ -1093,6 +1144,7 @@ int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
 	if (event == kEventInit && result == 0)
 	{
 		playdate->system->setUpdateCallback(bridgeUpdate, playdate);
+		playdate->system->setSerialMessageCallback(bridgeSerialMessage);
 		playdate->system->resetElapsedTime();
 	}
 	return result;
@@ -1141,6 +1193,15 @@ int32_t bridgeLanguage(void){return activePlaydate->system->getLanguage();}
 uintptr_t bridgeLocalizedText(const char* key,int32_t language){return(uintptr_t)activePlaydate->system->getLocalizedText(key,(PDLanguage)language);}
 void bridgeFree(uintptr_t pointer){activePlaydate->system->realloc((void*)pointer,0);}
 uintptr_t bridgeAddMenuItem(const char* title,int32_t kind,const char** options,int32_t count,int32_t value,uint32_t callback){PDMenuItem* item;void* userdata=(void*)(uintptr_t)callback;if(kind==1)item=activePlaydate->system->addCheckmarkMenuItem(title,value,bridgeMenuCallback,userdata);else if(kind==2)item=activePlaydate->system->addOptionsMenuItem(title,options,count,bridgeMenuCallback,userdata);else item=activePlaydate->system->addMenuItem(title,bridgeMenuCallback,userdata);return(uintptr_t)item;}
+int32_t bridgeAddScore(const char* board,uint32_t value){return activePlaydate->scoreboards->addScore(board,value,bridgeAddScoreCallback);}
+int32_t bridgeGetPersonalBest(const char* board){return activePlaydate->scoreboards->getPersonalBest(board,bridgePersonalBestCallback);}
+int32_t bridgeGetScoreboards(void){return activePlaydate->scoreboards->getScoreboards(bridgeBoardsCallback);}
+int32_t bridgeGetScores(const char* board){return activePlaydate->scoreboards->getScores(board,bridgeScoresCallback);}
+uint32_t bridgeScoreNumber(uintptr_t value,int32_t field){PDScore* score=(PDScore*)value;if(!score)return 0;return field==0?score->rank:score->value;}
+uintptr_t bridgeScoreText(uintptr_t value,int32_t field){PDScore* score=(PDScore*)value;if(!score)return 0;return(uintptr_t)(field==0?score->player:score->boardID);}
+uint32_t bridgeListNumber(uintptr_t value,int32_t field){if(!value)return 0;if(field==0)return((PDBoardsList*)value)->count;if(field==1)return((PDBoardsList*)value)->lastUpdated;PDScoresList* list=(PDScoresList*)value;return field==2?(uint32_t)list->playerIncluded:list->limit;}
+uintptr_t bridgeListText(uintptr_t value,int32_t index,int32_t field){if(!value)return 0;if(index<0)return(uintptr_t)((PDScoresList*)value)->boardID;if(field==0)return(uintptr_t)((PDBoardsList*)value)->boards[index].boardID;if(field==1)return(uintptr_t)((PDBoardsList*)value)->boards[index].name;return(uintptr_t)((PDScoresList*)value)->scores[index].player;}
+uint32_t bridgeListItemNumber(uintptr_t value,int32_t index,int32_t field){PDListScore* score=&((PDScoresList*)value)->scores[index];return field==0?score->rank:score->value;}
 void bridgeRemoveMenuItem(uintptr_t item){activePlaydate->system->removeMenuItem((PDMenuItem*)item);}
 uintptr_t bridgeMenuItemTitle(uintptr_t item){return(uintptr_t)activePlaydate->system->getMenuItemTitle((PDMenuItem*)item);}
 void bridgeSetMenuItemTitle(uintptr_t item,const char* title){activePlaydate->system->setMenuItemTitle((PDMenuItem*)item,title);}
@@ -1245,11 +1306,20 @@ extern uintptr_t runtimeStackTop __asm__("runtime.stackTop");
 extern void* runtimeSCB __asm__("playdateRuntimeSCB");
 extern int goEventHandler(PlaydateAPI*, PDSystemEvent, uint32_t);
 extern int goUpdate(void);
+static PlaydateAPI* activePlaydate;
 extern void goMenuCallback(uint32_t id);
 static void bridgeMenuCallback(void* userdata){goMenuCallback((uint32_t)(uintptr_t)userdata);}
+extern void goSerialMessage(uintptr_t message);
+extern void goScoreCallback(int32_t kind,uintptr_t score,uintptr_t error);
+extern void goBoardsCallback(uintptr_t list,uintptr_t error);
+extern void goScoresCallback(uintptr_t list,uintptr_t error);
+static void bridgeSerialMessage(const char* message){goSerialMessage((uintptr_t)message);}
+static void bridgeAddScoreCallback(PDScore* score,const char* error){goScoreCallback(0,(uintptr_t)score,(uintptr_t)error);if(score)activePlaydate->scoreboards->freeScore(score);}
+static void bridgePersonalBestCallback(PDScore* score,const char* error){goScoreCallback(1,(uintptr_t)score,(uintptr_t)error);if(score)activePlaydate->scoreboards->freeScore(score);}
+static void bridgeBoardsCallback(PDBoardsList* list,const char* error){goBoardsCallback((uintptr_t)list,(uintptr_t)error);if(list)activePlaydate->scoreboards->freeBoardsList(list);}
+static void bridgeScoresCallback(PDScoresList* list,const char* error){goScoresCallback((uintptr_t)list,(uintptr_t)error);if(list)activePlaydate->scoreboards->freeScoresList(list);}
 
 static int booted;
-static PlaydateAPI* activePlaydate;
 static uint32_t runtimeSCBShadow[2];
 __attribute__((section(".bss.playdate_runtime_heap"), aligned(16), used))
 unsigned char playdateRuntimeHeap[256 * 1024];
@@ -1275,6 +1345,7 @@ int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
 	if (event == kEventInit && result == 0)
 	{
 		playdate->system->setUpdateCallback(bridgeUpdate, playdate);
+		playdate->system->setSerialMessageCallback(bridgeSerialMessage);
 		playdate->system->resetElapsedTime();
 	}
 	return result;
@@ -1324,6 +1395,15 @@ int32_t bridgeLanguage(void){return activePlaydate->system->getLanguage();}
 uintptr_t bridgeLocalizedText(const char* key,int32_t language){return(uintptr_t)activePlaydate->system->getLocalizedText(key,(PDLanguage)language);}
 void bridgeFree(uintptr_t pointer){activePlaydate->system->realloc((void*)pointer,0);}
 uintptr_t bridgeAddMenuItem(const char* title,int32_t kind,const char** options,int32_t count,int32_t value,uint32_t callback){PDMenuItem* item;void* userdata=(void*)(uintptr_t)callback;if(kind==1)item=activePlaydate->system->addCheckmarkMenuItem(title,value,bridgeMenuCallback,userdata);else if(kind==2)item=activePlaydate->system->addOptionsMenuItem(title,options,count,bridgeMenuCallback,userdata);else item=activePlaydate->system->addMenuItem(title,bridgeMenuCallback,userdata);return(uintptr_t)item;}
+int32_t bridgeAddScore(const char* board,uint32_t value){return activePlaydate->scoreboards->addScore(board,value,bridgeAddScoreCallback);}
+int32_t bridgeGetPersonalBest(const char* board){return activePlaydate->scoreboards->getPersonalBest(board,bridgePersonalBestCallback);}
+int32_t bridgeGetScoreboards(void){return activePlaydate->scoreboards->getScoreboards(bridgeBoardsCallback);}
+int32_t bridgeGetScores(const char* board){return activePlaydate->scoreboards->getScores(board,bridgeScoresCallback);}
+uint32_t bridgeScoreNumber(uintptr_t value,int32_t field){PDScore* score=(PDScore*)value;if(!score)return 0;return field==0?score->rank:score->value;}
+uintptr_t bridgeScoreText(uintptr_t value,int32_t field){PDScore* score=(PDScore*)value;if(!score)return 0;return(uintptr_t)(field==0?score->player:score->boardID);}
+uint32_t bridgeListNumber(uintptr_t value,int32_t field){if(!value)return 0;if(field==0)return((PDBoardsList*)value)->count;if(field==1)return((PDBoardsList*)value)->lastUpdated;PDScoresList* list=(PDScoresList*)value;return field==2?(uint32_t)list->playerIncluded:list->limit;}
+uintptr_t bridgeListText(uintptr_t value,int32_t index,int32_t field){if(!value)return 0;if(index<0)return(uintptr_t)((PDScoresList*)value)->boardID;if(field==0)return(uintptr_t)((PDBoardsList*)value)->boards[index].boardID;if(field==1)return(uintptr_t)((PDBoardsList*)value)->boards[index].name;return(uintptr_t)((PDScoresList*)value)->scores[index].player;}
+uint32_t bridgeListItemNumber(uintptr_t value,int32_t index,int32_t field){PDListScore* score=&((PDScoresList*)value)->scores[index];return field==0?score->rank:score->value;}
 void bridgeRemoveMenuItem(uintptr_t item){activePlaydate->system->removeMenuItem((PDMenuItem*)item);}
 uintptr_t bridgeMenuItemTitle(uintptr_t item){return(uintptr_t)activePlaydate->system->getMenuItemTitle((PDMenuItem*)item);}
 void bridgeSetMenuItemTitle(uintptr_t item,const char* title){activePlaydate->system->setMenuItemTitle((PDMenuItem*)item,title);}

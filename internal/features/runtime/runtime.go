@@ -873,9 +873,75 @@ type applicationContext struct {
 	input                playdate.Input
 	menuItems            []playdate.MenuItem
 	accelerometerEnabled bool
+	terminated           bool
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }
+
+func (context *applicationContext) PollDebugMessage() (string, bool) {
+	messages, _ := context.Context.(playdate.DebugMessages)
+	if messages == nil || context.terminated {
+		return "", false
+	}
+	return messages.PollDebugMessage()
+}
+
+func (context *applicationContext) AddScore(boardID string, value uint32, callback func(playdate.Score, error)) error {
+	if callback == nil {
+		return playdate.ErrScoreboardCallback
+	}
+	service, _ := context.Context.(playdate.Scoreboards)
+	if service == nil {
+		return playdate.ErrScoreboardUnavailable
+	}
+	return service.AddScore(boardID, value, func(score playdate.Score, err error) {
+		if !context.terminated {
+			callback(score, err)
+		}
+	})
+}
+func (context *applicationContext) GetPersonalBest(boardID string, callback func(playdate.Score, error)) error {
+	if callback == nil {
+		return playdate.ErrScoreboardCallback
+	}
+	service, _ := context.Context.(playdate.Scoreboards)
+	if service == nil {
+		return playdate.ErrScoreboardUnavailable
+	}
+	return service.GetPersonalBest(boardID, func(score playdate.Score, err error) {
+		if !context.terminated {
+			callback(score, err)
+		}
+	})
+}
+func (context *applicationContext) GetScoreboards(callback func(playdate.BoardsList, error)) error {
+	if callback == nil {
+		return playdate.ErrScoreboardCallback
+	}
+	service, _ := context.Context.(playdate.Scoreboards)
+	if service == nil {
+		return playdate.ErrScoreboardUnavailable
+	}
+	return service.GetScoreboards(func(list playdate.BoardsList, err error) {
+		if !context.terminated {
+			callback(list, err)
+		}
+	})
+}
+func (context *applicationContext) GetScores(boardID string, callback func(playdate.ScoresList, error)) error {
+	if callback == nil {
+		return playdate.ErrScoreboardCallback
+	}
+	service, _ := context.Context.(playdate.Scoreboards)
+	if service == nil {
+		return playdate.ErrScoreboardUnavailable
+	}
+	return service.GetScores(boardID, func(list playdate.ScoresList, err error) {
+		if !context.terminated {
+			callback(list, err)
+		}
+	})
+}
 
 func (context *applicationContext) ExitToLauncher() {
 	launcher, ok := context.Context.(playdate.Launcher)
@@ -1217,6 +1283,14 @@ func NewApplication(game playdate.Game, context playdate.Context, beforeInit fun
 			if event == playdate.LifecycleTerminate {
 				gameContext.disableAccelerometer()
 				gameContext.removeMenuItems()
+				if messages, ok := gameContext.Context.(playdate.DebugMessages); ok {
+					for {
+						if _, more := messages.PollDebugMessage(); !more {
+							break
+						}
+					}
+				}
+				gameContext.terminated = true
 			}
 			return err
 		},

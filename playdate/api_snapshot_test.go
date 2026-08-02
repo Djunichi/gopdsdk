@@ -180,6 +180,8 @@ func (FontLoadError).Error() string
 func (FontLoadError).Is(target error) bool
 func (Paint).Components() (solid uint8, pattern [16]byte, patterned bool)
 func (PowerStatus).Has(requested PowerStatus) bool
+func (ScoreboardOperationError).Error() string
+func (ScoreboardOperationError).Unwrap() error
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
 func NewTileMap(config TileMapConfig) (*TileMap, error)
 func PatternPaint(image [8]byte, mask [8]byte) Paint
@@ -192,6 +194,8 @@ type AudioLoadError string
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
 type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
+type Board struct{ID string; Name string}
+type BoardsList struct{LastUpdated uint32; Boards []Board}
 type Buttons uint8
 type Camera struct{X int; Y int; Width int; Height int}
 type CheckmarkMenuItem interface{SetValue(bool); Value() bool; MenuItem}
@@ -199,6 +203,7 @@ type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps boo
 type CollisionResponse uint8
 type Color uint8
 type Context interface{System; Graphics; InputReader; Sprites; Audio}
+type DebugMessages interface{PollDebugMessage() (message string, ok bool)}
 type DrawMode uint8
 type File interface{Close() error; Flush() error; io.Reader; io.Writer; io.Seeker}
 type FileInfo struct{IsDir bool; Size uint32; Year int; Month int; Day int; Hour int; Minute int; Second int}
@@ -220,6 +225,7 @@ type Language int
 type Launcher interface{ExitToLauncher()}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
+type ListScore struct{Rank uint32; Value uint32; Player string}
 type Localization interface{Language() Language; LocalizedText(key string, language Language) (string, bool)}
 type MenuItem interface{Remove(); SetTitle(string) error; Title() string}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
@@ -232,6 +238,10 @@ type PowerMonitor interface{BatteryPercentage() float32; BatteryVoltage() float3
 type PowerStatus uint8
 type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
+type Score struct{Rank uint32; Value uint32; Player string; BoardID string}
+type ScoreboardOperationError struct{Operation string; BoardID string; Message string}
+type Scoreboards interface{AddScore(boardID string, value uint32, callback func(Score, error)) error; GetPersonalBest(boardID string, callback func(Score, error)) error; GetScoreboards(callback func(BoardsList, error)) error; GetScores(boardID string, callback func(ScoresList, error)) error}
+type ScoresList struct{BoardID string; LastUpdated uint32; PlayerIncluded bool; Limit uint32; Scores []ListScore}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
 type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
@@ -277,6 +287,11 @@ var ErrMenuOptions error
 var ErrMenuTitle error
 var ErrMenuValue error
 var ErrOffscreenCallback error
+var ErrScoreboardBoardID error
+var ErrScoreboardBusy error
+var ErrScoreboardCallback error
+var ErrScoreboardRequest error
+var ErrScoreboardUnavailable error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error

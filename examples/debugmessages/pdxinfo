@@ -1,0 +1,6 @@
+name=P4 Debug Messages
+author=gopdsdk
+description=P4.5 serial debug-message acceptance (unverified)
+bundleID=dev.gopdsdk.debugmessages
+version=1.0.0
+buildNumber=1
