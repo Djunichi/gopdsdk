@@ -444,6 +444,27 @@ Simulator bridge, and both device memory profiles are unit-tested. SDK
 integration, Simulator visual execution, device build, USB deployment, and
 physical-device execution for P3.2 remain unverified.
 
+## P3.3 tile map and camera
+
+`playdate.TileMap` renders only cells intersecting an integer-pixel
+`playdate.Camera`; `TileDrawStats` makes that per-frame bound observable.
+Tile zero is empty and other values index caller-owned bitmaps. Static solid
+tile overlap is available through `IntersectsSolid` and deliberately remains
+separate from sprite collision and movement response.
+
+The deterministic unit suite covers camera clamping, visible-range work,
+screen-space placement, copied configuration, validation, draw failures, and
+static collision edges. `examples/tilemap` is the consumer-driven vertical
+slice. Windows SDK 3.1.1 Simulator visual acceptance and conservative-GC
+physical-device build, USB deployment, controls, jump, collision, camera, and
+matching scene execution passed on 2026-08-02. The accepted device artifact
+used 270,908 bytes of static RAM and produced a 37,440-byte PDX. Soak and
+memory-growth measurement remain unverified.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/tilemap
+```
+
 ## Development and CI
 
 Run the repository checks with:

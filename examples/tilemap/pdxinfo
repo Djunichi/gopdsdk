@@ -1,0 +1,6 @@
+name=P3.3 Tile Map Acceptance
+author=gopdsdk
+description=Bounded tile rendering, camera, and static collision acceptance
+bundleID=dev.gopdsdk.tilemap
+version=1.0.0
+buildNumber=1

@@ -12,24 +12,6 @@ type BitmapLoadError string
 func (message BitmapLoadError) Error() string { return "load bitmap: " + string(message) }
 
 var (
-	// ErrGraphicsColor indicates a solid color outside the public values.
-	ErrGraphicsColor error = bitmapError("invalid graphics color")
-	// ErrGraphicsUnavailable indicates a context without the optional graphics slice.
-	ErrGraphicsUnavailable error = bitmapError("graphics capability is unavailable")
-	// ErrGraphicsGeometry indicates non-positive dimensions, widths, or non-finite angles.
-	ErrGraphicsGeometry error = bitmapError("invalid graphics geometry")
-	// ErrGraphicsDrawMode indicates a draw mode outside the public values.
-	ErrGraphicsDrawMode error = bitmapError("invalid graphics draw mode")
-	// ErrFramebufferExpired indicates use after the scoped callback returned.
-	ErrFramebufferExpired error = bitmapError("framebuffer view has expired")
-	// ErrFramebufferBounds indicates a pixel or dirty-row range outside the display.
-	ErrFramebufferBounds error = bitmapError("framebuffer coordinates are out of range")
-	// ErrFramebufferColor indicates a framebuffer pixel color other than black or white.
-	ErrFramebufferColor error = bitmapError("framebuffer pixels must be black or white")
-	// ErrFramebufferCallback indicates a nil scoped framebuffer callback.
-	ErrFramebufferCallback error = bitmapError("framebuffer callback is required")
-	// ErrOffscreenCallback indicates a nil offscreen drawing callback.
-	ErrOffscreenCallback error = bitmapError("offscreen callback is required")
 	// ErrBitmapClosed indicates an operation on an already closed bitmap.
 	ErrBitmapClosed error = bitmapError("bitmap is closed")
 	// ErrBitmapBorrowed indicates an attempt to close a borrowed bitmap.
@@ -48,6 +30,61 @@ var (
 	ErrBitmapTableBorrowed error = bitmapError("borrowed bitmap table cannot be closed")
 	// ErrBitmapFrameRange indicates a negative or missing table frame.
 	ErrBitmapFrameRange error = bitmapError("bitmap table frame is out of range")
+)
+
+// Graphics errors.
+
+type graphicsError string
+
+func (message graphicsError) Error() string { return string(message) }
+
+var (
+	// ErrGraphicsColor indicates a solid color outside the public values.
+	ErrGraphicsColor error = graphicsError("invalid graphics color")
+	// ErrGraphicsUnavailable indicates a context without the optional graphics slice.
+	ErrGraphicsUnavailable error = graphicsError("graphics capability is unavailable")
+	// ErrGraphicsGeometry indicates non-positive dimensions, widths, or non-finite angles.
+	ErrGraphicsGeometry error = graphicsError("invalid graphics geometry")
+	// ErrGraphicsDrawMode indicates a draw mode outside the public values.
+	ErrGraphicsDrawMode error = graphicsError("invalid graphics draw mode")
+)
+
+// Framebuffer and offscreen drawing errors.
+
+type framebufferError string
+
+func (message framebufferError) Error() string { return string(message) }
+
+type offscreenError string
+
+func (message offscreenError) Error() string { return string(message) }
+
+var (
+	// ErrFramebufferExpired indicates use after the scoped callback returned.
+	ErrFramebufferExpired error = framebufferError("framebuffer view has expired")
+	// ErrFramebufferBounds indicates a pixel or dirty-row range outside the display.
+	ErrFramebufferBounds error = framebufferError("framebuffer coordinates are out of range")
+	// ErrFramebufferColor indicates a framebuffer pixel color other than black or white.
+	ErrFramebufferColor error = framebufferError("framebuffer pixels must be black or white")
+	// ErrFramebufferCallback indicates a nil scoped framebuffer callback.
+	ErrFramebufferCallback error = framebufferError("framebuffer callback is required")
+	// ErrOffscreenCallback indicates a nil offscreen drawing callback.
+	ErrOffscreenCallback error = offscreenError("offscreen callback is required")
+)
+
+// Tile-map errors.
+
+type tileMapError string
+
+func (message tileMapError) Error() string { return string(message) }
+
+var (
+	// ErrTileMapConfig indicates invalid layer dimensions or tile data length.
+	ErrTileMapConfig error = tileMapError("invalid tile map configuration")
+	// ErrTileMapBitmap indicates that a visible tile has no corresponding bitmap.
+	ErrTileMapBitmap error = tileMapError("tile bitmap is unavailable")
+	// ErrTileMapDraw indicates invalid drawing inputs or an underlying draw failure.
+	ErrTileMapDraw error = tileMapError("tile map draw failed")
 )
 
 // Animation errors.
