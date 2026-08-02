@@ -1,0 +1,6 @@
+name=P4.3 System Menu Acceptance
+author=gopdsdk
+description=Exercises owned system menu items, localization, and persisted settings.
+bundleID=dev.gopdsdk.systemmenu
+version=1.0.0
+buildNumber=1

@@ -283,7 +283,7 @@ and a 30,269-byte PDX, USB deployment, and physical execution. Cross-launch
 durability, injected power loss, soak, and memory-growth evidence remain
 unverified.
 
-### P4.3 — system menu and localization
+### P4.3 — system menu and localization — implemented
 
 - Add owned action, checkmark, and option menu items with callback lifetime,
   removal, title, and value behavior defined across Simulator and device.
@@ -292,6 +292,20 @@ unverified.
   policy.
 - Exercise menu-driven settings whose localized values persist through P4.2,
   including callback cleanup during lifecycle termination.
+
+The implemented slice exposes optional `SystemMenu` and `Localization`
+capabilities. Action, checkmark, and option items own their native handles and
+callbacks, support title and value access, remove idempotently, and are removed
+by `NewApplication` after lifecycle termination. Localized text is copied into
+Go ownership before the SDK allocation is freed; missing-key fallback remains
+consumer policy. Deterministic tests cover value validation, ownership,
+forwarding, localization, and termination cleanup. `examples/systemmenu`
+persists its localized menu settings through P4.2. On 2026-08-02 it passed
+Windows SDK 3.1.1 Simulator execution, the conservative device gate at 268,932
+bytes of static RAM and a 35,674-byte PDX, USB deployment, and physical
+Playdate execution. The menu callbacks changed both settings and the values
+survived a game restart. Extended conservative-GC soak, memory-growth
+measurement, and post-run crashlog inspection remain unverified.
 
 ### P4.4 — device and system status
 

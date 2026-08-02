@@ -870,7 +870,8 @@ type Application struct {
 
 type applicationContext struct {
 	playdate.Context
-	input playdate.Input
+	input     playdate.Input
+	menuItems []playdate.MenuItem
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }
@@ -880,6 +881,73 @@ func (context *applicationContext) ExitToLauncher() {
 	if ok {
 		launcher.ExitToLauncher()
 	}
+}
+
+func (context *applicationContext) systemMenu() (playdate.SystemMenu, error) {
+	menu, ok := context.Context.(playdate.SystemMenu)
+	if !ok {
+		return nil, playdate.ErrMenuItemCreate
+	}
+	return menu, nil
+}
+
+func (context *applicationContext) AddActionMenuItem(title string, callback func()) (playdate.MenuItem, error) {
+	menu, err := context.systemMenu()
+	if err != nil {
+		return nil, err
+	}
+	item, err := menu.AddActionMenuItem(title, callback)
+	if err == nil {
+		context.menuItems = append(context.menuItems, item)
+	}
+	return item, err
+}
+
+func (context *applicationContext) AddCheckmarkMenuItem(title string, value bool, callback func()) (playdate.CheckmarkMenuItem, error) {
+	menu, err := context.systemMenu()
+	if err != nil {
+		return nil, err
+	}
+	item, err := menu.AddCheckmarkMenuItem(title, value, callback)
+	if err == nil {
+		context.menuItems = append(context.menuItems, item)
+	}
+	return item, err
+}
+
+func (context *applicationContext) AddOptionsMenuItem(title string, options []string, callback func()) (playdate.OptionsMenuItem, error) {
+	menu, err := context.systemMenu()
+	if err != nil {
+		return nil, err
+	}
+	item, err := menu.AddOptionsMenuItem(title, options, callback)
+	if err == nil {
+		context.menuItems = append(context.menuItems, item)
+	}
+	return item, err
+}
+
+func (context *applicationContext) Language() playdate.Language {
+	localization, ok := context.Context.(playdate.Localization)
+	if !ok {
+		return playdate.LanguageEnglish
+	}
+	return localization.Language()
+}
+
+func (context *applicationContext) LocalizedText(key string, language playdate.Language) (string, bool) {
+	localization, ok := context.Context.(playdate.Localization)
+	if !ok {
+		return "", false
+	}
+	return localization.LocalizedText(key, language)
+}
+
+func (context *applicationContext) removeMenuItems() {
+	for _, item := range context.menuItems {
+		item.Remove()
+	}
+	context.menuItems = nil
 }
 
 func (context *applicationContext) fileSystem() (playdate.FileSystem, error) {
@@ -1074,10 +1142,14 @@ func NewApplication(game playdate.Game, context playdate.Context, beforeInit fun
 			return game.Init(gameContext)
 		},
 		Lifecycle: func(event playdate.LifecycleEvent) error {
-			if lifecycle == nil {
-				return nil
+			var err error
+			if lifecycle != nil {
+				err = lifecycle.HandleLifecycle(gameContext, event)
 			}
-			return lifecycle.HandleLifecycle(gameContext, event)
+			if event == playdate.LifecycleTerminate {
+				gameContext.removeMenuItems()
+			}
+			return err
 		},
 		Update: func(input playdate.Input) (bool, error) {
 			gameContext.input = input

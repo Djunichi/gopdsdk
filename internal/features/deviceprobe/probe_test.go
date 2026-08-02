@@ -51,6 +51,11 @@ func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
 			t.Errorf("probe source does not contain %q", want)
 		}
 	}
+	for _, want := range []string{"sdkPlaydate.SystemMenu", "sdkPlaydate.Localization", "goMenuCallback", "sdkRuntime.NewOwnedMenuItem", "bridgeLocalizedText", "bridgeFree(pointer)"} {
+		if !strings.Contains(source, want) {
+			t.Fatalf("generated source missing %q", want)
+		}
+	}
 	if strings.Contains(source, "defer bridgeFileListFree") {
 		t.Fatal("probe source retains unsupported TinyGo defer runtime for filesystem lists")
 	}

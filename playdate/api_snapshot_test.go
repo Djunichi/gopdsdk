@@ -143,6 +143,9 @@ const FileAppend FileOptions
 const FileReadData FileOptions
 const FileReadPackage FileOptions
 const FileWrite FileOptions
+const LanguageEnglish Language
+const LanguageJapanese Language
+const LanguageSystem Language
 const LifecycleLock LifecycleEvent
 const LifecycleLowPower LifecycleEvent
 const LifecyclePause LifecycleEvent
@@ -186,6 +189,7 @@ type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Buttons uint8
 type Camera struct{X int; Y int; Width int; Height int}
+type CheckmarkMenuItem interface{SetValue(bool); Value() bool; MenuItem}
 type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
 type CollisionResponse uint8
 type Color uint8
@@ -207,11 +211,15 @@ type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; 
 type GraphicsState interface{ClearClipRect(); SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
+type Language int
 type Launcher interface{ExitToLauncher()}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
+type Localization interface{Language() Language; LocalizedText(key string, language Language) (string, bool)}
+type MenuItem interface{Remove(); SetTitle(string) error; Title() string}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
 type OffscreenGraphics interface{DrawInto(bitmap Bitmap, callback func() error) error}
+type OptionsMenuItem interface{SetValue(int) error; Value() int; MenuItem}
 type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
@@ -221,6 +229,7 @@ type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() 
 type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type System interface{CurrentTimeMilliseconds() uint32}
+type SystemMenu interface{AddActionMenuItem(title string, callback func()) (MenuItem, error); AddCheckmarkMenuItem(title string, value bool, callback func()) (CheckmarkMenuItem, error); AddOptionsMenuItem(title string, options []string, callback func()) (OptionsMenuItem, error)}
 type TileDrawStats struct{Visited int; Drawn int}
 type TileMap struct{columns int; rows int; tileWidth int; tileHeight int; tiles []uint8; solid []bool}
 type TileMapConfig struct{Columns int; Rows int; TileWidth int; TileHeight int; Tiles []uint8; Solid []bool}
@@ -255,6 +264,10 @@ var ErrGraphicsColor error
 var ErrGraphicsDrawMode error
 var ErrGraphicsGeometry error
 var ErrGraphicsUnavailable error
+var ErrMenuItemCreate error
+var ErrMenuOptions error
+var ErrMenuTitle error
+var ErrMenuValue error
 var ErrOffscreenCallback error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error

@@ -67,6 +67,15 @@ int bridgeFontHeight(uintptr_t font);
 void bridgeFreeFont(uintptr_t font);
 uint32_t bridgeCurrentTimeMilliseconds(void);
 void bridgeExitToLauncher(void);
+int bridgeLanguage(void);
+char* bridgeLocalizedText(const char* key, int language);
+void bridgeFree(void* pointer);
+uintptr_t bridgeAddMenuItem(const char* title, int kind, const char** options, int count, int value, uint32_t callback);
+void bridgeRemoveMenuItem(uintptr_t item);
+const char* bridgeMenuItemTitle(uintptr_t item);
+void bridgeSetMenuItemTitle(uintptr_t item, const char* title);
+int bridgeMenuItemValue(uintptr_t item);
+void bridgeSetMenuItemValue(uintptr_t item, int value);
 const char* bridgeFileError(void);
 uintptr_t bridgeFileOpen(const char* path, int options);
 int bridgeFileClose(uintptr_t file);
@@ -206,6 +215,8 @@ var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
 var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
 var _ sdkPlaydate.Launcher = playdateContext{}
 var _ sdkPlaydate.FileSystem = playdateContext{}
+var _ sdkPlaydate.SystemMenu = playdateContext{}
+var _ sdkPlaydate.Localization = playdateContext{}
 
 func (playdateContext) Clear() { C.bridgeClear() }
 func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
@@ -248,6 +259,21 @@ func (playdateContext) CurrentTimeMilliseconds() uint32 {
 }
 
 func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }
+
+var menuCallbackIDs = map[uintptr]uint32{}
+//export goMenuCallback
+func goMenuCallback(id C.uint32_t) { sdkRuntime.InvokeMenuCallback(uint32(id)) }
+var menuDriver = sdkRuntime.MenuDriver{
+	SetTitle:func(handle uintptr,title string){value:=C.CString(title);defer C.free(unsafe.Pointer(value));C.bridgeSetMenuItemTitle(C.uintptr_t(handle),value)}, Title:func(handle uintptr)string{return C.GoString(C.bridgeMenuItemTitle(C.uintptr_t(handle)))},
+	Value:func(handle uintptr)int{return int(C.bridgeMenuItemValue(C.uintptr_t(handle)))}, SetValue:func(handle uintptr,value int){C.bridgeSetMenuItemValue(C.uintptr_t(handle),C.int(value))},
+	Remove:func(handle uintptr){C.bridgeRemoveMenuItem(C.uintptr_t(handle));sdkRuntime.ForgetMenuCallback(menuCallbackIDs[handle]);delete(menuCallbackIDs,handle)},
+}
+func addMenuItem(title string,kind int,options []string,value int,callback func()) (uintptr,error){if title==""{return 0,sdkPlaydate.ErrMenuTitle};if kind==2&&len(options)==0{return 0,sdkPlaydate.ErrMenuOptions};cTitle:=C.CString(title);defer C.free(unsafe.Pointer(cTitle));values:=make([]*C.char,len(options));for i:=range options{if options[i]==""{for _,v:=range values{if v!=nil{C.free(unsafe.Pointer(v))}};return 0,sdkPlaydate.ErrMenuOptions};values[i]=C.CString(options[i])};defer func(){for _,v:=range values{C.free(unsafe.Pointer(v))}}();id:=sdkRuntime.RegisterMenuCallback(callback);var pointer **C.char;if len(values)>0{pointer=(**C.char)(unsafe.Pointer(&values[0]))};handle:=uintptr(C.bridgeAddMenuItem(cTitle,C.int(kind),pointer,C.int(len(values)),C.int(value),C.uint32_t(id)));if handle==0{sdkRuntime.ForgetMenuCallback(id);return 0,sdkPlaydate.ErrMenuItemCreate};menuCallbackIDs[handle]=id;return handle,nil}
+func (playdateContext) AddActionMenuItem(title string,callback func())(sdkPlaydate.MenuItem,error){handle,err:=addMenuItem(title,0,nil,0,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedMenuItem(handle,0,menuDriver),nil}
+func (playdateContext) AddCheckmarkMenuItem(title string,value bool,callback func())(sdkPlaydate.CheckmarkMenuItem,error){native:=0;if value{native=1};handle,err:=addMenuItem(title,1,nil,native,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedCheckmarkMenuItem(handle,menuDriver),nil}
+func (playdateContext) AddOptionsMenuItem(title string,options []string,callback func())(sdkPlaydate.OptionsMenuItem,error){handle,err:=addMenuItem(title,2,options,0,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedOptionsMenuItem(handle,len(options),menuDriver),nil}
+func (playdateContext) Language()sdkPlaydate.Language{return sdkPlaydate.Language(C.bridgeLanguage())}
+func (playdateContext) LocalizedText(key string,language sdkPlaydate.Language)(string,bool){if key==""{return "",false};value:=C.CString(key);defer C.free(unsafe.Pointer(value));localized:=C.bridgeLocalizedText(value,C.int(language));if localized==nil{return "",false};result:=C.GoString(localized);C.bridgeFree(unsafe.Pointer(localized));return result,true}
 
 func fileErrorMessage() string { message := C.bridgeFileError(); if message == nil { return "" }; return C.GoString(message) }
 var fileDriver = sdkRuntime.FileDriver{
@@ -409,6 +435,8 @@ _Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
 extern int goUpdate(void);
 
 static PlaydateAPI* bridgePlaydate;
+extern void goMenuCallback(uint32_t id);
+static void bridgeMenuCallback(void* userdata) { goMenuCallback((uint32_t)(uintptr_t)userdata); }
 
 static int bridgeUpdate(void* userdata)
 {
@@ -448,6 +476,15 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 }
 
 void bridgeExitToLauncher(void) { bridgePlaydate->system->exitToLauncher(); }
+int bridgeLanguage(void) { return bridgePlaydate->system->getLanguage(); }
+char* bridgeLocalizedText(const char* key,int language) { return bridgePlaydate->system->getLocalizedText(key,(PDLanguage)language); }
+void bridgeFree(void* pointer) { bridgePlaydate->system->realloc(pointer,0); }
+uintptr_t bridgeAddMenuItem(const char* title,int kind,const char** options,int count,int value,uint32_t callback) { PDMenuItem* item; void* userdata=(void*)(uintptr_t)callback; if(kind==1)item=bridgePlaydate->system->addCheckmarkMenuItem(title,value,bridgeMenuCallback,userdata);else if(kind==2)item=bridgePlaydate->system->addOptionsMenuItem(title,options,count,bridgeMenuCallback,userdata);else item=bridgePlaydate->system->addMenuItem(title,bridgeMenuCallback,userdata);return(uintptr_t)item; }
+void bridgeRemoveMenuItem(uintptr_t item) { bridgePlaydate->system->removeMenuItem((PDMenuItem*)item); }
+const char* bridgeMenuItemTitle(uintptr_t item) { return bridgePlaydate->system->getMenuItemTitle((PDMenuItem*)item); }
+void bridgeSetMenuItemTitle(uintptr_t item,const char* title) { bridgePlaydate->system->setMenuItemTitle((PDMenuItem*)item,title); }
+int bridgeMenuItemValue(uintptr_t item) { return bridgePlaydate->system->getMenuItemValue((PDMenuItem*)item); }
+void bridgeSetMenuItemValue(uintptr_t item,int value) { bridgePlaydate->system->setMenuItemValue((PDMenuItem*)item,value); }
 const char* bridgeFileError(void){return bridgePlaydate->file->geterr();}
 uintptr_t bridgeFileOpen(const char* path,int options){return(uintptr_t)bridgePlaydate->file->open(path,(FileOptions)options);}
 int bridgeFileClose(uintptr_t file){return bridgePlaydate->file->close((SDFile*)file);}
