@@ -79,6 +79,17 @@ void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height);
 void bridgeFillBitmap(uintptr_t bitmap, int color);
 void bridgeDrawBitmap(uintptr_t bitmap, int x, int y);
 void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY);
+void bridgeDrawLine(int x1, int y1, int x2, int y2, int width, int solid, const uint8_t* pattern, int patterned);
+void bridgeDrawRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned);
+void bridgeDrawEllipse(int x, int y, int width, int height, int lineWidth, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillEllipse(int x, int y, int width, int height, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int solid, const uint8_t* pattern, int patterned);
+void bridgeDrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int width, int solid, const uint8_t* pattern, int patterned);
+void bridgeSetClipRect(int x, int y, int width, int height);
+void bridgeClearClipRect(void);
+void bridgeSetDrawOffset(int dx, int dy);
+void bridgeSetDrawMode(int mode);
 uintptr_t bridgeNewSprite(void);
 void bridgeFreeSprite(uintptr_t sprite);
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap);
@@ -169,6 +180,9 @@ func goUpdate() C.int {
 
 type playdateContext struct{}
 
+var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
+var _ sdkPlaydate.GraphicsState = playdateContext{}
+
 func (playdateContext) Clear() { C.bridgeClear() }
 
 func (playdateContext) DrawText(text string, x, y int) {
@@ -239,6 +253,25 @@ func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, sca
 	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
 	C.bridgeDrawScaledBitmap(C.uintptr_t(handle), C.int(x), C.int(y), C.float(scaleX), C.float(scaleY)); return nil
 }
+
+func paintArgs(paint sdkPlaydate.Paint) (C.int, *C.uint8_t, C.int, [16]byte) {
+	solid, pattern, patterned := paint.Components(); flag := C.int(0); if patterned { flag = 1 }
+	return C.int(solid), (*C.uint8_t)(unsafe.Pointer(&pattern[0])), flag, pattern
+}
+func (playdateContext) DrawLine(x1, y1, x2, y2, width int, paint sdkPlaydate.Paint) error {
+	if err := sdkRuntime.ValidatePrimitiveGeometry(width, 1, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep
+	C.bridgeDrawLine(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(width), solid, pattern, flag); return nil
+}
+func (playdateContext) DrawRect(x, y, width, height int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawRect(C.int(x), C.int(y), C.int(width), C.int(height), solid, pattern, flag); return nil }
+func (playdateContext) FillRect(x, y, width, height int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillRect(C.int(x), C.int(y), C.int(width), C.int(height), solid, pattern, flag); return nil }
+func (playdateContext) DrawEllipse(x, y, width, height, lineWidth int, startAngle, endAngle float32, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, lineWidth, startAngle, endAngle); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawEllipse(C.int(x), C.int(y), C.int(width), C.int(height), C.int(lineWidth), C.float(startAngle), C.float(endAngle), solid, pattern, flag); return nil }
+func (playdateContext) FillEllipse(x, y, width, height int, startAngle, endAngle float32, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, startAngle, endAngle); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillEllipse(C.int(x), C.int(y), C.int(width), C.int(height), C.float(startAngle), C.float(endAngle), solid, pattern, flag); return nil }
+func (playdateContext) FillTriangle(x1, y1, x2, y2, x3, y3 int, paint sdkPlaydate.Paint) error { solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillTriangle(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(x3), C.int(y3), solid, pattern, flag); return nil }
+func (playdateContext) DrawTriangle(x1, y1, x2, y2, x3, y3, width int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, 1, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawTriangle(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(x3), C.int(y3), C.int(width), solid, pattern, flag); return nil }
+func (playdateContext) SetClipRect(x, y, width, height int) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; C.bridgeSetClipRect(C.int(x), C.int(y), C.int(width), C.int(height)); return nil }
+func (playdateContext) ClearClipRect() { C.bridgeClearClipRect() }
+func (playdateContext) SetDrawOffset(dx, dy int) { C.bridgeSetDrawOffset(C.int(dx), C.int(dy)) }
+func (playdateContext) SetDrawMode(mode sdkPlaydate.DrawMode) error { if err := sdkRuntime.ValidateDrawMode(mode); err != nil { return err }; C.bridgeSetDrawMode(C.int(mode)); return nil }
 
 var spriteDriver = sdkRuntime.SpriteDriver{
 	SetBitmap: func(sprite, bitmap uintptr) { C.bridgeSpriteSetBitmap(C.uintptr_t(sprite), C.uintptr_t(bitmap)) },
@@ -387,6 +420,18 @@ static LCDColor bridgeBitmapColor(int color) { return color == 1 ? kColorWhite :
 void bridgeFillBitmap(uintptr_t bitmap, int color) { bridgePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
 void bridgeDrawBitmap(uintptr_t bitmap, int x, int y) { bridgePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY) { bridgePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, scaleX, scaleY); }
+static LCDColor bridgePaint(int solid, const uint8_t* pattern, int patterned) { if (patterned) return (LCDColor)pattern; return solid == 1 ? kColorWhite : solid == 2 ? kColorBlack : solid == 3 ? kColorXOR : kColorClear; }
+void bridgeDrawLine(int x1, int y1, int x2, int y2, int width, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->drawLine(x1, y1, x2, y2, width, bridgePaint(solid, pattern, patterned)); }
+void bridgeDrawRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->drawRect(x, y, width, height, bridgePaint(solid, pattern, patterned)); }
+void bridgeFillRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillRect(x, y, width, height, bridgePaint(solid, pattern, patterned)); }
+void bridgeDrawEllipse(int x, int y, int width, int height, int lineWidth, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->drawEllipse(x, y, width, height, lineWidth, startAngle, endAngle, bridgePaint(solid, pattern, patterned)); }
+void bridgeFillEllipse(int x, int y, int width, int height, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillEllipse(x, y, width, height, startAngle, endAngle, bridgePaint(solid, pattern, patterned)); }
+void bridgeFillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillTriangle(x1, y1, x2, y2, x3, y3, bridgePaint(solid, pattern, patterned)); }
+void bridgeDrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int width, int solid, const uint8_t* pattern, int patterned) { LCDColor color=bridgePaint(solid,pattern,patterned); bridgePlaydate->graphics->drawLine(x1,y1,x2,y2,width,color); bridgePlaydate->graphics->drawLine(x2,y2,x3,y3,width,color); bridgePlaydate->graphics->drawLine(x3,y3,x1,y1,width,color); }
+void bridgeSetClipRect(int x, int y, int width, int height) { bridgePlaydate->graphics->setClipRect(x, y, width, height); }
+void bridgeClearClipRect(void) { bridgePlaydate->graphics->clearClipRect(); }
+void bridgeSetDrawOffset(int dx, int dy) { bridgePlaydate->graphics->setDrawOffset(dx, dy); }
+void bridgeSetDrawMode(int mode) { bridgePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode); }
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)bridgePlaydate->sprite->newSprite(); }
 void bridgeFreeSprite(uintptr_t sprite) { bridgePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { bridgePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }

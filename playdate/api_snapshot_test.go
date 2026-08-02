@@ -131,6 +131,14 @@ const CollisionSlide CollisionResponse
 const ColorBlack Color
 const ColorClear Color
 const ColorWhite Color
+const DrawModeBlackTransparent DrawMode
+const DrawModeCopy DrawMode
+const DrawModeFillBlack DrawMode
+const DrawModeFillWhite DrawMode
+const DrawModeInverted DrawMode
+const DrawModeNXOR DrawMode
+const DrawModeWhiteTransparent DrawMode
+const DrawModeXOR DrawMode
 const LifecycleLock LifecycleEvent
 const LifecycleLowPower LifecycleEvent
 const LifecyclePause LifecycleEvent
@@ -153,7 +161,11 @@ func (BitmapLoadError).Error() string
 func (Buttons).Has(requested Buttons) bool
 func (FontLoadError).Error() string
 func (FontLoadError).Is(target error) bool
+func (Paint).Components() (solid uint8, pattern [16]byte, patterned bool)
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
+func PatternPaint(image [8]byte, mask [8]byte) Paint
+func SolidPaint(color Color) (Paint, error)
+func XORPaint() Paint
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
 type AudioLoadError string
@@ -165,19 +177,23 @@ type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps boo
 type CollisionResponse uint8
 type Color uint8
 type Context interface{System; Graphics; InputReader; Sprites; Audio}
+type DrawMode uint8
 type FilePlayer interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
 type Font interface{Close() error; Height() (int, error); TextWidth(text string) (int, error)}
 type FontGraphics interface{DrawTextFont(font Font, text string, x int, y int) error; LoadFont(path string) (Font, error)}
 type FontLoadError string
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
+type GraphicsState interface{ClearClipRect(); SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int)}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
+type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
+type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; SetVolume(left float32, right float32) error; State() (PlaybackState, error); Stop() error; Volume() (left float32, right float32, err error)}
 type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
@@ -200,6 +216,10 @@ var ErrBitmapTableClosed error
 var ErrFontClosed error
 var ErrFontInvalid error
 var ErrFontLoad error
+var ErrGraphicsColor error
+var ErrGraphicsDrawMode error
+var ErrGraphicsGeometry error
+var ErrGraphicsUnavailable error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error

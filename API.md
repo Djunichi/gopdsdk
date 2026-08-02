@@ -42,6 +42,22 @@ Helpers should accept the narrowest interface they need. This keeps pure game
 logic independent from runtime callbacks and makes deterministic testing
 straightforward.
 
+Games that draw immediate-mode geometry assert `PrimitiveGraphics`; games that
+change clipping, draw offset, or bitmap compositing assert `GraphicsState`.
+These optional capabilities keep existing graphics fakes small. Primitive
+dimensions and stroke widths must be positive, and ellipse angles must be
+finite. Invalid values return the corresponding graphics sentinel before a
+native call. The runtime's per-frame context forwards both optional slices to
+the platform adapter; an adapter without the requested slice returns
+`ErrGraphicsUnavailable`.
+
+`SolidPaint`, `XORPaint`, and `PatternPaint` create primitive paint values.
+Patterns contain eight image rows followed by eight mask rows and are copied by
+value; neither runtime adapter retains a pointer after the drawing call.
+`DrawMode` mirrors the official copy, transparent, fill, XOR/NXOR, and inverted
+bitmap compositing modes. Restore offsets, clipping, and draw mode after a
+localized drawing pass because these values are native graphics state.
+
 ## Input
 
 `Input.Buttons` is the current button set. `Pressed` and `Released` are edges

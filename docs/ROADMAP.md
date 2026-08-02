@@ -45,7 +45,7 @@ cross-build does not promote a capability to device-ready.
 | P0 | foundation | Cross-platform CLI, Simulator and device build foundations | Complete |
 | P1 | `v0.1.x` | Lifecycle, input, bitmap graphics, resources, device runtime | Complete |
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
-| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Next |
+| P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | In progress; P3.1 implemented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Planned |
 | P5 | `v0.5.0` | Advanced audio and music | Planned |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
@@ -76,13 +76,21 @@ a generic game engine, ECS, scene graph, widget framework, or physics engine.
   explicitly documented environment limitations, not as P3 product features.
 - Record the accepted P3 frame-time, heap, resource, and artifact-size budgets.
 
-### P3.1 — drawing primitives and state
+### P3.1 — drawing primitives and state — implemented
 
 - Add only the drawing primitives required by the acceptance scene: lines,
   rectangles, ellipses, triangles or polygons, and their filled variants.
 - Add clipping, draw offset, patterns, and draw modes through narrow capability
   interfaces rather than expanding every consumer-facing mock at once.
 - Specify invalid geometry, color, and state behavior with portable errors.
+
+The accepted vertical slice exposes optional `PrimitiveGraphics` and
+`GraphicsState` capabilities, value-owned solid/XOR/pattern paint, and portable
+validation errors. `examples/primitives` passed deterministic unit tests,
+Windows SDK 3.1.1 Simulator compilation and visual execution, device
+hard-float build, USB deployment, and matching physical Playdate execution on
+2026-08-02. Conservative-GC soak and memory-growth measurement remain unrun;
+P3.1 evidence does not complete P3.0 or later P3 scopes.
 
 ### P3.2 — framebuffer and offscreen drawing
 

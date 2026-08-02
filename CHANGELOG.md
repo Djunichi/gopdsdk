@@ -4,7 +4,26 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## v0.2.0 - unreleased
+## v0.3.0 - unreleased
+
+### Added
+
+- Optional immediate-mode line, rectangle, ellipse, and triangle
+  drawing on Simulator and device adapters.
+- Value-owned solid, XOR, and 8x8 pattern paints, plus clipping, draw offsets,
+  and bitmap draw modes through narrow graphics capability interfaces.
+- Portable sentinel errors for invalid primitive geometry, colors, and draw
+  modes.
+- A deterministic `examples/primitives` acceptance scene covering every P3.1
+  drawing and state operation.
+
+### Compatibility
+
+- Windows SDK 3.1.1 Simulator and physical-device visual acceptance passed for
+  P3.1 with matching output. Hard-float build and USB deployment passed; soak
+  and memory-growth evidence remain unverified.
+
+## v0.2.0 - 2026-08-01
 
 ### Added
 
