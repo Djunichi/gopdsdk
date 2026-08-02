@@ -56,6 +56,15 @@ func renderGo(config Config) string {
 #include %q
 #include <stdlib.h>
 void bridgeRegisterUpdate(PlaydateAPI* playdate);
+int bridgeAddScore(const char* board, uint32_t value);
+int bridgeGetPersonalBest(const char* board);
+int bridgeGetScoreboards(void);
+int bridgeGetScores(const char* board);
+uint32_t bridgeScoreNumber(uintptr_t score, int field);
+const char* bridgeScoreText(uintptr_t score, int field);
+uint32_t bridgeListNumber(uintptr_t list, int field);
+const char* bridgeListText(uintptr_t list, int index, int field);
+uint32_t bridgeListItemNumber(uintptr_t list, int index, int field);
 void bridgeClear(void);
 uint8_t* bridgeGetFrame(void);
 void bridgeMarkUpdatedRows(int start, int end);
@@ -177,6 +186,10 @@ import (
 
 var activePlaydate *C.PlaydateAPI
 var gameContext playdateContext
+var debugMessages = sdkRuntime.NewDebugMessageQueue(8, 256)
+
+//export goSerialMessage
+func goSerialMessage(message *C.char) { if message != nil { debugMessages.Push(C.GoString(message)) } }
 
 var application = mustApplication()
 
@@ -226,6 +239,33 @@ var _ sdkPlaydate.Launcher = playdateContext{}
 var _ sdkPlaydate.FileSystem = playdateContext{}
 var _ sdkPlaydate.SystemMenu = playdateContext{}
 var _ sdkPlaydate.Localization = playdateContext{}
+var _ sdkPlaydate.Scoreboards = playdateContext{}
+var _ sdkPlaydate.DebugMessages = playdateContext{}
+
+func (playdateContext) PollDebugMessage()(string,bool){return debugMessages.Poll()}
+
+var addScoreCallback func(sdkPlaydate.Score,string)
+var personalBestCallback func(sdkPlaydate.Score,string)
+var boardsCallback func(sdkPlaydate.BoardsList,string)
+var scoresCallback func(sdkPlaydate.ScoresList,string)
+func copiedNativeText(value *C.char)string{if value==nil{return ""};return C.GoString(value)}
+func copiedScore(pointer C.uintptr_t)sdkPlaydate.Score{return sdkPlaydate.Score{Rank:uint32(C.bridgeScoreNumber(pointer,0)),Value:uint32(C.bridgeScoreNumber(pointer,1)),Player:copiedNativeText(C.bridgeScoreText(pointer,0)),BoardID:copiedNativeText(C.bridgeScoreText(pointer,1))}}
+//export goScoreCallback
+func goScoreCallback(kind C.int,pointer C.uintptr_t,message *C.char){callback:=addScoreCallback;if kind==1{callback=personalBestCallback};if callback!=nil{callback(copiedScore(pointer),copiedNativeText(message))};if kind==0{addScoreCallback=nil}else{personalBestCallback=nil}}
+//export goBoardsCallback
+func goBoardsCallback(pointer C.uintptr_t,message *C.char){list:=sdkPlaydate.BoardsList{};if pointer!=0{list.LastUpdated=uint32(C.bridgeListNumber(pointer,1));count:=int(C.bridgeListNumber(pointer,0));list.Boards=make([]sdkPlaydate.Board,count);for i:=range list.Boards{list.Boards[i]=sdkPlaydate.Board{ID:copiedNativeText(C.bridgeListText(pointer,C.int(i),0)),Name:copiedNativeText(C.bridgeListText(pointer,C.int(i),1))}}};callback:=boardsCallback;boardsCallback=nil;if callback!=nil{callback(list,copiedNativeText(message))}}
+//export goScoresCallback
+func goScoresCallback(pointer C.uintptr_t,message *C.char){list:=sdkPlaydate.ScoresList{};if pointer!=0{list.BoardID=copiedNativeText(C.bridgeListText(pointer,-1,0));list.LastUpdated=uint32(C.bridgeListNumber(pointer,1));list.PlayerIncluded=C.bridgeListNumber(pointer,2)!=0;list.Limit=uint32(C.bridgeListNumber(pointer,3));count:=int(C.bridgeListNumber(pointer,0));list.Scores=make([]sdkPlaydate.ListScore,count);for i:=range list.Scores{list.Scores[i]=sdkPlaydate.ListScore{Rank:uint32(C.bridgeListItemNumber(pointer,C.int(i),0)),Value:uint32(C.bridgeListItemNumber(pointer,C.int(i),1)),Player:copiedNativeText(C.bridgeListText(pointer,C.int(i),2))}}};callback:=scoresCallback;scoresCallback=nil;if callback!=nil{callback(list,copiedNativeText(message))}}
+var scoreboardService=sdkRuntime.NewScoreboardService(sdkRuntime.ScoreboardDriver{
+	AddScore:func(board string,value uint32,callback func(sdkPlaydate.Score,string))bool{c:=C.CString(board);defer C.free(unsafe.Pointer(c));addScoreCallback=callback;if C.bridgeAddScore(c,C.uint32_t(value))==0{addScoreCallback=nil;return false};return true},
+	PersonalBest:func(board string,callback func(sdkPlaydate.Score,string))bool{c:=C.CString(board);defer C.free(unsafe.Pointer(c));personalBestCallback=callback;if C.bridgeGetPersonalBest(c)==0{personalBestCallback=nil;return false};return true},
+	Scoreboards:func(callback func(sdkPlaydate.BoardsList,string))bool{boardsCallback=callback;if C.bridgeGetScoreboards()==0{boardsCallback=nil;return false};return true},
+	Scores:func(board string,callback func(sdkPlaydate.ScoresList,string))bool{c:=C.CString(board);defer C.free(unsafe.Pointer(c));scoresCallback=callback;if C.bridgeGetScores(c)==0{scoresCallback=nil;return false};return true},
+})
+func (playdateContext) AddScore(board string,value uint32,callback func(sdkPlaydate.Score,error))error{return scoreboardService.AddScore(board,value,callback)}
+func (playdateContext) GetPersonalBest(board string,callback func(sdkPlaydate.Score,error))error{return scoreboardService.GetPersonalBest(board,callback)}
+func (playdateContext) GetScoreboards(callback func(sdkPlaydate.BoardsList,error))error{return scoreboardService.GetScoreboards(callback)}
+func (playdateContext) GetScores(board string,callback func(sdkPlaydate.ScoresList,error))error{return scoreboardService.GetScores(board,callback)}
 
 func (playdateContext) Clear() { C.bridgeClear() }
 func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
@@ -455,6 +495,15 @@ extern int goUpdate(void);
 static PlaydateAPI* bridgePlaydate;
 extern void goMenuCallback(uint32_t id);
 static void bridgeMenuCallback(void* userdata) { goMenuCallback((uint32_t)(uintptr_t)userdata); }
+extern void goSerialMessage(const char* message);
+extern void goScoreCallback(int kind, uintptr_t score, const char* error);
+extern void goBoardsCallback(uintptr_t list, const char* error);
+extern void goScoresCallback(uintptr_t list, const char* error);
+static void bridgeSerialMessage(const char* message){goSerialMessage(message);}
+static void bridgeAddScoreCallback(PDScore* score,const char* error){goScoreCallback(0,(uintptr_t)score,error);if(score)bridgePlaydate->scoreboards->freeScore(score);}
+static void bridgePersonalBestCallback(PDScore* score,const char* error){goScoreCallback(1,(uintptr_t)score,error);if(score)bridgePlaydate->scoreboards->freeScore(score);}
+static void bridgeBoardsCallback(PDBoardsList* list,const char* error){goBoardsCallback((uintptr_t)list,error);if(list)bridgePlaydate->scoreboards->freeBoardsList(list);}
+static void bridgeScoresCallback(PDScoresList* list,const char* error){goScoresCallback((uintptr_t)list,error);if(list)bridgePlaydate->scoreboards->freeScoresList(list);}
 
 static int bridgeUpdate(void* userdata)
 {
@@ -466,8 +515,19 @@ void bridgeRegisterUpdate(PlaydateAPI* playdate)
 {
 	bridgePlaydate = playdate;
 	playdate->system->setUpdateCallback(bridgeUpdate, NULL);
+	playdate->system->setSerialMessageCallback(bridgeSerialMessage);
 	playdate->system->resetElapsedTime();
 }
+
+int bridgeAddScore(const char* board,uint32_t value){return bridgePlaydate->scoreboards->addScore(board,value,bridgeAddScoreCallback);}
+int bridgeGetPersonalBest(const char* board){return bridgePlaydate->scoreboards->getPersonalBest(board,bridgePersonalBestCallback);}
+int bridgeGetScoreboards(void){return bridgePlaydate->scoreboards->getScoreboards(bridgeBoardsCallback);}
+int bridgeGetScores(const char* board){return bridgePlaydate->scoreboards->getScores(board,bridgeScoresCallback);}
+uint32_t bridgeScoreNumber(uintptr_t value,int field){PDScore* score=(PDScore*)value;if(!score)return 0;return field==0?score->rank:score->value;}
+const char* bridgeScoreText(uintptr_t value,int field){PDScore* score=(PDScore*)value;if(!score)return NULL;return field==0?score->player:score->boardID;}
+uint32_t bridgeListNumber(uintptr_t value,int field){if(!value)return 0;if(field==0)return ((PDBoardsList*)value)->count;if(field==1)return ((PDBoardsList*)value)->lastUpdated;PDScoresList* list=(PDScoresList*)value;return field==2?(uint32_t)list->playerIncluded:list->limit;}
+const char* bridgeListText(uintptr_t value,int index,int field){if(!value)return NULL;if(index<0)return ((PDScoresList*)value)->boardID;if(field==0)return ((PDBoardsList*)value)->boards[index].boardID;if(field==1)return ((PDBoardsList*)value)->boards[index].name;return ((PDScoresList*)value)->scores[index].player;}
+uint32_t bridgeListItemNumber(uintptr_t value,int index,int field){PDListScore* score=&((PDScoresList*)value)->scores[index];return field==0?score->rank:score->value;}
 
 void bridgeDrawText(const char* text, size_t length, int x, int y)
 {

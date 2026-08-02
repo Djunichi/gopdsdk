@@ -1,0 +1,7 @@
+name=P4 Scoreboards
+author=gopdsdk
+description=P4.5 online scoreboards acceptance (unverified)
+bundleID=dev.gopdsdk.scoreboards
+version=1.0.0
+buildNumber=1
+
