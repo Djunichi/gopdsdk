@@ -1,6 +1,7 @@
 # Compatibility and evidence
 
-The released `v0.3.0` baseline uses one exact verified toolchain profile.
+The `v0.4.0` release candidate retains the exact toolchain profile accepted by
+the released `v0.3.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -141,6 +142,20 @@ physical hardware work on that host. Docker does not promote those levels.
   The device run exposed and verified the correction for direct float-return ABI
   corruption across TinyGo/C. `CHARGE`, `SCREWS`, soak, memory growth, and
   post-run crashlog inspection remain unverified.
+- P4.5 implemented: optional scoreboards copy SDK-owned asynchronous results,
+  bound pending operations, and suppress callbacks after termination. The
+  separate debug-message FIFO bounds count and message size and has confirmed
+  physical serial `msg` delivery. Live configured scoreboards and Simulator
+  `!msg` delivery remain unverified.
+- P4.6 integrated consumer: Crank Caverns persists settings, progress, explicit
+  checkpoints, and run score with stepwise schema migration. Deterministic
+  tests cover corruption, failed writes and retry, reload, migration, and
+  new-run reset. Windows Simulator interaction passed. On 2026-08-02 the same
+  external package passed the conservative-GC hard-float gate at 277,524 bytes
+  of static RAM and a 948,032-byte PDX, USB installation on COM3, and the device
+  launch command. Physical multi-session restart/update, injected power loss,
+  corrupt-save recovery observation, soak, memory growth, cleanup observation,
+  and post-run crashlog comparison remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

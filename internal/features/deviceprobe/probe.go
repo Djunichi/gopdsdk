@@ -498,13 +498,18 @@ func unsupportedRuntimeSymbols(output string, memory buildplan.DeviceMemoryStrat
 	for _, forbidden := range []string{
 		"runtime.setupDeferFrame",
 		"runtime._recover",
-		"runtime.chan",
 		"runtime.SetFinalizer",
 		"runtime.setFinalizer",
 		" reflect.",
 	} {
 		if strings.Contains(output, forbidden) {
 			symbols = append(symbols, strings.TrimSpace(forbidden))
+		}
+	}
+	for _, forbidden := range []string{"runtime.chanMake", "runtime.chanSend", "runtime.chanRecv", "runtime.chanClose", "runtime.chanSelect"} {
+		if strings.Contains(output, forbidden) {
+			symbols = append(symbols, "runtime.chan")
+			break
 		}
 	}
 	if memory != buildplan.DeviceMemoryConservative && strings.Contains(output, "runtime/interrupt.In") {

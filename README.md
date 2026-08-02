@@ -2,9 +2,10 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1 through P3 scopes are complete; P4 is in progress**.
-`v0.3.0` is the current release: its public API is snapshot-tested and
-documented, but remains pre-v1. Hardware evidence varies by feature and is
+The **P0 foundation and P1 through P4 scopes are implemented**. `v0.4.0` is the
+current release candidate; `v0.3.0` remains the latest published release until
+the candidate gates, tag, and post-tag module-proxy check complete. The public
+API is snapshot-tested and documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
@@ -44,7 +45,7 @@ deployment works on that host.
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
-## Install v0.3.0
+## Install the current release
 
 Run the released CLI directly at that version:
 
@@ -58,8 +59,8 @@ go mod tidy
 The tagged CLI creates a project requiring the same module version without a
 local `replace`. A development CLI built from a checkout intentionally writes a
 local replacement instead; use the checkout workflow below when developing
-from source. See [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md), and
-[RELEASING.md](RELEASING.md). The accepted path from P3 to `v1.0.0`, including
+from source. See [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md),
+[MIGRATING.md](MIGRATING.md), and [RELEASING.md](RELEASING.md). The accepted path from P3 to `v1.0.0`, including
 post-release multiplayer research, is recorded in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -612,6 +613,36 @@ The first device run exposed direct float-return ABI corruption for battery and
 volume; passing their IEEE-754 bits across the TinyGo/C boundary corrected it.
 `CHARGE` and `SCREWS` power states, extended conservative-GC soak, memory-growth
 measurement, and post-run crashlog inspection remain unverified.
+
+## P4.5 optional online and debug facilities
+
+`playdate.Scoreboards` provides bounded asynchronous board discovery, score
+submission, and personal-best retrieval without implying general networking or
+multiplayer support. `playdate.DebugMessages` separately provides a bounded
+FIFO for Simulator `!msg` and device serial `msg` diagnostics. Both callbacks
+copy SDK-owned data and suppress delivery after lifecycle termination.
+
+The focused consumers pass deterministic adapter tests, Simulator builds, and
+conservative device packaging. Serial `msg` delivery was confirmed on physical
+hardware; configured-board and live online-scoreboard behavior remain
+unverified.
+
+## P4 integrated acceptance game
+
+The external Crank Caverns consumer now uses only public API to combine P1-P4.
+Its versioned checkpoint stores progress, score, best time, sound, and
+difficulty; migrations cover four schema generations. The title and pause menus
+exercise explicit new/save/load/continue flows, System Menu settings use
+localized lookup with game-owned fallback, the HUD reads battery status, and
+Exit uses `playdate.Launcher`.
+
+Deterministic tests cover round trips, migration, corrupt payload rejection,
+failed-write retry, reload, and new-run reset. Windows Simulator interaction,
+the conservative-GC device gate, USB installation, and the device launch
+command passed on 2026-08-02. The device artifact used 277,524 bytes of static
+RAM and produced a 948,032-byte PDX. Physical multi-session restart/update,
+injected power loss, corrupt-save recovery, soak, memory-growth measurement,
+and post-run crashlog inspection remain unverified.
 
 ## Development and CI
 
