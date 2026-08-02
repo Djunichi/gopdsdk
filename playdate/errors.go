@@ -211,6 +211,8 @@ var (
 	ErrAudioReverseUnsupported error = audioError("streaming audio cannot play in reverse")
 	// ErrAudioOffset indicates a non-finite or negative playback offset.
 	ErrAudioOffset error = audioError("audio offset must be finite and non-negative")
+	// ErrAudioFade indicates a fade duration outside the native signed 32-bit range.
+	ErrAudioFade error = audioError("audio fade duration must not exceed 2147483647 frames")
 	// ErrAudioUnavailable indicates that an optional advanced audio capability is absent.
 	ErrAudioUnavailable error = audioError("advanced audio is unavailable")
 )

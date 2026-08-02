@@ -14,6 +14,9 @@ type player struct {
 	volume         float32
 	rate, offset   float32
 	repeat         int
+	finish         func()
+	fade           func()
+	fadeFrames     uint32
 }
 
 func (p *player) Play() error                            { p.state = playdate.PlaybackPlaying; p.plays++; return nil }
@@ -41,11 +44,16 @@ func (p *player) PlayRepeated(repeat int, rate float32) error {
 	p.plays++
 	return nil
 }
-func (*player) Length() (float32, error)        { return 2.5, nil }
-func (p *player) SetOffset(value float32) error { p.offset = value; return nil }
-func (p *player) Offset() (float32, error)      { return p.offset, nil }
-func (p *player) SetRate(value float32) error   { p.rate = value; return nil }
-func (p *player) Rate() (float32, error)        { return p.rate, nil }
+func (*player) Length() (float32, error)                  { return 2.5, nil }
+func (p *player) SetOffset(value float32) error           { p.offset = value; return nil }
+func (p *player) Offset() (float32, error)                { return p.offset, nil }
+func (p *player) SetRate(value float32) error             { p.rate = value; return nil }
+func (p *player) Rate() (float32, error)                  { return p.rate, nil }
+func (p *player) SetFinishCallback(callback func()) error { p.finish = callback; return nil }
+func (p *player) FadeVolume(left, _ float32, frames uint32, callback func()) error {
+	p.volume, p.fadeFrames, p.fade = left, frames, callback
+	return nil
+}
 
 type context struct {
 	effect   *player
@@ -55,6 +63,7 @@ type context struct {
 }
 
 func (*context) CurrentTimeMilliseconds() uint32                                    { return 0 }
+func (*context) CurrentAudioTime() (uint32, error)                                  { return 44100, nil }
 func (c *context) Input() playdate.Input                                            { return c.input }
 func (*context) Clear()                                                             {}
 func (*context) DrawText(string, int, int)                                          {}
@@ -128,6 +137,18 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	c.input.Pressed = playdate.ButtonB
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
+	}
+	c.input.Pressed = playdate.ButtonB
+	if _, err := g.Update(c); err != nil {
+		t.Fatal(err)
+	}
+	if c.music.fadeFrames != 22050 || c.music.fade == nil {
+		t.Fatalf("fade frames = %d, callback present = %t", c.music.fadeFrames, c.music.fade != nil)
+	}
+	c.music.fade()
+	c.effect.finish()
+	if g.fadeFinished != 1 || g.sampleFinished != 1 || g.audioTime != 44100 {
+		t.Fatalf("callbacks/time = %d/%d/%d", g.fadeFinished, g.sampleFinished, g.audioTime)
 	}
 	if err := g.HandleLifecycle(c, playdate.LifecyclePause); err != nil {
 		t.Fatal(err)

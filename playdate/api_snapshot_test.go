@@ -190,6 +190,7 @@ func XORPaint() Paint
 type Accelerometer interface{AccelerometerXYZ() (x float32, y float32, z float32); SetAccelerometerEnabled(bool)}
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
+type AudioClock interface{CurrentAudioTime() (uint32, error)}
 type AudioLoadError string
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
 type BitmapLoadError string
@@ -202,9 +203,11 @@ type CheckmarkMenuItem interface{SetValue(bool); Value() bool; MenuItem}
 type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
 type CollisionResponse uint8
 type Color uint8
+type CompletionPlayer interface{SetFinishCallback(callback func()) error}
 type Context interface{System; Graphics; InputReader; Sprites; Audio}
 type DebugMessages interface{PollDebugMessage() (message string, ok bool)}
 type DrawMode uint8
+type FadingPlayer interface{FadeVolume(left float32, right float32, audioFrames uint32, callback func()) error}
 type File interface{Close() error; Flush() error; io.Reader; io.Writer; io.Seeker}
 type FileInfo struct{IsDir bool; Size uint32; Year int; Month int; Day int; Hour int; Minute int; Second int}
 type FileOperationError struct{Operation string; Path string; Message string}
@@ -257,6 +260,7 @@ type VariableRatePlayer interface{Rate() (float32, error); SetRate(rate float32)
 var ErrAnimationConfig error
 var ErrAudioClosed error
 var ErrAudioCreate error
+var ErrAudioFade error
 var ErrAudioOffset error
 var ErrAudioPlay error
 var ErrAudioRate error

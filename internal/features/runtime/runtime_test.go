@@ -245,6 +245,88 @@ func TestFilePlayerVariableRate(t *testing.T) {
 	}
 }
 
+func TestAudioCompletionAndFadeCallbacks(t *testing.T) {
+	var finishID, fadeID uint32
+	player := NewFilePlayer(5, AudioDriver{
+		SetFinishCallback: func(_ uintptr, callback uint32) { finishID = callback },
+		FadeVolume: func(_ uintptr, left, right float32, frames, callback uint32) {
+			if left != .25 || right != .75 || frames != 4410 {
+				t.Fatalf("fade = %v, %v, %d", left, right, frames)
+			}
+			fadeID = callback
+		},
+		Stop: func(uintptr) {}, Free: func(uintptr) {},
+	})
+	completed, faded := 0, 0
+	if err := player.(playdate.CompletionPlayer).SetFinishCallback(func() { completed++ }); err != nil {
+		t.Fatal(err)
+	}
+	if finishID == 0 {
+		t.Fatal("finish callback was not registered")
+	}
+	InvokeAudioCallback(finishID, false)
+	InvokeAudioCallback(finishID, false)
+	if completed != 2 {
+		t.Fatalf("completed = %d", completed)
+	}
+	oldFinishID := finishID
+	if err := player.(playdate.CompletionPlayer).SetFinishCallback(func() { completed += 10 }); err != nil {
+		t.Fatal(err)
+	}
+	InvokeAudioCallback(oldFinishID, false)
+	InvokeAudioCallback(finishID, false)
+	if completed != 12 {
+		t.Fatalf("completed after replacement = %d", completed)
+	}
+	if err := player.(playdate.FadingPlayer).FadeVolume(.25, .75, 4410, func() { faded++ }); err != nil {
+		t.Fatal(err)
+	}
+	InvokeAudioCallback(fadeID, true)
+	InvokeAudioCallback(fadeID, true)
+	if faded != 1 {
+		t.Fatalf("faded = %d", faded)
+	}
+	if err := player.(playdate.FadingPlayer).FadeVolume(1, 1, 2147483648, nil); !errors.Is(err, playdate.ErrAudioFade) {
+		t.Fatalf("large fade = %v", err)
+	}
+	if err := player.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if finishID != 0 {
+		t.Fatalf("native finish callback after Close = %d", finishID)
+	}
+}
+
+func TestSamplePlayerDoesNotExposeFadingPlayer(t *testing.T) {
+	player := NewSamplePlayer(1, AudioDriver{})
+	if _, ok := player.(playdate.FadingPlayer); ok {
+		t.Fatal("SamplePlayer exposes streaming-only fades")
+	}
+	if _, ok := player.(playdate.CompletionPlayer); !ok {
+		t.Fatal("SamplePlayer does not expose completion callbacks")
+	}
+}
+
+type audioClockContext struct{ testContext }
+
+func (audioClockContext) CurrentAudioTime() (uint32, error) { return 12345, nil }
+
+func TestApplicationForwardsAudioClock(t *testing.T) {
+	application, err := NewApplication(testGame{init: func(context playdate.Context) error {
+		value, clockErr := context.(playdate.AudioClock).CurrentAudioTime()
+		if value != 12345 || clockErr != nil {
+			t.Fatalf("CurrentAudioTime = %d, %v", value, clockErr)
+		}
+		return nil
+	}}, audioClockContext{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSamplePlayerControls(t *testing.T) {
 	playingRepeat := 0
 	playingRate := float32(0)

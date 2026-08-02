@@ -665,6 +665,29 @@ COM3, and launch. The device artifact used 268,940 bytes of static RAM and
 produced a 125,340-byte PDX. Extended soak, memory-growth measurement, lifecycle
 stress, and post-run crashlog inspection remain unverified.
 
+## P5.2 timed fades and completion
+
+Owned sample and file players optionally expose `CompletionPlayer`; replacing
+or clearing its callback releases the previous registration, and `Close`
+detaches it before freeing native ownership. Streaming players additionally
+expose `FadingPlayer`, whose duration is measured in 44.1 kHz audio frames.
+`AudioClock.CurrentAudioTime` returns the same wrapping frame clock through an
+optional context capability, allowing fades and game scheduling to share an
+exact timebase.
+
+`examples/audio` keeps callbacks bounded to counters and redraw flags. A plays
+the repeated sample, while B cycles streaming music through play, a half-second
+fade, and stop; the scene displays completion counters and the clock sampled on
+input. Unit tests cover callback replacement/lifetime, one-shot fade callbacks,
+validation, clock forwarding, and generated Simulator/device bridge symbols.
+Official Windows Simulator and hard-float device builds pass; the device
+artifact uses 269,876 bytes of static RAM and produces a 130,127-byte PDX.
+On 2026-08-02 the scene passed audible sample completion, the half-second music
+fade, `Done S/F` callback counters, and an advancing audio-clock display in
+Windows Simulator and on a physical Playdate. Installation through COM3 and
+device launch succeeded. Extended soak, memory-growth measurement, lifecycle
+stress, and post-run crashlog inspection remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -698,5 +721,6 @@ toolchain without pretending to verify GUI or USB behavior.
 - macOS and Linux official SDK integration remains unverified.
 - Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
   callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
-  covers P2.4 sound effects/file players and the P5.1 advanced sample-player
-  controls; routing, fades, callbacks, synthesis, and sequencing remain open.
+  covers P2.4 sound effects/file players, P5.1 advanced sample controls, and
+  P5.2 timed fades/completion callbacks; routing, synthesis, and sequencing
+  remain open.

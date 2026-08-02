@@ -47,7 +47,7 @@ cross-build does not promote a capability to device-ready.
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Release candidate; final gates pending |
-| P5 | `v0.5.0` | Advanced audio and music | In progress; P5.1 device-accepted |
+| P5 | `v0.5.0` | Advanced audio and music | In progress; P5.1-P5.2 device-accepted |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
 
@@ -417,10 +417,24 @@ growth, and crashlog inspection remain unverified.
   memory-growth measurement, lifecycle stress, and crashlog inspection remain
   unverified.
 
+### P5.2 — timed fades and completion
+
+- Add optional completion callbacks to owned sample and file players, with
+  replacement and close releasing retained Go callbacks.
+- Add file-player linear fades measured against the native 44.1 kHz audio
+  clock, with bounded callback work and one-shot fade completion.
+- Forward the optional audio clock through `NewApplication` and both native ABI
+  contexts. Callback ownership is unit-tested, and official Windows Simulator
+  and hard-float device builds pass. On 2026-08-02 the acceptance scene passed
+  audible sample completion, a half-second streaming fade, completion counters,
+  and advancing audio-clock display in Windows Simulator and on a physical
+  Playdate after installation and launch through COM3. Extended soak,
+  memory-growth measurement, lifecycle stress, and crashlog inspection remain
+  unverified.
+
 ### Later P5 slices
 
-- Samples and sample players beyond the P2 sound-effect convenience API.
-- Channels, routing, fades, completion callbacks, and audio-clock timing.
+- Channels and routing with explicit graph ownership.
 - Synthesizers, instruments, sequences, signals, and effects only as separate
   vertical slices with explicit graph ownership.
 - Bounded callback work and zero-allocation steady-state playback where the

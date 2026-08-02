@@ -75,6 +75,7 @@ int bridgeTextWidth(uintptr_t font, const char* text, size_t length);
 int bridgeFontHeight(uintptr_t font);
 void bridgeFreeFont(uintptr_t font);
 uint32_t bridgeCurrentTimeMilliseconds(void);
+uint32_t bridgeCurrentAudioTime(void);
 void bridgeExitToLauncher(void);
 void bridgeSetAccelerometerEnabled(int enabled);
 void bridgeAccelerometer(float* x, float* y, float* z);
@@ -181,6 +182,9 @@ int bridgeFilePlayerIsPlaying(uintptr_t player);
 void bridgeFilePlayerPause(uintptr_t player, int paused);
 void bridgeFilePlayerSetRate(uintptr_t player, float rate);
 float bridgeFilePlayerRate(uintptr_t player);
+void bridgeSoundEffectSetFinishCallback(uintptr_t effect, uint32_t callback);
+void bridgeFilePlayerSetFinishCallback(uintptr_t player, uint32_t callback);
+void bridgeFilePlayerFadeVolume(uintptr_t player, float left, float right, uint32_t frames, uint32_t callback);
 void bridgeFreeFilePlayer(uintptr_t player);
 */
 import "C"
@@ -198,6 +202,8 @@ var debugMessages = sdkRuntime.NewDebugMessageQueue(8, 256)
 
 //export goSerialMessage
 func goSerialMessage(message *C.char) { if message != nil { debugMessages.Push(C.GoString(message)) } }
+//export goAudioCallback
+func goAudioCallback(callback C.uint32_t,oneShot C.int){sdkRuntime.InvokeAudioCallback(uint32(callback),oneShot!=0)}
 
 var application = mustApplication()
 
@@ -249,6 +255,7 @@ var _ sdkPlaydate.SystemMenu = playdateContext{}
 var _ sdkPlaydate.Localization = playdateContext{}
 var _ sdkPlaydate.Scoreboards = playdateContext{}
 var _ sdkPlaydate.DebugMessages = playdateContext{}
+var _ sdkPlaydate.AudioClock = playdateContext{}
 
 func (playdateContext) PollDebugMessage()(string,bool){return debugMessages.Poll()}
 
@@ -314,6 +321,7 @@ func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return uint32(C.bridgeCurrentTimeMilliseconds())
 }
+func (playdateContext) CurrentAudioTime() (uint32,error) { return uint32(C.bridgeCurrentAudioTime()),nil }
 
 func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }
 func (playdateContext) SetAccelerometerEnabled(enabled bool){value:=0;if enabled{value=1};C.bridgeSetAccelerometerEnabled(C.int(value))}
@@ -463,6 +471,7 @@ var soundEffectDriver = sdkRuntime.AudioDriver{
 	Offset: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerOffset(C.uintptr_t(handle))) },
 	SetRate: func(handle uintptr, rate float32) { C.bridgeSamplePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
 	Rate: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerRate(C.uintptr_t(handle))) },
+	SetFinishCallback: func(handle uintptr,callback uint32){C.bridgeSoundEffectSetFinishCallback(C.uintptr_t(handle),C.uint32_t(callback))},
 	Free: func(handle uintptr) { C.bridgeFreeSoundEffect(C.uintptr_t(handle)) },
 }
 var filePlayerDriver = sdkRuntime.AudioDriver{
@@ -474,6 +483,8 @@ var filePlayerDriver = sdkRuntime.AudioDriver{
 	Pause: func(handle uintptr, _ bool) { C.bridgeFilePlayerPause(C.uintptr_t(handle), 1) },
 	SetRate: func(handle uintptr, rate float32) { C.bridgeFilePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
 	Rate: func(handle uintptr) float32 { return float32(C.bridgeFilePlayerRate(C.uintptr_t(handle))) },
+	SetFinishCallback: func(handle uintptr,callback uint32){C.bridgeFilePlayerSetFinishCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	FadeVolume: func(handle uintptr,left,right float32,frames,callback uint32){C.bridgeFilePlayerFadeVolume(C.uintptr_t(handle),C.float(left),C.float(right),C.uint32_t(frames),C.uint32_t(callback))},
 	Free: func(handle uintptr) { C.bridgeFreeFilePlayer(C.uintptr_t(handle)) },
 }
 func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) {
@@ -517,6 +528,7 @@ static PlaydateAPI* bridgePlaydate;
 extern void goMenuCallback(uint32_t id);
 static void bridgeMenuCallback(void* userdata) { goMenuCallback((uint32_t)(uintptr_t)userdata); }
 extern void goSerialMessage(const char* message);
+extern void goAudioCallback(uint32_t callback,int oneShot);
 extern void goScoreCallback(int kind, uintptr_t score, const char* error);
 extern void goBoardsCallback(uintptr_t list, const char* error);
 extern void goScoresCallback(uintptr_t list, const char* error);
@@ -573,6 +585,7 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return bridgePlaydate->system->getCurrentTimeMilliseconds();
 }
+uint32_t bridgeCurrentAudioTime(void){return bridgePlaydate->sound->getCurrentTime();}
 
 void bridgeExitToLauncher(void) { bridgePlaydate->system->exitToLauncher(); }
 void bridgeSetAccelerometerEnabled(int enabled) { bridgePlaydate->system->setPeripheralsEnabled(enabled ? kAccelerometer : kNone); }
@@ -677,6 +690,8 @@ void bridgeSpriteRemove(uintptr_t sprite) { bridgePlaydate->sprite->removeSprite
 void bridgeUpdateAndDrawSprites(void) { bridgePlaydate->sprite->updateAndDrawSprites(); }
 
 typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
+static void bridgeAudioFinishCallback(SoundSource* source,void* userdata){(void)source;goAudioCallback((uint32_t)(uintptr_t)userdata,0);}
+static void bridgeAudioFadeCallback(SoundSource* source,void* userdata){(void)source;goAudioCallback((uint32_t)(uintptr_t)userdata,1);}
 uintptr_t bridgeLoadSoundEffect(const char* path)
 {
 	AudioSample* sample = bridgePlaydate->sound->sample->load(path);
@@ -702,6 +717,7 @@ void bridgeSamplePlayerSetOffset(uintptr_t effect, float offset) { bridgePlaydat
 float bridgeSamplePlayerOffset(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getOffset(bridgeEffect(effect)->player); }
 void bridgeSamplePlayerSetRate(uintptr_t effect, float rate) { bridgePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player, rate); }
 float bridgeSamplePlayerRate(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player); }
+void bridgeSoundEffectSetFinishCallback(uintptr_t effect,uint32_t callback){bridgePlaydate->sound->sampleplayer->setFinishCallback(bridgeEffect(effect)->player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
 void bridgeFreeSoundEffect(uintptr_t effect) { BridgeSoundEffect* value = bridgeEffect(effect); bridgePlaydate->sound->sampleplayer->freePlayer(value->player); bridgePlaydate->sound->sample->freeSample(value->sample); bridgePlaydate->system->realloc(value, 0); }
 
 uintptr_t bridgeLoadFilePlayer(const char* path) { FilePlayer* player = bridgePlaydate->sound->fileplayer->newPlayer(); if (!player) return 0; if (!bridgePlaydate->sound->fileplayer->loadIntoPlayer(player, path)) { bridgePlaydate->sound->fileplayer->freePlayer(player); return 0; } return (uintptr_t)player; }
@@ -713,6 +729,8 @@ int bridgeFilePlayerIsPlaying(uintptr_t player) { return bridgePlaydate->sound->
 void bridgeFilePlayerPause(uintptr_t player, int paused) { (void)paused; bridgePlaydate->sound->fileplayer->pause((FilePlayer*)player); }
 void bridgeFilePlayerSetRate(uintptr_t player, float rate) { bridgePlaydate->sound->fileplayer->setRate((FilePlayer*)player, rate); }
 float bridgeFilePlayerRate(uintptr_t player) { return bridgePlaydate->sound->fileplayer->getRate((FilePlayer*)player); }
+void bridgeFilePlayerSetFinishCallback(uintptr_t player,uint32_t callback){bridgePlaydate->sound->fileplayer->setFinishCallback((FilePlayer*)player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
+void bridgeFilePlayerFadeVolume(uintptr_t player,float left,float right,uint32_t frames,uint32_t callback){bridgePlaydate->sound->fileplayer->fadeVolume((FilePlayer*)player,left,right,(int32_t)frames,callback?bridgeAudioFadeCallback:NULL,(void*)(uintptr_t)callback);}
 void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player); }
 `, filepath.ToSlash(apiHeader))
 }
