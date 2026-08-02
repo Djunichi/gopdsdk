@@ -1,0 +1,6 @@
+name=P3.2 Framebuffer Acceptance
+author=gopdsdk
+description=Scoped framebuffer and owned-bitmap offscreen drawing acceptance
+bundleID=dev.gopdsdk.framebuffer
+version=1.0.0
+buildNumber=1

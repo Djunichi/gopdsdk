@@ -14,6 +14,10 @@ preserve unrelated user edits, and do not commit or publish unless requested.
 - `cmd/<binary>`: input parsing, dependency composition, and exit codes only.
 - `internal/features/<feature>`: feature-owned logic, models, and tests.
 - `internal/shared/<component>`: only after two real feature consumers exist.
+- When adding an optional `playdate.Context` capability, implement it in each
+  native ABI context and forward it through runtime `applicationContext`.
+  Regression-test the capability assertion and call path through
+  `NewApplication`; testing the ABI context alone is insufficient.
 
 Prefer feature cohesion; never add generic `util`, `common`, `helpers`, or
 `misc` packages. Use the standard library by default and document why any new

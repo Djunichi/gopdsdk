@@ -25,7 +25,7 @@ func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 
 func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", "bridgeButtons", "bridgeCrankAngleBits", "bridgeCrankDeltaBits", "bridgeCrankDocked", "bridgeFrameDeltaBits", "float32FromBits", "bridgeLoadBitmap", "bridgeNewBitmap", "bridgeFreeBitmap", "bridgeBitmapSize", "bridgeFillBitmap", "bridgeDrawBitmap", "bridgeDrawScaledBitmapBits", "bridgeDrawPrimitive", "bridgeSetClipRect", "bridgeSetDrawMode", "sdkRuntime.ValidatePrimitiveGeometry", "bridgeNewSprite", "bridgeSpriteSetBitmap", "bridgeSpriteMoveToBits", "bridgeSpriteMoveByBits", "bridgeSpriteSetVisible", "bridgeSpriteSetZIndex", "bridgeSpriteAdd", "bridgeSpriteRemove", "bridgeFreeSprite", "bridgeUpdateAndDrawSprites", "bridgeLoadSoundEffect", "bridgeLoadFilePlayer", "sdkRuntime.NewSoundEffect", "sdkRuntime.NewFilePlayer", `"example.com/game"`, "func main()"} {
+	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", "bridgeButtons", "bridgeCrankAngleBits", "bridgeCrankDeltaBits", "bridgeCrankDocked", "bridgeFrameDeltaBits", "float32FromBits", "bridgeLoadBitmap", "bridgeNewBitmap", "bridgeFreeBitmap", "bridgeBitmapSize", "bridgeFillBitmap", "bridgeDrawBitmap", "bridgeDrawScaledBitmapBits", "bridgeDrawPrimitive", "bridgeSetClipRect", "bridgeSetDrawMode", "bridgeGetFrame", "bridgeMarkUpdatedRows", "sdkRuntime.WithFramebuffer", "sdkRuntime.OwnedBitmapHandle", "bridgePushContext", "bridgePopContext", "sdkRuntime.ValidatePrimitiveGeometry", "bridgeNewSprite", "bridgeSpriteSetBitmap", "bridgeSpriteMoveToBits", "bridgeSpriteMoveByBits", "bridgeSpriteSetVisible", "bridgeSpriteSetZIndex", "bridgeSpriteAdd", "bridgeSpriteRemove", "bridgeFreeSprite", "bridgeUpdateAndDrawSprites", "bridgeLoadSoundEffect", "bridgeLoadFilePlayer", "sdkRuntime.NewSoundEffect", "sdkRuntime.NewFilePlayer", `"example.com/game"`, "func main()"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
@@ -75,6 +75,16 @@ func TestConservativeBootstrapInitializesRuntimeBoundary(t *testing.T) {
 	run := strings.Index(conservativeBootstrapSource, "runtimeRun();")
 	if activate < 0 || shadow < activate || boundary < shadow || run < boundary {
 		t.Fatalf("bootstrap order activate/shadow/boundary/run = %d/%d/%d/%d", activate, shadow, boundary, run)
+	}
+}
+
+func TestBothDeviceBootstrapsContainFramebufferAndOffscreenBridges(t *testing.T) {
+	for name, source := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{"graphics->getFrame", "graphics->markUpdatedRows", "graphics->pushContext", "graphics->popContext"} {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
 	}
 }
 

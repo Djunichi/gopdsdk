@@ -585,6 +585,12 @@ import (
 //go:linkname bridgeClear bridgeClear
 func bridgeClear()
 
+//go:linkname bridgeGetFrame bridgeGetFrame
+func bridgeGetFrame() uintptr
+
+//go:linkname bridgeMarkUpdatedRows bridgeMarkUpdatedRows
+func bridgeMarkUpdatedRows(start, end int32)
+
 //go:linkname bridgeDrawText bridgeDrawText
 func bridgeDrawText(text *byte, length uintptr, x, y int32)
 //go:linkname bridgeLoadFont bridgeLoadFont
@@ -642,6 +648,12 @@ func bridgeDrawPrimitive(kind, x1, y1, x2, y2, x3, y3, lineWidth, solid int32, s
 func bridgeSetClipRect(x, y, width, height int32)
 //go:linkname bridgeClearClipRect bridgeClearClipRect
 func bridgeClearClipRect()
+
+//go:linkname bridgePushContext bridgePushContext
+func bridgePushContext(bitmap uintptr)
+
+//go:linkname bridgePopContext bridgePopContext
+func bridgePopContext()
 //go:linkname bridgeSetDrawOffset bridgeSetDrawOffset
 func bridgeSetDrawOffset(dx, dy int32)
 //go:linkname bridgeSetDrawMode bridgeSetDrawMode
@@ -727,8 +739,18 @@ type playdateContext struct{}
 
 var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
 var _ sdkPlaydate.GraphicsState = playdateContext{}
+var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
+var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
 
 func (playdateContext) Clear() { bridgeClear() }
+func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
+	data := unsafe.Slice((*byte)(unsafe.Pointer(bridgeGetFrame())), 52*240)
+	return sdkRuntime.WithFramebuffer(data, 400, 240, 52, func(start,end int){bridgeMarkUpdatedRows(int32(start),int32(end))}, callback)
+}
+func (playdateContext) DrawInto(bitmap sdkPlaydate.Bitmap, callback func() error) error {
+	if callback == nil{return sdkPlaydate.ErrOffscreenCallback}; handle,err:=sdkRuntime.OwnedBitmapHandle(bitmap);if err!=nil{return err}
+	bridgePushContext(handle);err=callback();bridgePopContext();return err
+}
 
 func (playdateContext) DrawText(text string, x, y int) {
 	bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y))
@@ -969,6 +991,8 @@ void bridgeClear(void)
 {
 	activePlaydate->graphics->clear(kColorWhite);
 }
+uintptr_t bridgeGetFrame(void){return (uintptr_t)activePlaydate->graphics->getFrame();}
+void bridgeMarkUpdatedRows(int32_t start,int32_t end){activePlaydate->graphics->markUpdatedRows(start,end);}
 
 void bridgeDrawText(const char* text, uintptr_t length, int32_t x, int32_t y)
 {
@@ -1008,6 +1032,8 @@ void bridgeSetClipRect(int32_t x,int32_t y,int32_t width,int32_t height){activeP
 void bridgeClearClipRect(void){activePlaydate->graphics->clearClipRect();}
 void bridgeSetDrawOffset(int32_t dx,int32_t dy){activePlaydate->graphics->setDrawOffset(dx,dy);}
 void bridgeSetDrawMode(int32_t mode){activePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode);}
+void bridgePushContext(uintptr_t bitmap){activePlaydate->graphics->pushContext((LCDBitmap*)bitmap);}
+void bridgePopContext(void){activePlaydate->graphics->popContext();}
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
 void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
@@ -1107,6 +1133,8 @@ void bridgeClear(void)
 {
 	activePlaydate->graphics->clear(kColorWhite);
 }
+uintptr_t bridgeGetFrame(void){return (uintptr_t)activePlaydate->graphics->getFrame();}
+void bridgeMarkUpdatedRows(int32_t start,int32_t end){activePlaydate->graphics->markUpdatedRows(start,end);}
 
 void bridgeDrawText(const char* text, uintptr_t length, int32_t x, int32_t y)
 {
@@ -1146,6 +1174,8 @@ void bridgeSetClipRect(int32_t x,int32_t y,int32_t width,int32_t height){activeP
 void bridgeClearClipRect(void){activePlaydate->graphics->clearClipRect();}
 void bridgeSetDrawOffset(int32_t dx,int32_t dy){activePlaydate->graphics->setDrawOffset(dx,dy);}
 void bridgeSetDrawMode(int32_t mode){activePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode);}
+void bridgePushContext(uintptr_t bitmap){activePlaydate->graphics->pushContext((LCDBitmap*)bitmap);}
+void bridgePopContext(void){activePlaydate->graphics->popContext();}
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
 void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }

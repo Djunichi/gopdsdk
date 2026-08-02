@@ -20,6 +20,16 @@ var (
 	ErrGraphicsGeometry error = bitmapError("invalid graphics geometry")
 	// ErrGraphicsDrawMode indicates a draw mode outside the public values.
 	ErrGraphicsDrawMode error = bitmapError("invalid graphics draw mode")
+	// ErrFramebufferExpired indicates use after the scoped callback returned.
+	ErrFramebufferExpired error = bitmapError("framebuffer view has expired")
+	// ErrFramebufferBounds indicates a pixel or dirty-row range outside the display.
+	ErrFramebufferBounds error = bitmapError("framebuffer coordinates are out of range")
+	// ErrFramebufferColor indicates a framebuffer pixel color other than black or white.
+	ErrFramebufferColor error = bitmapError("framebuffer pixels must be black or white")
+	// ErrFramebufferCallback indicates a nil scoped framebuffer callback.
+	ErrFramebufferCallback error = bitmapError("framebuffer callback is required")
+	// ErrOffscreenCallback indicates a nil offscreen drawing callback.
+	ErrOffscreenCallback error = bitmapError("offscreen callback is required")
 	// ErrBitmapClosed indicates an operation on an already closed bitmap.
 	ErrBitmapClosed error = bitmapError("bitmap is closed")
 	// ErrBitmapBorrowed indicates an attempt to close a borrowed bitmap.

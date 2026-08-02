@@ -51,6 +51,21 @@ native call. The runtime's per-frame context forwards both optional slices to
 the platform adapter; an adapter without the requested slice returns
 `ErrGraphicsUnavailable`.
 
+Games that need direct 1-bit pixels assert `FramebufferGraphics` and use
+`WithFramebuffer`. The callback receives a zero-copy view of the 400×240
+working framebuffer with a 52-byte row stride. `Pixel` and `SetPixel` use
+MSB-first bits; a set bit is white. `SetPixel` marks its row dirty, while code
+that mutates `Bytes` must call `MarkDirtyRows`. Playdate receives the combined
+inclusive dirty range when the callback returns, including when it returns an
+error. The view and its byte slice must not be retained; checked operations on
+the view return `ErrFramebufferExpired` after the callback.
+
+Games that render through normal graphics operations into an owned bitmap
+assert `OffscreenGraphics` and use `DrawInto`. The previous native drawing
+context is restored before `DrawInto` returns, including callback errors.
+Borrowed table frames are rejected with `ErrBitmapBorrowed`; callbacks and
+bitmap cleanup remain explicitly owned by the game.
+
 `SolidPaint`, `XORPaint`, and `PatternPaint` create primitive paint values.
 Patterns contain eight image rows followed by eight mask rows and are copied by
 value; neither runtime adapter retains a pointer after the drawing call.
