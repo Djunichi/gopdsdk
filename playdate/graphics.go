@@ -80,6 +80,30 @@ type GraphicsState interface {
 	SetDrawMode(mode DrawMode) error
 }
 
+// Framebuffer is a callback-scoped view of Playdate's 1-bit working display.
+// Bytes aliases native memory and must not be retained after the callback.
+type Framebuffer interface {
+	Width() int
+	Height() int
+	RowBytes() int
+	Bytes() ([]byte, error)
+	Pixel(x, y int) (Color, error)
+	SetPixel(x, y int, color Color) error
+	MarkDirtyRows(start, end int) error
+}
+
+// FramebufferGraphics is the optional direct-framebuffer capability. The view
+// and any byte slice obtained from it are invalid when callback returns.
+type FramebufferGraphics interface {
+	WithFramebuffer(callback func(Framebuffer) error) error
+}
+
+// OffscreenGraphics is the optional owned-bitmap drawing-context capability.
+// DrawInto restores the previous context even when callback returns an error.
+type OffscreenGraphics interface {
+	DrawInto(bitmap Bitmap, callback func() error) error
+}
+
 // Graphics exposes Playdate drawing and bitmap creation services.
 type Graphics interface {
 	Clear()

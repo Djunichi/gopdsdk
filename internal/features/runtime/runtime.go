@@ -8,6 +8,93 @@ import (
 	"github.com/Djunichi/gopdsdk/playdate"
 )
 
+// Framebuffer provides a direct, callback-scoped view of native display memory.
+type Framebuffer struct {
+	data                 []byte
+	width, height        int
+	rowBytes             int
+	active               bool
+	dirtyStart, dirtyEnd int
+}
+
+// WithFramebuffer scopes a native framebuffer view and reports its combined
+// dirty row range after successful or failed callback execution.
+func WithFramebuffer(data []byte, width, height, rowBytes int, mark func(int, int), callback func(playdate.Framebuffer) error) error {
+	if callback == nil {
+		return playdate.ErrFramebufferCallback
+	}
+	frame := &Framebuffer{data: data, width: width, height: height, rowBytes: rowBytes, active: true, dirtyStart: height, dirtyEnd: -1}
+	err := callback(frame)
+	frame.active = false
+	frame.data = nil
+	if frame.dirtyEnd >= frame.dirtyStart && mark != nil {
+		mark(frame.dirtyStart, frame.dirtyEnd)
+	}
+	return err
+}
+
+func (f *Framebuffer) valid() error {
+	if f == nil || !f.active {
+		return playdate.ErrFramebufferExpired
+	}
+	return nil
+}
+
+func (f *Framebuffer) Width() int    { return f.width }
+func (f *Framebuffer) Height() int   { return f.height }
+func (f *Framebuffer) RowBytes() int { return f.rowBytes }
+func (f *Framebuffer) Bytes() ([]byte, error) {
+	if err := f.valid(); err != nil {
+		return nil, err
+	}
+	return f.data, nil
+}
+func (f *Framebuffer) Pixel(x, y int) (playdate.Color, error) {
+	if err := f.valid(); err != nil {
+		return 0, err
+	}
+	if x < 0 || x >= f.width || y < 0 || y >= f.height {
+		return 0, playdate.ErrFramebufferBounds
+	}
+	if f.data[y*f.rowBytes+x/8]&(0x80>>uint(x&7)) != 0 {
+		return playdate.ColorWhite, nil
+	}
+	return playdate.ColorBlack, nil
+}
+func (f *Framebuffer) SetPixel(x, y int, color playdate.Color) error {
+	if err := f.valid(); err != nil {
+		return err
+	}
+	if x < 0 || x >= f.width || y < 0 || y >= f.height {
+		return playdate.ErrFramebufferBounds
+	}
+	if color != playdate.ColorBlack && color != playdate.ColorWhite {
+		return playdate.ErrFramebufferColor
+	}
+	index, mask := y*f.rowBytes+x/8, byte(0x80>>uint(x&7))
+	if color == playdate.ColorWhite {
+		f.data[index] |= mask
+	} else {
+		f.data[index] &^= mask
+	}
+	return f.MarkDirtyRows(y, y)
+}
+func (f *Framebuffer) MarkDirtyRows(start, end int) error {
+	if err := f.valid(); err != nil {
+		return err
+	}
+	if start < 0 || end < start || end >= f.height {
+		return playdate.ErrFramebufferBounds
+	}
+	if start < f.dirtyStart {
+		f.dirtyStart = start
+	}
+	if end > f.dirtyEnd {
+		f.dirtyEnd = end
+	}
+	return nil
+}
+
 // ValidatePrimitiveGeometry applies the shared primitive dimension contract.
 func ValidatePrimitiveGeometry(width, height, lineWidth int, startAngle, endAngle float32) error {
 	if width <= 0 || height <= 0 || lineWidth <= 0 || math.IsNaN(float64(startAngle)) || math.IsNaN(float64(endAngle)) || math.IsInf(float64(startAngle), 0) || math.IsInf(float64(endAngle), 0) {
@@ -385,6 +472,18 @@ func BitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
 	return value.nativeHandle()
 }
 
+// OwnedBitmapHandle validates a bitmap suitable for an offscreen context.
+func OwnedBitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
+	value, ok := bitmap.(*Bitmap)
+	if !ok {
+		return 0, ErrInvalidBitmap
+	}
+	if !value.owned {
+		return 0, playdate.ErrBitmapBorrowed
+	}
+	return value.nativeHandle()
+}
+
 // SpriteDriver contains platform operations for one native sprite handle.
 type SpriteDriver struct {
 	SetBitmap          func(sprite, bitmap uintptr)
@@ -736,6 +835,22 @@ func (context *applicationContext) SetDrawMode(mode playdate.DrawMode) error {
 		return err
 	}
 	return graphics.SetDrawMode(mode)
+}
+
+func (context *applicationContext) WithFramebuffer(callback func(playdate.Framebuffer) error) error {
+	graphics, ok := context.Context.(playdate.FramebufferGraphics)
+	if !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	return graphics.WithFramebuffer(callback)
+}
+
+func (context *applicationContext) DrawInto(bitmap playdate.Bitmap, callback func() error) error {
+	graphics, ok := context.Context.(playdate.OffscreenGraphics)
+	if !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	return graphics.DrawInto(bitmap, callback)
 }
 
 // NewApplication composes a public game with its platform context. beforeInit

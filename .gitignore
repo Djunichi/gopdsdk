@@ -41,3 +41,6 @@ docs/*
 
 # Generated SDK packages and Simulator diagnostics
 build/
+
+Build artifacts
+.sentry-native/

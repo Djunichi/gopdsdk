@@ -430,6 +430,20 @@ Playdate execution passed on 2026-08-02. The accepted device artifact used
 266,556 bytes of static RAM and produced a 29,160-byte PDX. Conservative-GC
 soak and memory-growth measurement remain unverified.
 
+## P3.2 framebuffer and offscreen drawing
+
+Native contexts now expose narrow `playdate.FramebufferGraphics` and
+`playdate.OffscreenGraphics` capabilities. Framebuffer access is callback
+scoped and zero-copy, combines explicitly reported dirty rows, and rejects
+checked access after the callback. Direct byte mutations require an explicit
+`MarkDirtyRows` call. `DrawInto` accepts owned bitmaps only and always restores
+the previous drawing context before returning.
+
+The portable pixel layout, validation, dirty-range aggregation, generated
+Simulator bridge, and both device memory profiles are unit-tested. SDK
+integration, Simulator visual execution, device build, USB deployment, and
+physical-device execution for P3.2 remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -461,6 +475,6 @@ toolchain without pretending to verify GUI or USB behavior.
 - Device `defer`/`recover` is rejected because TinyGo 0.41.1 accesses an ARM
   system register unavailable to Playdate applications through that path.
 - macOS and Linux official SDK integration remains unverified.
-- Graphics cover clear/text, bitmaps, sprites, animation, and custom fonts;
-  arbitrary framebuffer access remains unavailable. Audio covers the narrow
-  P2.4 sound-effect and file-player slice.
+- Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
+  callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
+  covers the narrow P2.4 sound-effect and file-player slice.

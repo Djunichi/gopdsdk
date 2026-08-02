@@ -182,6 +182,8 @@ type FilePlayer interface{Close() error; Pause() error; Play() error; Resume() e
 type Font interface{Close() error; Height() (int, error); TextWidth(text string) (int, error)}
 type FontGraphics interface{DrawTextFont(font Font, text string, x int, y int) error; LoadFont(path string) (Font, error)}
 type FontLoadError string
+type Framebuffer interface{Bytes() ([]byte, error); Height() int; MarkDirtyRows(start int, end int) error; Pixel(x int, y int) (Color, error); RowBytes() int; SetPixel(x int, y int, color Color) error; Width() int}
+type FramebufferGraphics interface{WithFramebuffer(callback func(Framebuffer) error) error}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
 type GraphicsState interface{ClearClipRect(); SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int)}
@@ -190,6 +192,7 @@ type InputReader interface{Input() Input}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
+type OffscreenGraphics interface{DrawInto(bitmap Bitmap, callback func() error) error}
 type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
@@ -216,10 +219,15 @@ var ErrBitmapTableClosed error
 var ErrFontClosed error
 var ErrFontInvalid error
 var ErrFontLoad error
+var ErrFramebufferBounds error
+var ErrFramebufferCallback error
+var ErrFramebufferColor error
+var ErrFramebufferExpired error
 var ErrGraphicsColor error
 var ErrGraphicsDrawMode error
 var ErrGraphicsGeometry error
 var ErrGraphicsUnavailable error
+var ErrOffscreenCallback error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error

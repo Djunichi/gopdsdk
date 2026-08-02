@@ -69,7 +69,7 @@ func (testContext) LoadFilePlayer(string) (playdate.FilePlayer, error)   { retur
 
 type graphicsCapabilityContext struct {
 	testContext
-	draws int
+	draws, framebuffers, offscreen int
 }
 
 func (c *graphicsCapabilityContext) DrawLine(int, int, int, int, int, playdate.Paint) error {
@@ -94,6 +94,14 @@ func (*graphicsCapabilityContext) SetClipRect(int, int, int, int) error { return
 func (*graphicsCapabilityContext) ClearClipRect()                       {}
 func (*graphicsCapabilityContext) SetDrawOffset(int, int)               {}
 func (*graphicsCapabilityContext) SetDrawMode(playdate.DrawMode) error  { return nil }
+func (c *graphicsCapabilityContext) WithFramebuffer(callback func(playdate.Framebuffer) error) error {
+	c.framebuffers++
+	return callback(nil)
+}
+func (c *graphicsCapabilityContext) DrawInto(_ playdate.Bitmap, callback func() error) error {
+	c.offscreen++
+	return callback()
+}
 
 type graphicsCapabilityGame struct{}
 
@@ -104,11 +112,23 @@ func (graphicsCapabilityGame) Init(context playdate.Context) error {
 	if _, ok := context.(playdate.GraphicsState); !ok {
 		return playdate.ErrGraphicsUnavailable
 	}
+	if _, ok := context.(playdate.FramebufferGraphics); !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	if _, ok := context.(playdate.OffscreenGraphics); !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
 	return nil
 }
 func (graphicsCapabilityGame) Update(context playdate.Context) (bool, error) {
 	paint, _ := playdate.SolidPaint(playdate.ColorBlack)
-	return true, context.(playdate.PrimitiveGraphics).DrawLine(0, 0, 1, 1, 1, paint)
+	if err := context.(playdate.PrimitiveGraphics).DrawLine(0, 0, 1, 1, 1, paint); err != nil {
+		return false, err
+	}
+	if err := context.(playdate.FramebufferGraphics).WithFramebuffer(func(playdate.Framebuffer) error { return nil }); err != nil {
+		return false, err
+	}
+	return true, context.(playdate.OffscreenGraphics).DrawInto(nil, func() error { return nil })
 }
 
 func TestApplicationForwardsOptionalGraphicsCapabilities(t *testing.T) {
@@ -125,6 +145,9 @@ func TestApplicationForwardsOptionalGraphicsCapabilities(t *testing.T) {
 	}
 	if context.draws != 1 {
 		t.Fatalf("draws = %d", context.draws)
+	}
+	if context.framebuffers != 1 || context.offscreen != 1 {
+		t.Fatalf("framebuffers/offscreen = %d/%d", context.framebuffers, context.offscreen)
 	}
 }
 
@@ -239,6 +262,13 @@ func TestBitmapOwnershipLifecycle(t *testing.T) {
 	}
 	if _, err := BitmapHandle(borrowed); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := OwnedBitmapHandle(borrowed); !errors.Is(err, playdate.ErrBitmapBorrowed) {
+		t.Fatalf("borrowed offscreen handle = %v", err)
+	}
+	owned = NewOwnedBitmap(9, driver)
+	if handle, err := OwnedBitmapHandle(owned); err != nil || handle != 9 {
+		t.Fatalf("owned offscreen handle = %d, %v", handle, err)
 	}
 }
 
