@@ -4,7 +4,7 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## v0.3.0 - unreleased
+## v0.3.0 - 2026-08-02
 
 ### Added
 
@@ -28,6 +28,14 @@ that out.
   modes.
 - A deterministic `examples/primitives` acceptance scene covering every P3.1
   drawing and state operation.
+- Callback-scoped zero-copy framebuffer access with explicit dirty-row
+  reporting, plus drawing into explicitly owned offscreen bitmaps with drawing
+  context restoration.
+- A deterministic `examples/framebuffer` scene covering portable pixel layout,
+  dirty-range aggregation, callback lifetime, and owned offscreen drawing.
+- The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame)
+  acceptance game, currently in a private repository, integrating every
+  implemented P1-P3 gameplay slice through public `gopdsdk` API.
 
 ### Changed
 
@@ -51,6 +59,14 @@ that out.
 - Windows SDK 3.1.1 Simulator and physical-device visual acceptance passed for
   P3.1 with matching output. Hard-float build and USB deployment passed; soak
   and memory-growth evidence remain unverified.
+- P3.2 framebuffer and offscreen contracts are unit-tested through the portable
+  implementation and generated adapters. The complete Crank Caverns consumer
+  exercises both capabilities; separate visual and physical-device evidence for
+  `examples/framebuffer` remains unverified.
+- Crank Caverns completes the integrated P3 consumer boundary and has portable
+  deterministic gameplay and render-plan coverage. Fixed frame-time,
+  bounded-heap, extended soak, and post-run device-log measurements for the
+  complete game remain unverified.
 
 ## v0.2.0 - 2026-08-01
 

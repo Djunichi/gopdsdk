@@ -1,7 +1,6 @@
 # Compatibility and evidence
 
-The released `v0.2.0` baseline and current P3 development use one exact
-verified toolchain profile.
+The released `v0.3.0` baseline uses one exact verified toolchain profile.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -66,6 +65,12 @@ physical hardware work on that host. Docker does not promote those levels.
   matching physical Playdate execution on 2026-08-02. The measured artifact
   used 266,556 bytes of static RAM and produced a 29,160-byte PDX. A
   conservative-GC soak and memory-growth measurement remain unverified.
+- P3.2 implemented: callback-scoped zero-copy framebuffer access, checked
+  callback lifetime, explicit dirty-row aggregation, and drawing into owned
+  offscreen bitmaps with context restoration are covered by deterministic
+  pure-Go and generated-adapter tests. Crank Caverns exercises both public
+  capabilities in its integrated scene. Separate SDK visual execution and
+  physical-device acceptance for `examples/framebuffer` remain unverified.
 - P3.3 implemented: camera clamping, visible-range tile traversal, bitmap
   placement, configuration ownership, and independent static tile overlap are
   covered by deterministic pure-Go tests. Windows SDK 3.1.1 Simulator visual
@@ -88,6 +93,15 @@ physical hardware work on that host. Docker does not promote those levels.
   the connected Playdate. The OS returned to the Launcher through the official
   exit path; resource-cleanup behavior inside `LifecycleTerminate` was not
   separately observed because this scene owns no native resources.
+- P3.5 integrated consumer: the external
+  [Crank Caverns](https://github.com/Djunichi/gopdsdkgame) game, currently in a
+  private repository, uses only public API and combines lifecycle/input, owned
+  graphics resources, sprites and collisions, animation, audio, fonts,
+  primitives and graphics state, offscreen drawing, direct framebuffer access,
+  tile map and camera, menu transitions, and Launcher exit. Its deterministic
+  gameplay and render plans are unit-tested. Fixed frame-time, bounded-heap,
+  extended physical-device soak, cleanup observation on termination, and
+  post-run device-log comparison remain unverified for the integrated game.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
