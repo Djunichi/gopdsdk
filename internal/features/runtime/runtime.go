@@ -353,28 +353,34 @@ func FontHandle(value playdate.Font) (uintptr, error) {
 
 // AudioDriver contains the common native operations for either accepted player.
 type AudioDriver struct {
-	Play         func(uintptr) bool
-	PlayRepeated func(uintptr, int, float32) bool
-	Stop         func(uintptr)
-	SetVolume    func(uintptr, float32, float32)
-	Volume       func(uintptr) (float32, float32)
-	IsPlaying    func(uintptr) bool
-	Pause        func(uintptr, bool)
-	Length       func(uintptr) float32
-	SetOffset    func(uintptr, float32)
-	Offset       func(uintptr) float32
-	SetRate      func(uintptr, float32)
-	Rate         func(uintptr) float32
-	Free         func(uintptr)
+	Play              func(uintptr) bool
+	PlayRepeated      func(uintptr, int, float32) bool
+	Stop              func(uintptr)
+	SetVolume         func(uintptr, float32, float32)
+	Volume            func(uintptr) (float32, float32)
+	IsPlaying         func(uintptr) bool
+	Pause             func(uintptr, bool)
+	Length            func(uintptr) float32
+	SetOffset         func(uintptr, float32)
+	Offset            func(uintptr) float32
+	SetRate           func(uintptr, float32)
+	Rate              func(uintptr) float32
+	SetFinishCallback func(uintptr, uint32)
+	FadeVolume        func(uintptr, float32, float32, uint32, uint32)
+	Free              func(uintptr)
 }
 
 type audioPlayer struct {
-	handle       uintptr
-	driver       AudioDriver
-	allowReverse bool
-	paused       bool
-	closed       bool
+	handle         uintptr
+	driver         AudioDriver
+	allowReverse   bool
+	paused         bool
+	closed         bool
+	finishCallback uint32
+	fadeCallback   uint32
 }
+
+type filePlayer struct{ *audioPlayer }
 
 // NewSoundEffect wraps an owned sample player and its sample as one handle.
 func NewSoundEffect(handle uintptr, driver AudioDriver) playdate.SoundEffect {
@@ -388,7 +394,7 @@ func NewSamplePlayer(handle uintptr, driver AudioDriver) playdate.SamplePlayer {
 
 // NewFilePlayer wraps an owned streaming file player.
 func NewFilePlayer(handle uintptr, driver AudioDriver) playdate.FilePlayer {
-	return &audioPlayer{handle: handle, driver: driver}
+	return &filePlayer{audioPlayer: &audioPlayer{handle: handle, driver: driver}}
 }
 
 func (p *audioPlayer) nativeHandle() (uintptr, error) {
@@ -479,6 +485,36 @@ func (p *audioPlayer) Rate() (float32, error) {
 	return p.driver.Rate(handle), nil
 }
 
+// SetFinishCallback replaces the callback retained for natural completion.
+func (p *audioPlayer) SetFinishCallback(callback func()) error {
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	ForgetAudioCallback(p.finishCallback)
+	p.finishCallback = RegisterAudioCallback(callback)
+	p.driver.SetFinishCallback(handle, p.finishCallback)
+	return nil
+}
+
+// FadeVolume starts a streaming-player volume fade measured in audio frames.
+func (p *filePlayer) FadeVolume(left, right float32, audioFrames uint32, callback func()) error {
+	if err := ValidateAudioVolume(left, right); err != nil {
+		return err
+	}
+	if audioFrames > 2147483647 {
+		return playdate.ErrAudioFade
+	}
+	handle, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	ForgetAudioCallback(p.fadeCallback)
+	p.fadeCallback = RegisterAudioCallback(callback)
+	p.driver.FadeVolume(handle, left, right, audioFrames, p.fadeCallback)
+	return nil
+}
+
 func (p *audioPlayer) Stop() error {
 	handle, err := p.nativeHandle()
 	if err != nil {
@@ -554,6 +590,12 @@ func (p *audioPlayer) Close() error {
 		return err
 	}
 	p.driver.Stop(handle)
+	if p.driver.SetFinishCallback != nil {
+		p.driver.SetFinishCallback(handle, 0)
+	}
+	ForgetAudioCallback(p.finishCallback)
+	ForgetAudioCallback(p.fadeCallback)
+	p.finishCallback, p.fadeCallback = 0, 0
 	p.driver.Free(handle)
 	p.handle = 0
 	p.closed = true
@@ -966,6 +1008,14 @@ type applicationContext struct {
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }
+
+func (context *applicationContext) CurrentAudioTime() (uint32, error) {
+	clock, ok := context.Context.(playdate.AudioClock)
+	if !ok {
+		return 0, playdate.ErrAudioUnavailable
+	}
+	return clock.CurrentAudioTime()
+}
 
 func (context *applicationContext) LoadSamplePlayer(path string) (playdate.SamplePlayer, error) {
 	samples, _ := context.Context.(playdate.SamplePlayers)

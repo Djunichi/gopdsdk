@@ -17,6 +17,11 @@ that out.
   operations, including forwarding through `NewApplication`.
 - A P5.1 audio acceptance scene with independent sample and music rate controls,
   reverse-start positioning, and state-driven redraws.
+- Optional `CompletionPlayer`, streaming `FadingPlayer`, and `AudioClock`
+  capabilities with explicit callback replacement, one-shot fade completion,
+  close-time release, and 44.1 kHz frame timing.
+- P5.2 Simulator/device ABI forwarding and acceptance-scene controls for
+  play/fade/stop, completion counters, and sampled audio time.
 
 ### Fixed
 
@@ -33,6 +38,13 @@ that out.
   used 268,940 bytes of static RAM and produced a 125,340-byte PDX; USB install
   on COM3 and launch succeeded.
 - macOS/Linux native SDK integration, extended hardware soak, memory-growth,
+  lifecycle stress, and post-run crashlog inspection remain pending.
+- P5.2 is unit-tested and passes official Windows Simulator and hard-float
+  device builds. Its device artifact uses 269,876 bytes of static RAM and
+  produces a 130,127-byte PDX. Audible sample completion, the half-second music
+  fade, completion counters, and advancing audio-clock display passed in
+  Windows Simulator and on a physical Playdate on 2026-08-02; installation
+  through COM3 and launch succeeded. Extended soak, memory-growth measurement,
   lifecycle stress, and post-run crashlog inspection remain pending.
 
 ## v0.4.0 - release candidate (2026-08-02)

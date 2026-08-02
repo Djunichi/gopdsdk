@@ -47,6 +47,25 @@ type VariableRatePlayer interface {
 	Rate() (float32, error)
 }
 
+// CompletionPlayer reports natural playback completion. Setting a nil callback
+// clears the current callback. Stop and Close do not invoke it.
+type CompletionPlayer interface {
+	SetFinishCallback(callback func()) error
+}
+
+// FadingPlayer performs a linear volume fade over audioFrames. The optional
+// callback runs when the fade completes. FilePlayer values may capability-
+// assert this interface.
+type FadingPlayer interface {
+	FadeVolume(left, right float32, audioFrames uint32, callback func()) error
+}
+
+// AudioClock exposes Playdate's wrapping 44.1 kHz audio-frame clock. Games
+// should capability-assert this optional interface from Context.
+type AudioClock interface {
+	CurrentAudioTime() (uint32, error)
+}
+
 // FilePlayer is an explicitly owned streaming audio player for one file.
 type FilePlayer interface {
 	Play() error

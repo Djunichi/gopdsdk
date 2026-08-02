@@ -1,4 +1,4 @@
-// Package audio exercises P5.1 sample playback and P2.4 streaming audio.
+// Package audio exercises P5.1 playback and P5.2 timing and callbacks.
 package audio
 
 import (
@@ -16,16 +16,22 @@ type game struct {
 	effect          playdate.SamplePlayer
 	music           playdate.FilePlayer
 	musicRatePlayer playdate.VariableRatePlayer
+	musicFader      playdate.FadingPlayer
+	audioClock      playdate.AudioClock
 	sampleRate      float32
 	musicRate       float32
 	length          float32
 	effectState     playdate.PlaybackState
 	musicState      playdate.PlaybackState
+	audioTime       uint32
+	sampleFinished  uint32
+	fadeFinished    uint32
+	fading          bool
 	dirty           bool
 	closed          bool
 }
 
-// New creates the P5.1 audio acceptance game.
+// New creates the P5 audio acceptance game.
 func New() playdate.Game { return &game{} }
 
 func (g *game) Init(context playdate.Context) error {
@@ -50,11 +56,32 @@ func (g *game) Init(context playdate.Context) error {
 		return errors.Join(err, effect.Close())
 	}
 	g.music = music
+	clock, ok := context.(playdate.AudioClock)
+	if !ok {
+		return errors.Join(playdate.ErrAudioUnavailable, g.close())
+	}
+	g.audioClock = clock
 	musicRatePlayer, ok := music.(playdate.VariableRatePlayer)
 	if !ok {
 		return errors.Join(playdate.ErrAudioUnavailable, g.close())
 	}
 	g.musicRatePlayer = musicRatePlayer
+	musicFader, ok := music.(playdate.FadingPlayer)
+	if !ok {
+		return errors.Join(playdate.ErrAudioUnavailable, g.close())
+	}
+	g.musicFader = musicFader
+	effectCompletion, effectOK := effect.(playdate.CompletionPlayer)
+	musicCompletion, musicOK := music.(playdate.CompletionPlayer)
+	if !effectOK || !musicOK {
+		return errors.Join(playdate.ErrAudioUnavailable, g.close())
+	}
+	if err = effectCompletion.SetFinishCallback(func() { g.sampleFinished++; g.dirty = true }); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err = musicCompletion.SetFinishCallback(func() { g.dirty = true }); err != nil {
+		return errors.Join(err, g.close())
+	}
 	if err = effect.SetVolume(.8, .8); err != nil {
 		return errors.Join(err, g.close())
 	}
@@ -66,6 +93,13 @@ func (g *game) Init(context playdate.Context) error {
 
 func (g *game) Update(context playdate.Context) (bool, error) {
 	input := context.Input()
+	var err error
+	if input.Pressed != 0 {
+		g.audioTime, err = g.audioClock.CurrentAudioTime()
+		if err != nil {
+			return false, err
+		}
+	}
 	if input.Pressed.Has(playdate.ButtonA) {
 		offset := float32(0)
 		if g.sampleRate < 0 {
@@ -114,8 +148,16 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 		}
 		g.dirty = true
 		if state == playdate.PlaybackStopped {
+			g.fading = false
+			if err = g.music.SetVolume(.35, .35); err != nil {
+				return false, err
+			}
 			err = g.music.Play()
+		} else if !g.fading {
+			g.fading = true
+			err = g.musicFader.FadeVolume(0, 0, 22050, func() { g.fadeFinished++; g.dirty = true })
 		} else {
+			g.fading = false
 			err = g.music.Stop()
 		}
 		if err != nil {
@@ -139,14 +181,30 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 	g.dirty = false
 	context.Clear()
-	context.DrawText("P5.1 sample playback", 12, 8)
+	context.DrawText("P5.2 timed audio callbacks", 12, 8)
 	context.DrawText("A: play sample x3", 12, 32)
-	context.DrawText("B: play/stop music", 12, 54)
+	context.DrawText("B: play/fade/stop music", 12, 54)
 	context.DrawText("Left/Right: sample rate", 12, 76)
 	context.DrawText("Up/Down: music rate", 12, 98)
 	context.DrawText("SFX: "+stateName(effectState)+" "+rateName(g.sampleRate), 12, 130)
 	context.DrawText("Music: "+stateName(musicState)+" "+rateName(g.musicRate), 12, 152)
+	context.DrawText("Done S/F: "+smallUint(g.sampleFinished)+"/"+smallUint(g.fadeFinished), 12, 174)
+	context.DrawText("Audio frame: "+smallUint(g.audioTime), 12, 196)
 	return true, nil
+}
+
+func smallUint(value uint32) string {
+	if value == 0 {
+		return "0"
+	}
+	var buffer [10]byte
+	index := len(buffer)
+	for value > 0 {
+		index--
+		buffer[index] = byte('0' + value%10)
+		value /= 10
+	}
+	return string(buffer[index:])
 }
 
 func nextRate(rate, delta float32) float32 {
