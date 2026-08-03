@@ -387,6 +387,8 @@ type audioPlayer struct {
 type AudioChannelDriver struct {
 	AddSource    func(uintptr, uintptr) bool
 	RemoveSource func(uintptr, uintptr) bool
+	AddEffect    func(uintptr, uintptr) bool
+	RemoveEffect func(uintptr, uintptr) bool
 	SetVolume    func(uintptr, float32)
 	Volume       func(uintptr) float32
 	SetPan       func(uintptr, float32)
@@ -398,12 +400,57 @@ type audioChannel struct {
 	handle  uintptr
 	driver  AudioChannelDriver
 	sources map[*audioPlayer]struct{}
+	effects map[*effectNode]struct{}
 	closed  bool
 }
 
 // NewAudioChannel wraps a native channel already added to the sound graph.
 func NewAudioChannel(handle uintptr, driver AudioChannelDriver) playdate.AudioChannel {
-	return &audioChannel{handle: handle, driver: driver, sources: make(map[*audioPlayer]struct{})}
+	return &audioChannel{handle: handle, driver: driver, sources: make(map[*audioPlayer]struct{}), effects: make(map[*effectNode]struct{})}
+}
+
+func (c *audioChannel) AddEffect(value playdate.AudioEffect) error {
+	h, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	e, err := effectFrom(value)
+	if err != nil {
+		return err
+	}
+	eh, err := e.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if _, ok := c.effects[e]; ok {
+		return nil
+	}
+	if !c.driver.AddEffect(h, eh) {
+		return playdate.ErrAudioRoute
+	}
+	c.effects[e] = struct{}{}
+	e.channels[c] = struct{}{}
+	return nil
+}
+
+func (c *audioChannel) RemoveEffect(value playdate.AudioEffect) error {
+	h, err := c.nativeHandle()
+	if err != nil {
+		return err
+	}
+	e, err := effectFrom(value)
+	if err != nil {
+		return err
+	}
+	if _, ok := c.effects[e]; !ok {
+		return nil
+	}
+	if !c.driver.RemoveEffect(h, e.handle) {
+		return playdate.ErrAudioRoute
+	}
+	delete(c.effects, e)
+	delete(e.channels, c)
+	return nil
 }
 
 func (c *audioChannel) nativeHandle() (uintptr, error) {
@@ -421,6 +468,10 @@ func audioSource(value playdate.AudioSource) (*audioPlayer, error) {
 		return source.audioPlayer, nil
 	case *synth:
 		return source.audioPlayer, nil
+	case *delayTap:
+		return source.audioPlayer, nil
+	case *instrument:
+		return source.audioPlayer, nil
 	default:
 		return nil, playdate.ErrAudioSourceInvalid
 	}
@@ -431,6 +482,9 @@ func (c *audioChannel) AddSource(value playdate.AudioSource) error {
 	if err != nil {
 		return err
 	}
+	if synth, ok := value.(*synth); ok && len(synth.instruments) != 0 {
+		return playdate.ErrAudioRoute
+	}
 	source, err := audioSource(value)
 	if err != nil {
 		return err
@@ -440,7 +494,21 @@ func (c *audioChannel) AddSource(value playdate.AudioSource) error {
 		return err
 	}
 	if _, ok := c.sources[source]; ok {
+		if !c.driver.AddSource(handle, source.driver.Source(sourceHandle)) {
+			return playdate.ErrAudioRoute
+		}
 		return nil
+	}
+	for previous := range source.channels {
+		if previous.closed {
+			delete(source.channels, previous)
+			continue
+		}
+		if !previous.driver.RemoveSource(previous.handle, source.driver.Source(sourceHandle)) {
+			return playdate.ErrAudioRoute
+		}
+		delete(previous.sources, source)
+		delete(source.channels, previous)
 	}
 	if !c.driver.AddSource(handle, source.driver.Source(sourceHandle)) {
 		return playdate.ErrAudioRoute
@@ -519,6 +587,13 @@ func (c *audioChannel) Close() error {
 		delete(source.channels, c)
 	}
 	c.sources = nil
+	for effect := range c.effects {
+		if !effect.closed {
+			c.driver.RemoveEffect(handle, effect.handle)
+		}
+		delete(effect.channels, c)
+	}
+	c.effects = nil
 	if !c.driver.Remove(handle) {
 		return playdate.ErrAudioRoute
 	}
@@ -1218,6 +1293,63 @@ func (context *applicationContext) NewControlSignal() (playdate.ControlSignal, e
 	return synths.NewControlSignal()
 }
 
+func (context *applicationContext) NewInstrument() (playdate.Instrument, error) {
+	v, _ := context.Context.(playdate.Sequencers)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewInstrument()
+}
+func (context *applicationContext) NewSequenceTrack() (playdate.SequenceTrack, error) {
+	v, _ := context.Context.(playdate.Sequencers)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewSequenceTrack()
+}
+func (context *applicationContext) NewSequence() (playdate.Sequence, error) {
+	v, _ := context.Context.(playdate.Sequencers)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewSequence()
+}
+func (context *applicationContext) NewTwoPoleFilter(kind playdate.FilterType) (playdate.TwoPoleFilter, error) {
+	v, _ := context.Context.(playdate.AudioEffects)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewTwoPoleFilter(kind)
+}
+func (context *applicationContext) NewBitCrusher() (playdate.BitCrusher, error) {
+	v, _ := context.Context.(playdate.AudioEffects)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewBitCrusher()
+}
+func (context *applicationContext) NewRingModulator() (playdate.RingModulator, error) {
+	v, _ := context.Context.(playdate.AudioEffects)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewRingModulator()
+}
+func (context *applicationContext) NewDelayLine(length int, stereo bool) (playdate.DelayLine, error) {
+	v, _ := context.Context.(playdate.AudioEffects)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewDelayLine(length, stereo)
+}
+func (context *applicationContext) NewOverdrive() (playdate.Overdrive, error) {
+	v, _ := context.Context.(playdate.AudioEffects)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewOverdrive()
+}
+
 func (context *applicationContext) PollDebugMessage() (string, bool) {
 	messages, _ := context.Context.(playdate.DebugMessages)
 	if messages == nil || context.terminated {
@@ -1735,6 +1867,7 @@ func (r *Runtime) Update(raw RawInput) (int32, error) {
 	if !r.initialized {
 		return 0, ErrNotInitialized
 	}
+	DrainAudioCallbacks()
 	previousButtons := r.input.Buttons
 	previousDocked := raw.CrankDocked
 	if r.hasInput {

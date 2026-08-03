@@ -452,7 +452,7 @@ growth, and crashlog inspection remain unverified.
   soak, memory-growth measurement, lifecycle stress, and post-run crashlog
   inspection remain unverified.
 
-### P5.4 — instruments, sequences, and effects
+### P5.4 — instruments, sequences, and effects — implemented and physically accepted
 
 - Add explicitly owned instruments, voice ranges, tracks, note and control
   events, and sequences with documented parent/child ownership.
@@ -466,6 +466,18 @@ growth, and crashlog inspection remain unverified.
   delay taps before freeing either side of an edge.
 - Accept the combined P5 graph through dynamic music and sound scenes in the
   Simulator and on hardware.
+- Instruments, tracks, note/controller events, sequences, MIDI loading,
+  completion ownership, and all five typed effect families are implemented and
+  forwarded through both native ABIs. LFO arpeggiation is explicit, and device
+  audio-thread completions cross a bounded native FIFO before Go delivery on an
+  update frame. Unit tests and official Windows Simulator and conservative
+  hard-float device builds pass. On 2026-08-03 the combined sequence, completion,
+  source routing, five-effect, waveform, and modulation matrix passed audible
+  interaction in Simulator and on a physical Playdate after USB installation
+  through COM3. The accepted artifact uses 278,900 bytes of static RAM and
+  produces a 168,558-byte PDX. Extended soak, memory-growth measurement,
+  lifecycle stress, post-run crashlog inspection, and macOS/Linux SDK
+  integration remain unverified.
 
 ### P5.5 — microphone input
 

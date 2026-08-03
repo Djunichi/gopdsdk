@@ -30,6 +30,15 @@ that out.
 - A full P5.3 acceptance matrix covering routed sample/file/synth sources, all
   synth waveforms and LFO shapes, amplitude/frequency LFO modulation, envelope
   and control signals, transpose, scheduled note-off, channel volume, and pan.
+- Optional owned instruments, sequence tracks, note/controller events,
+  sequences, and typed filter, bit-crusher, ring-modulator, delay, and
+  overdrive effects, forwarded through both native ABI contexts.
+- P5.4 MIDI loading, programmatic track construction, and one-shot sequence
+  completion callbacks with replacement, stop, and close-time release.
+- Explicit LFO arpeggiation steps through `LFO.SetArpeggiation`; the acceptance
+  arpeggiator uses the major-chord offsets `0, 4, 7, 12`.
+- A bounded device-native audio completion FIFO that defers sample, fade, and
+  other audio-thread delivery to the next Go update frame.
 
 ### Fixed
 
@@ -65,6 +74,13 @@ that out.
   installation through COM3 and launch succeeded. macOS/Linux SDK integration,
   extended soak, memory-growth measurement, lifecycle stress, and post-run
   crashlog inspection remain pending.
+- P5.4 unit tests, official Windows Simulator build, and conservative hard-float
+  device build pass. On 2026-08-03 its full sequence, completion-counter,
+  source-routing, five-effect, waveform, and modulation matrix passed audible
+  interaction in Simulator and on a physical Playdate. The accepted artifact
+  uses 278,900 bytes of static RAM and produces a 168,558-byte PDX; USB install
+  through COM3 and launch succeeded. Extended soak, memory-growth measurement,
+  lifecycle stress, and post-run crashlog inspection remain pending.
 
 ## v0.4.0 - release candidate (2026-08-02)
 
