@@ -164,7 +164,14 @@ return `AudioLoadError`.
 
 Advanced games may separately capability-assert `AudioChannels`,
 `Synthesizers`, `Sequencers`, and `AudioEffects`; these optional slices do not
-widen the base `Context`. Microphone input remains outside the public contract.
+widen the base `Context`.
+
+Microphone games capability-assert `Microphones`. Request permission before
+recording, handle pending/denied/granted explicitly, and close the owned
+`MicrophoneRecorder`. A `MicrophoneSamples` value is callback-scoped; copy only
+the needed samples into a bounded caller-owned `[]int16`. The view expires when
+the callback returns and the runtime never retains the destination. Microphone
+failures use the separate `ErrMicrophone*` domain rather than audio errors.
 
 `LFO.SetArpeggiation` requires at least one finite half-step offset and configures
 the native arpeggiator sequence; an empty or non-finite step list returns

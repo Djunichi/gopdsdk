@@ -161,6 +161,7 @@ void bridgeSpriteAdd(uintptr_t sprite);
 void bridgeSpriteRemove(uintptr_t sprite);
 void bridgeUpdateAndDrawSprites(void);
 uintptr_t bridgeLoadSoundEffect(const char* path);
+uintptr_t bridgeNewPCMPlayer(const int16_t* samples, int count, uint32_t sampleRate);
 int bridgeSoundEffectPlay(uintptr_t effect);
 int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate);
 void bridgeSoundEffectStop(uintptr_t effect);
@@ -241,6 +242,9 @@ void bridgeSourceStop(uintptr_t source);
 void bridgeSourceSetVolume(uintptr_t source, float left, float right);
 void bridgeSourceVolume(uintptr_t source, float* left, float* right);
 int bridgeSourceIsPlaying(uintptr_t source);
+int bridgeRequestMicAccess(const char* purpose);
+int bridgeStartMicrophone(int source);
+void bridgeStopMicrophone(void);
 */
 import "C"
 import (
@@ -259,6 +263,12 @@ var debugMessages = sdkRuntime.NewDebugMessageQueue(8, 256)
 func goSerialMessage(message *C.char) { if message != nil { debugMessages.Push(C.GoString(message)) } }
 //export goAudioCallback
 func goAudioCallback(callback C.uint32_t,oneShot C.int){sdkRuntime.InvokeAudioCallback(uint32(callback),oneShot!=0)}
+var microphonePermissionCallback func(bool)
+var microphoneRecordingCallback func([]int16)bool
+//export goMicrophonePermission
+func goMicrophonePermission(allowed C.int){callback:=microphonePermissionCallback;microphonePermissionCallback=nil;if callback!=nil{callback(allowed!=0)}}
+//export goMicrophoneSamples
+func goMicrophoneSamples(data *C.int16_t,length C.int)C.int{callback:=microphoneRecordingCallback;if callback==nil{return 0};if callback(unsafe.Slice((*int16)(unsafe.Pointer(data)),int(length))){return 1};microphoneRecordingCallback=nil;return 0}
 
 var application = mustApplication()
 
@@ -319,6 +329,8 @@ var _ sdkPlaydate.DebugMessages = playdateContext{}
 var _ sdkPlaydate.AudioClock = playdateContext{}
 var _ sdkPlaydate.AudioChannels = playdateContext{}
 var _ sdkPlaydate.Synthesizers = playdateContext{}
+var _ sdkPlaydate.Microphones = playdateContext{}
+var _ sdkPlaydate.PCMPlayers = playdateContext{}
 var _ sdkPlaydate.Sequencers = playdateContext{}
 var _ sdkPlaydate.AudioEffects = playdateContext{}
 
@@ -564,6 +576,7 @@ func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, 
 	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
 	return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil
 }
+func(playdateContext)NewPCMPlayer(samples []int16,rate uint32)(sdkPlaydate.SamplePlayer,error){if len(samples)==0||rate==0{return nil,sdkPlaydate.ErrAudioParameter};handle:=uintptr(C.bridgeNewPCMPlayer((*C.int16_t)(unsafe.Pointer(&samples[0])),C.int(len(samples)),C.uint32_t(rate)));if handle==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSamplePlayer(handle,soundEffectDriver),nil}
 func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) {
 	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadFilePlayer(cPath))
 	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
@@ -592,6 +605,10 @@ func (playdateContext) NewSynth(w sdkPlaydate.Waveform)(sdkPlaydate.Synth,error)
 func (playdateContext) NewLFO(t sdkPlaydate.LFOType)(sdkPlaydate.LFO,error){if t>sdkPlaydate.LFOTypeArpeggiator{return nil,sdkPlaydate.ErrAudioWaveform};h:=uintptr(C.bridgeNewLFO(C.int(t)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=lfoDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeLFO(C.uintptr_t(h))};return sdkRuntime.NewLFO(h,driver),nil}
 func (playdateContext) NewEnvelope(a,d,s,r float32)(sdkPlaydate.Envelope,error){if err:=sdkRuntime.ValidateEnvelope(a,d,s,r);err!=nil{return nil,err};h:=uintptr(C.bridgeNewEnvelope(C.float(a),C.float(d),C.float(s),C.float(r)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=envelopeDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeEnvelope(C.uintptr_t(h))};return sdkRuntime.NewEnvelope(h,driver),nil}
 func (playdateContext) NewControlSignal()(sdkPlaydate.ControlSignal,error){h:=uintptr(C.bridgeNewControlSignal());if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=controlSignalDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeControlSignal(C.uintptr_t(h))};return sdkRuntime.NewControlSignal(h,driver),nil}
+var microphoneService=sdkRuntime.NewMicrophoneService(sdkRuntime.MicrophoneDriver{Request:func(purpose string,callback func(bool))sdkPlaydate.MicrophonePermission{microphonePermissionCallback=callback;cPurpose:=C.CString(purpose);defer C.free(unsafe.Pointer(cPurpose));return sdkPlaydate.MicrophonePermission(C.bridgeRequestMicAccess(cPurpose))},Start:func(source sdkPlaydate.MicrophoneSource,callback func([]int16)bool)sdkPlaydate.MicrophoneSource{microphoneRecordingCallback=callback;used:=sdkPlaydate.MicrophoneSource(C.bridgeStartMicrophone(C.int(source)));if used==sdkPlaydate.MicrophoneSourceAutomatic{microphoneRecordingCallback=nil};return used},Stop:func(){C.bridgeStopMicrophone();microphoneRecordingCallback=nil}})
+func(playdateContext)RequestMicrophoneAccess(purpose string,callback func(sdkPlaydate.MicrophonePermission))(sdkPlaydate.MicrophonePermission,error){return microphoneService.RequestMicrophoneAccess(purpose,callback)}
+func(playdateContext)StartMicrophoneRecording(source sdkPlaydate.MicrophoneSource,callback func(sdkPlaydate.MicrophoneSamples)bool)(sdkPlaydate.MicrophoneRecorder,error){return microphoneService.StartMicrophoneRecording(source,callback)}
+func(playdateContext)CloseMicrophone(){microphoneService.Close();microphonePermissionCallback=nil;microphoneRecordingCallback=nil}
 
 var instrumentDriver=sdkRuntime.InstrumentDriver{AddVoice:func(i,s uintptr,a,b uint8,t float32)bool{return C.bridgeInstrumentAddVoice(C.uintptr_t(i),C.uintptr_t(s),C.int(a),C.int(b),C.float(t))!=0},SetPitchBend:func(h uintptr,v float32){C.bridgeInstrumentSetPitchBend(C.uintptr_t(h),C.float(v))},SetPitchBendRange:func(h uintptr,v float32){C.bridgeInstrumentSetPitchBendRange(C.uintptr_t(h),C.float(v))},SetTranspose:func(h uintptr,v float32){C.bridgeInstrumentSetTranspose(C.uintptr_t(h),C.float(v))},NoteOff:func(h uintptr,n uint8,w uint32){C.bridgeInstrumentNoteOff(C.uintptr_t(h),C.int(n),C.uint32_t(w))},AllNotesOff:func(h uintptr,w uint32){C.bridgeInstrumentAllNotesOff(C.uintptr_t(h),C.uint32_t(w))},SetVolume:func(h uintptr,l,r float32){C.bridgeInstrumentSetVolume(C.uintptr_t(h),C.float(l),C.float(r))},Volume:func(h uintptr)(float32,float32){var l,r C.float;C.bridgeInstrumentVolume(C.uintptr_t(h),&l,&r);return float32(l),float32(r)},ActiveVoiceCount:func(h uintptr)int{return int(C.bridgeInstrumentActiveVoiceCount(C.uintptr_t(h)))},Free:func(h uintptr){C.bridgeFreeInstrument(C.uintptr_t(h))}}
 var trackDriver=sdkRuntime.TrackDriver{SetInstrument:func(h,i uintptr){C.bridgeTrackSetInstrument(C.uintptr_t(h),C.uintptr_t(i))},AddNote:func(h uintptr,s,l uint32,n uint8,v float32){C.bridgeTrackAddNote(C.uintptr_t(h),C.uint32_t(s),C.uint32_t(l),C.int(n),C.float(v))},RemoveNote:func(h uintptr,s uint32,n uint8){C.bridgeTrackRemoveNote(C.uintptr_t(h),C.uint32_t(s),C.int(n))},ClearNotes:func(h uintptr){C.bridgeTrackClearNotes(C.uintptr_t(h))},AddControlEvent:func(h uintptr,c,s int,v float32,i bool)bool{var f C.int;if i{f=1};return C.bridgeTrackAddControlEvent(C.uintptr_t(h),C.int(c),C.int(s),C.float(v),f)!=0},RemoveControlEvent:func(h uintptr,c,s int)bool{return C.bridgeTrackRemoveControlEvent(C.uintptr_t(h),C.int(c),C.int(s))!=0},ClearControlEvents:func(h uintptr){C.bridgeTrackClearControlEvents(C.uintptr_t(h))},SetMuted:func(h uintptr,v bool){var f C.int;if v{f=1};C.bridgeTrackSetMuted(C.uintptr_t(h),f)},Length:func(h uintptr)uint32{return uint32(C.bridgeTrackLength(C.uintptr_t(h)))},Free:func(h uintptr){C.bridgeFreeTrack(C.uintptr_t(h))}}
@@ -635,6 +652,8 @@ extern void goMenuCallback(uint32_t id);
 static void bridgeMenuCallback(void* userdata) { goMenuCallback((uint32_t)(uintptr_t)userdata); }
 extern void goSerialMessage(const char* message);
 extern void goAudioCallback(uint32_t callback,int oneShot);
+extern void goMicrophonePermission(int allowed);
+extern int goMicrophoneSamples(int16_t* data,int length);
 extern void goScoreCallback(int kind, uintptr_t score, const char* error);
 extern void goBoardsCallback(uintptr_t list, const char* error);
 extern void goScoresCallback(uintptr_t list, const char* error);
@@ -810,6 +829,7 @@ uintptr_t bridgeLoadSoundEffect(const char* path)
 	bridgePlaydate->sound->sampleplayer->setSample(player, sample);
 	return (uintptr_t)effect;
 }
+uintptr_t bridgeNewPCMPlayer(const int16_t* samples,int count,uint32_t sampleRate){if(!samples||count<=0||sampleRate==0)return 0;int bytes=count*(int)sizeof(int16_t);uint8_t* copy=bridgePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,samples,(size_t)bytes);AudioSample* sample=bridgePlaydate->sound->sample->newSampleFromData(copy,kSound16bitMono,sampleRate,bytes,1);if(!sample){bridgePlaydate->system->realloc(copy,0);return 0;}SamplePlayer* player=bridgePlaydate->sound->sampleplayer->newPlayer();if(!player){bridgePlaydate->sound->sample->freeSample(sample);return 0;}BridgeSoundEffect* effect=bridgePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!effect){bridgePlaydate->sound->sampleplayer->freePlayer(player);bridgePlaydate->sound->sample->freeSample(sample);return 0;}effect->sample=sample;effect->player=player;bridgePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect;}
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect) { return (BridgeSoundEffect*)effect; }
 int bridgeSoundEffectPlay(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, 1, 1.0f); }
 int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, repeat, rate); }
@@ -885,5 +905,6 @@ void bridgeLFOSetArpeggiation(uintptr_t signal,int count,float* steps){bridgePla
 void bridgeEnvelopeSetAttack(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setAttack((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetDecay(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setDecay((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetSustain(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setSustain((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetRelease(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setRelease((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetLegato(uintptr_t signal,int value){bridgePlaydate->sound->envelope->setLegato((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetRetrigger(uintptr_t signal,int value){bridgePlaydate->sound->envelope->setRetrigger((PDSynthEnvelope*)signal,value);}
 void bridgeControlSignalAddEvent(uintptr_t signal,int step,float value,int interpolate){bridgePlaydate->sound->controlsignal->addEvent((ControlSignal*)signal,step,value,interpolate);} void bridgeControlSignalRemoveEvent(uintptr_t signal,int step){bridgePlaydate->sound->controlsignal->removeEvent((ControlSignal*)signal,step);} void bridgeControlSignalClearEvents(uintptr_t signal){bridgePlaydate->sound->controlsignal->clearEvents((ControlSignal*)signal);}
 void bridgeFreeLFO(uintptr_t signal){bridgePlaydate->sound->lfo->freeLFO((PDSynthLFO*)signal);} void bridgeFreeEnvelope(uintptr_t signal){bridgePlaydate->sound->envelope->freeEnvelope((PDSynthEnvelope*)signal);} void bridgeFreeControlSignal(uintptr_t signal){bridgePlaydate->sound->controlsignal->freeSignal((ControlSignal*)signal);}
+static void bridgeMicrophonePermissionCallback(bool allowed,void* userdata){(void)userdata;goMicrophonePermission(allowed?1:0);} static int bridgeMicrophoneSamplesCallback(void* context,int16_t* data,int length){(void)context;return goMicrophoneSamples(data,length);} int bridgeRequestMicAccess(const char* purpose){return(int)bridgePlaydate->sound->requestMicAccess(purpose,bridgeMicrophonePermissionCallback,NULL);} int bridgeStartMicrophone(int source){return bridgePlaydate->sound->setMicCallback(bridgeMicrophoneSamplesCallback,NULL,(enum MicSource)source);} void bridgeStopMicrophone(void){bridgePlaydate->sound->setMicCallback(NULL,NULL,kMicInputAutodetect);}
 `, filepath.ToSlash(apiHeader))
 }

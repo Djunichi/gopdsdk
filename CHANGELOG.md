@@ -39,6 +39,11 @@ that out.
   arpeggiator uses the major-chord offsets `0, 4, 7, 12`.
 - A bounded device-native audio completion FIFO that defers sample, fade, and
   other audio-thread delivery to the next Go update frame.
+- Optional `Microphones` permission and recording APIs with a separate
+  microphone error domain, explicit input-source selection, owned recorder
+  lifetime, callback-scoped samples, and bounded caller-buffer copying.
+- Simulator/device microphone ABI forwarding and `examples/microphone`, which
+  displays permission, recording state, live peak level, and delivered blocks.
 
 ### Fixed
 
@@ -81,6 +86,11 @@ that out.
   uses 278,900 bytes of static RAM and produces a 168,558-byte PDX; USB install
   through COM3 and launch succeeded. Extended soak, memory-growth measurement,
   lifecycle stress, and post-run crashlog inspection remain pending.
+- P5.5 unit tests and the official Windows Simulator integration build pass. On
+  2026-08-03 Simulator permission grant, changing live microphone peak/block
+  counters, and recorder stop/start passed. Physical-device recording,
+  denial/revocation interaction, audible capture/playback, long-run overflow and
+  memory measurement, and macOS/Linux SDK integration remain pending.
 
 ## v0.4.0 - release candidate (2026-08-02)
 

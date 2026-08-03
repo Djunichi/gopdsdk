@@ -172,6 +172,12 @@ const LifecyclePause LifecycleEvent
 const LifecycleResume LifecycleEvent
 const LifecycleTerminate LifecycleEvent
 const LifecycleUnlock LifecycleEvent
+const MicrophonePermissionDenied MicrophonePermission
+const MicrophonePermissionGranted MicrophonePermission
+const MicrophonePermissionPending MicrophonePermission
+const MicrophoneSourceAutomatic MicrophoneSource
+const MicrophoneSourceHeadset MicrophoneSource
+const MicrophoneSourceInternal MicrophoneSource
 const PlaybackPaused PlaybackState
 const PlaybackPlaying PlaybackState
 const PlaybackStopped PlaybackState
@@ -273,10 +279,16 @@ type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
 type ListScore struct{Rank uint32; Value uint32; Player string}
 type Localization interface{Language() Language; LocalizedText(key string, language Language) (string, bool)}
 type MenuItem interface{Remove(); SetTitle(string) error; Title() string}
+type MicrophonePermission uint8
+type MicrophoneRecorder interface{Close() error; Source() MicrophoneSource; Stop() error}
+type MicrophoneSamples interface{CopyTo(destination []int16) (int, error); Len() int}
+type MicrophoneSource uint8
+type Microphones interface{RequestMicrophoneAccess(purpose string, callback func(MicrophonePermission)) (MicrophonePermission, error); StartMicrophoneRecording(source MicrophoneSource, callback func(MicrophoneSamples) bool) (MicrophoneRecorder, error)}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
 type OffscreenGraphics interface{DrawInto(bitmap Bitmap, callback func() error) error}
 type OptionsMenuItem interface{SetValue(int) error; Value() int; MenuItem}
 type Overdrive interface{SetGain(float32) error; SetLimit(float32) error; SetLimitModulator(Signal) error; SetOffset(float32) error; SetOffsetModulator(Signal) error; AudioEffect}
+type PCMPlayers interface{NewPCMPlayer(samples []int16, sampleRate uint32) (SamplePlayer, error)}
 type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
@@ -358,6 +370,13 @@ var ErrMenuItemCreate error
 var ErrMenuOptions error
 var ErrMenuTitle error
 var ErrMenuValue error
+var ErrMicrophoneCallback error
+var ErrMicrophoneClosed error
+var ErrMicrophoneDenied error
+var ErrMicrophoneSamplesExpired error
+var ErrMicrophoneSource error
+var ErrMicrophoneStart error
+var ErrMicrophoneUnavailable error
 var ErrOffscreenCallback error
 var ErrScoreboardBoardID error
 var ErrScoreboardBusy error

@@ -144,6 +144,37 @@ func TestBothDeviceBootstrapsContainFramebufferAndOffscreenBridges(t *testing.T)
 	}
 }
 
+func TestDeviceMicrophoneDefersAudioThreadDeliveryToUpdate(t *testing.T) {
+	goSource := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"bridgePollMicrophonePermission", "bridgePollMicrophoneSamples", "microphonePollBuffer"} {
+		if !strings.Contains(goSource, want) {
+			t.Errorf("device Go source does not contain %q", want)
+		}
+	}
+	for _, want := range []string{"bridgeMicrophoneBuffer[2048]", "bridgePollMicrophoneSamples", "bridgeMicrophoneWrite"} {
+		if !strings.Contains(bootstrapSource, want) {
+			t.Errorf("device bootstrap does not contain %q", want)
+		}
+	}
+	if strings.Contains(bootstrapSource, "return goMicrophoneSamples") {
+		t.Fatal("device audio thread must not enter Go directly")
+	}
+}
+
+func TestDevicePCMSampleCopiesCallerDataIntoNativeOwnership(t *testing.T) {
+	goSource := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"sdkPlaydate.PCMPlayers", "bridgeNewPCMPlayer(&samples[0]"} {
+		if !strings.Contains(goSource, want) {
+			t.Errorf("device Go source does not contain %q", want)
+		}
+	}
+	for _, want := range []string{"newSampleFromData", "memcpy(copy,samples", "kSound16bitMono"} {
+		if !strings.Contains(bootstrapSource, want) {
+			t.Errorf("device bootstrap does not contain %q", want)
+		}
+	}
+}
+
 func TestBootstrapReservesBoundedAlignedHeap(t *testing.T) {
 	for _, want := range []string{"section(\".bss.playdate_runtime_heap\")", "aligned(16)", "playdateRuntimeHeap[256 * 1024]"} {
 		if !strings.Contains(conservativeBootstrapSource, want) {

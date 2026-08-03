@@ -45,6 +45,12 @@ type SamplePlayers interface {
 	LoadSamplePlayer(path string) (SamplePlayer, error)
 }
 
+// PCMPlayers copies caller-owned mono signed 16-bit PCM into a native-owned
+// sample player. The input slice is not retained after the call returns.
+type PCMPlayers interface {
+	NewPCMPlayer(samples []int16, sampleRate uint32) (SamplePlayer, error)
+}
+
 // VariableRatePlayer changes and reports a player's playback rate. FilePlayer
 // values may capability-assert this optional interface, but only positive rates
 // are supported for streaming playback.
@@ -70,6 +76,45 @@ type FadingPlayer interface {
 // should capability-assert this optional interface from Context.
 type AudioClock interface {
 	CurrentAudioTime() (uint32, error)
+}
+
+// MicrophonePermission is the observable result of a microphone access request.
+type MicrophonePermission uint8
+
+const (
+	MicrophonePermissionPending MicrophonePermission = iota
+	MicrophonePermissionDenied
+	MicrophonePermissionGranted
+)
+
+// MicrophoneSource selects the physical recording input.
+type MicrophoneSource uint8
+
+const (
+	MicrophoneSourceAutomatic MicrophoneSource = iota
+	MicrophoneSourceInternal
+	MicrophoneSourceHeadset
+)
+
+// MicrophoneSamples is valid only for the duration of its recording callback.
+// CopyTo copies at most len(destination) mono PCM samples and never retains it.
+type MicrophoneSamples interface {
+	Len() int
+	CopyTo(destination []int16) (int, error)
+}
+
+// MicrophoneRecorder owns the currently installed native recording callback.
+type MicrophoneRecorder interface {
+	Source() MicrophoneSource
+	Stop() error
+	Close() error
+}
+
+// Microphones provides permission-gated microphone recording. Starting a new
+// recorder stops and closes the previous recorder owned by this capability.
+type Microphones interface {
+	RequestMicrophoneAccess(purpose string, callback func(MicrophonePermission)) (MicrophonePermission, error)
+	StartMicrophoneRecording(source MicrophoneSource, callback func(MicrophoneSamples) bool) (MicrophoneRecorder, error)
 }
 
 // AudioChannel owns one native routing node and its source attachments. Closing
