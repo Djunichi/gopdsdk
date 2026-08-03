@@ -77,6 +77,7 @@ func (*signal) SetPhase(float32) error            { return nil }
 func (*signal) SetCenter(float32) error           { return nil }
 func (*signal) SetDepth(float32) error            { return nil }
 func (*signal) SetRetrigger(bool) error           { return nil }
+func (*signal) SetArpeggiation([]float32) error   { return nil }
 func (*signal) SetAttack(float32) error           { return nil }
 func (*signal) SetDecay(float32) error            { return nil }
 func (*signal) SetSustain(float32) error          { return nil }
@@ -87,16 +88,23 @@ func (*signal) RemoveEvent(int) error             { return nil }
 func (*signal) ClearEvents() error                { return nil }
 
 type channel struct {
-	source playdate.AudioSource
-	closed bool
+	source        playdate.AudioSource
+	closed        bool
+	adds, removes int
 }
 
-func (c *channel) AddSource(s playdate.AudioSource) error  { c.source = s; return nil }
-func (c *channel) RemoveSource(playdate.AudioSource) error { c.source = nil; return nil }
-func (*channel) SetVolume(float32) error                   { return nil }
-func (*channel) Volume() (float32, error)                  { return 1, nil }
-func (*channel) SetPan(float32) error                      { return nil }
-func (c *channel) Close() error                            { c.closed = true; return nil }
+func (c *channel) AddSource(s playdate.AudioSource) error { c.source = s; c.adds++; return nil }
+func (c *channel) RemoveSource(playdate.AudioSource) error {
+	c.source = nil
+	c.removes++
+	return nil
+}
+func (*channel) AddEffect(playdate.AudioEffect) error    { return nil }
+func (*channel) RemoveEffect(playdate.AudioEffect) error { return nil }
+func (*channel) SetVolume(float32) error                 { return nil }
+func (*channel) Volume() (float32, error)                { return 1, nil }
+func (*channel) SetPan(float32) error                    { return nil }
+func (c *channel) Close() error                          { c.closed = true; return nil }
 
 type context struct {
 	effect   *player
@@ -171,15 +179,17 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		c.input.Pressed = playdate.ButtonB
+		c.input.Buttons = playdate.ButtonB
+		c.input.Pressed = playdate.ButtonUp
 		if _, err := g.Update(c); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.input.Buttons = 0
 	if c.effect.plays != 2 {
 		t.Fatalf("effect plays = %d", c.effect.plays)
 	}
-	if c.effect.repeat != 3 || c.effect.rate != 1 {
+	if c.effect.repeat != 1 || c.effect.rate != 1 {
 		t.Fatalf("sample repeat/rate = %d/%v", c.effect.repeat, c.effect.rate)
 	}
 	c.input.Pressed = playdate.ButtonA
@@ -189,6 +199,7 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	if c.synth.plays != 1 {
 		t.Fatalf("synth plays = %d", c.synth.plays)
 	}
+	c.input.Buttons = playdate.ButtonA | playdate.ButtonB
 	c.input.Pressed = playdate.ButtonRight
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
@@ -196,11 +207,15 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	if g.waveform != playdate.WaveformSine {
 		t.Fatalf("waveform = %v", g.waveform)
 	}
-	c.input.Pressed = playdate.ButtonA | playdate.ButtonB
+	c.input.Buttons = 0
+	c.input.Pressed = playdate.ButtonB
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
 	}
-	c.input.Pressed = playdate.ButtonA | playdate.ButtonB
+	if c.channel.removes != 0 || c.channel.source != c.music {
+		t.Fatalf("music refresh removes = %d, source = %T", c.channel.removes, c.channel.source)
+	}
+	c.input.Pressed = playdate.ButtonB
 	if _, err := g.Update(c); err != nil {
 		t.Fatal(err)
 	}
@@ -211,6 +226,15 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	c.effect.finish()
 	if g.fadeFinished != 1 || g.sampleFinished != 1 || g.audioTime != 44100 {
 		t.Fatalf("callbacks/time = %d/%d/%d", g.fadeFinished, g.sampleFinished, g.audioTime)
+	}
+	for range 2 {
+		c.input.Pressed = playdate.ButtonB
+		if _, err := g.Update(c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if c.music.state != playdate.PlaybackPlaying || c.channel.source != c.music {
+		t.Fatalf("music restart state/source = %v/%T", c.music.state, c.channel.source)
 	}
 	if err := g.HandleLifecycle(c, playdate.LifecyclePause); err != nil {
 		t.Fatal(err)

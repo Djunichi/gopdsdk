@@ -162,8 +162,15 @@ After close, operations return `ErrAudioClosed`; invalid volume returns
 `ErrAudioVolume`, playback rejection returns `ErrAudioPlay`, and load failures
 return `AudioLoadError`.
 
-This vertical API intentionally excludes synthesis, microphone input, and the
-rest of the Playdate sound binding.
+Advanced games may separately capability-assert `AudioChannels`,
+`Synthesizers`, `Sequencers`, and `AudioEffects`; these optional slices do not
+widen the base `Context`. Microphone input remains outside the public contract.
+
+`LFO.SetArpeggiation` requires at least one finite half-step offset and configures
+the native arpeggiator sequence; an empty or non-finite step list returns
+`ErrAudioParameter`. Audio completion callbacks are retained by ID and delivered
+on an update frame. On device, native audio callbacks first enter a bounded FIFO
+instead of re-entering Go from the audio thread.
 
 ## Fonts and deterministic UI
 

@@ -716,6 +716,37 @@ installation through COM3 and launch succeeded. macOS/Linux SDK integration,
 extended soak, memory-growth measurement, lifecycle stress, and post-run
 crashlog inspection remain unverified.
 
+## P5.4 instruments, sequences, and effects
+
+Games can capability-assert `Sequencers` and `AudioEffects`. Instruments retain
+voice-range attachments without taking ownership of synths; tracks likewise do
+not own instruments, and sequence slots do not own tracks. Tracks support note
+and MIDI-controller events, while sequences support MIDI loading, tempo, loops,
+time, dynamic track construction, and bounded one-shot completion callbacks.
+
+Channels accept owned two-pole filters, bit crushers, ring modulators, delay
+lines, and overdrive processors. Effect mix and parameter modulators are
+explicit. Closing either endpoint detaches its graph edges before releasing the
+native handle.
+
+`examples/audio` creates a dynamic four-note sequence and routes its instrument,
+sample player, streaming file player, and synth through one channel containing
+all five effect types. B starts or fades music, B+Up plays the completion sample,
+B+Left/Right selects the active effect, A+Up/Down starts or stops the sequence,
+Up/Down selects modulation, A+Left/Right selects the LFO, and A+B+Left/Right
+selects the synth waveform. Arpeggiator LFOs use the explicit `SetArpeggiation`
+steps `0, 4, 7, 12` and select frequency modulation.
+
+Unit tests and the official Windows Simulator and conservative hard-float device
+builds pass. On 2026-08-03 the full sequence, completion-counter, routing,
+effect, synth-waveform, and modulation matrix passed audible interaction in the
+Windows Simulator and on a physical Playdate after USB installation through
+COM3. The accepted device artifact uses 278,900 bytes of static RAM and produces
+a 168,558-byte PDX. Device audio-thread completions enter a bounded native FIFO
+and are delivered to Go on the next update frame. Extended soak, memory-growth
+measurement, lifecycle stress, post-run crashlog inspection, and macOS/Linux SDK
+integration remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:

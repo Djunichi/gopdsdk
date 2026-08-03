@@ -78,10 +78,92 @@ type AudioClock interface {
 type AudioChannel interface {
 	AddSource(source AudioSource) error
 	RemoveSource(source AudioSource) error
+	AddEffect(effect AudioEffect) error
+	RemoveEffect(effect AudioEffect) error
 	SetVolume(volume float32) error
 	Volume() (float32, error)
 	SetPan(pan float32) error
 	Close() error
+}
+
+// AudioEffect is an explicitly owned channel processor. Attaching an effect
+// never transfers ownership; closing either endpoint detaches the graph edge.
+type AudioEffect interface {
+	SetMix(level float32) error
+	SetMixModulator(signal Signal) error
+	Close() error
+}
+
+// FilterType selects the response of a two-pole filter.
+type FilterType uint8
+
+const (
+	FilterLowPass FilterType = iota
+	FilterHighPass
+	FilterBandPass
+	FilterNotch
+	FilterPEQ
+	FilterLowShelf
+	FilterHighShelf
+)
+
+type TwoPoleFilter interface {
+	AudioEffect
+	SetFrequency(float32) error
+	SetFrequencyModulator(Signal) error
+	SetGain(float32) error
+	SetResonance(float32) error
+	SetResonanceModulator(Signal) error
+}
+
+type BitCrusher interface {
+	AudioEffect
+	SetExponential(bool) error
+	SetDepth(float32) error
+	SetDepthModulator(Signal) error
+	SetDownsampling(float32) error
+	SetDownsamplingModulator(Signal) error
+}
+
+type RingModulator interface {
+	AudioEffect
+	SetFrequency(float32) error
+	SetFrequencyModulator(Signal) error
+}
+
+type Overdrive interface {
+	AudioEffect
+	SetGain(float32) error
+	SetLimit(float32) error
+	SetLimitModulator(Signal) error
+	SetOffset(float32) error
+	SetOffsetModulator(Signal) error
+}
+
+// DelayLine is an owned effect whose taps are independently owned sources.
+// Close detaches and closes all taps before freeing the delay.
+type DelayLine interface {
+	AudioEffect
+	SetLength(frames int) error
+	SetFeedback(float32) error
+	AddTap(delayFrames int) (DelayTap, error)
+}
+
+type DelayTap interface {
+	AudioSource
+	SetDelay(frames int) error
+	SetDelayModulator(Signal) error
+	SetChannelsFlipped(bool) error
+	Close() error
+}
+
+// AudioEffects creates owned native processors.
+type AudioEffects interface {
+	NewTwoPoleFilter(FilterType) (TwoPoleFilter, error)
+	NewBitCrusher() (BitCrusher, error)
+	NewRingModulator() (RingModulator, error)
+	NewDelayLine(lengthFrames int, stereo bool) (DelayLine, error)
+	NewOverdrive() (Overdrive, error)
 }
 
 // AudioChannels creates explicitly owned audio routing channels. Games should
@@ -135,6 +217,7 @@ type LFO interface {
 	SetCenter(center float32) error
 	SetDepth(depth float32) error
 	SetRetrigger(retrigger bool) error
+	SetArpeggiation(steps []float32) error
 }
 
 // Envelope is an ADSR modulation signal whose times are measured in seconds.
@@ -178,6 +261,60 @@ type Synthesizers interface {
 	NewLFO(lfoType LFOType) (LFO, error)
 	NewEnvelope(attack, decay, sustain, release float32) (Envelope, error)
 	NewControlSignal() (ControlSignal, error)
+}
+
+// Instrument owns a native voice bank but not the Synth values assigned to it.
+type Instrument interface {
+	AudioSource
+	AddVoice(synth Synth, rangeStart, rangeEnd uint8, transpose float32) error
+	SetPitchBend(float32) error
+	SetPitchBendRange(float32) error
+	SetTranspose(float32) error
+	NoteOff(note uint8, when uint32) error
+	AllNotesOff(when uint32) error
+	SetVolume(left, right float32) error
+	Volume() (left, right float32, err error)
+	ActiveVoiceCount() (int, error)
+	Close() error
+}
+
+// SequenceTrack owns note and control events. Its instrument attachment does
+// not transfer ownership and is detached when either value closes.
+type SequenceTrack interface {
+	SetInstrument(Instrument) error
+	AddNote(step, length uint32, note uint8, velocity float32) error
+	RemoveNote(step uint32, note uint8) error
+	ClearNotes() error
+	AddControlEvent(controller, step int, value float32, interpolate bool) error
+	RemoveControlEvent(controller, step int) error
+	ClearControlEvents() error
+	SetMuted(bool) error
+	Length() (uint32, error)
+	Close() error
+}
+
+// Sequence owns playback state and MIDI-loaded children, but not tracks
+// attached programmatically. LoadMIDI must precede programmatic SetTrack calls.
+type Sequence interface {
+	LoadMIDI(path string) error
+	SetTempo(stepsPerSecond float32) error
+	Tempo() (float32, error)
+	SetLoops(start, end, count int) error
+	SetTrack(index uint, track SequenceTrack) error
+	Play(callback func()) error
+	Stop() error
+	IsPlaying() (bool, error)
+	Time() (uint32, error)
+	SetTime(uint32) error
+	Length() (uint32, error)
+	Close() error
+}
+
+// Sequencers creates explicitly owned dynamic-music graph nodes.
+type Sequencers interface {
+	NewInstrument() (Instrument, error)
+	NewSequenceTrack() (SequenceTrack, error)
+	NewSequence() (Sequence, error)
 }
 
 // FilePlayer is an explicitly owned streaming audio player for one file.

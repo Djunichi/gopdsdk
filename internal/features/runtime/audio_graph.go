@@ -12,12 +12,13 @@ type SignalDriver struct {
 
 // LFODriver contains native operations specific to a low-frequency oscillator.
 type LFODriver struct {
-	Signal       SignalDriver
-	SetRate      func(uintptr, float32)
-	SetPhase     func(uintptr, float32)
-	SetCenter    func(uintptr, float32)
-	SetDepth     func(uintptr, float32)
-	SetRetrigger func(uintptr, bool)
+	Signal          SignalDriver
+	SetRate         func(uintptr, float32)
+	SetPhase        func(uintptr, float32)
+	SetCenter       func(uintptr, float32)
+	SetDepth        func(uintptr, float32)
+	SetRetrigger    func(uintptr, bool)
+	SetArpeggiation func(uintptr, []float32)
 }
 
 // EnvelopeDriver contains native operations specific to an ADSR envelope.
@@ -40,10 +41,12 @@ type ControlSignalDriver struct {
 }
 
 type signalNode struct {
-	handle uintptr
-	driver SignalDriver
-	synths map[*synth]uint8
-	closed bool
+	handle    uintptr
+	driver    SignalDriver
+	synths    map[*synth]uint8
+	effects   map[*effectNode]uint8
+	delayTaps map[*delayTap]struct{}
+	closed    bool
 }
 
 type lfo struct {
@@ -62,7 +65,7 @@ type controlSignal struct {
 }
 
 func newSignalNode(handle uintptr, driver SignalDriver) *signalNode {
-	return &signalNode{handle: handle, driver: driver, synths: make(map[*synth]uint8)}
+	return &signalNode{handle: handle, driver: driver, synths: make(map[*synth]uint8), effects: make(map[*effectNode]uint8), delayTaps: make(map[*delayTap]struct{})}
 }
 
 // NewLFO wraps an owned native low-frequency oscillator.
@@ -135,7 +138,18 @@ func (s *signalNode) Close() error {
 			synth.amplitude = nil
 		}
 	}
+	for effect, slots := range s.effects {
+		effect.detachSignal(s, slots)
+	}
+	for tap := range s.delayTaps {
+		if !tap.closed {
+			tap.driver.SetTapDelayModulator(tap.handle, 0)
+			tap.signal = nil
+		}
+	}
 	s.synths = nil
+	s.effects = nil
+	s.delayTaps = nil
 	s.driver.Free(handle)
 	s.handle = 0
 	s.closed = true
@@ -192,6 +206,22 @@ func (l *lfo) SetRetrigger(value bool) error {
 		return err
 	}
 	l.driver.SetRetrigger(h, value)
+	return nil
+}
+func (l *lfo) SetArpeggiation(steps []float32) error {
+	if len(steps) == 0 {
+		return playdate.ErrAudioParameter
+	}
+	for _, step := range steps {
+		if !finite(step) {
+			return playdate.ErrAudioParameter
+		}
+	}
+	h, err := l.nativeHandle()
+	if err != nil {
+		return err
+	}
+	l.driver.SetArpeggiation(h, steps)
 	return nil
 }
 
@@ -318,9 +348,10 @@ type SynthDriver struct {
 
 type synth struct {
 	*audioPlayer
-	driver    SynthDriver
-	frequency *signalNode
-	amplitude *signalNode
+	driver      SynthDriver
+	frequency   *signalNode
+	amplitude   *signalNode
+	instruments map[*instrument]struct{}
 }
 
 // NewSynth wraps an owned native waveform synthesizer.
@@ -450,6 +481,9 @@ func (s *synth) Close() error {
 	handle, err := s.nativeHandle()
 	if err != nil {
 		return err
+	}
+	if len(s.instruments) != 0 {
+		return playdate.ErrAudioRoute
 	}
 	if s.frequency != nil {
 		delete(s.frequency.synths, s)

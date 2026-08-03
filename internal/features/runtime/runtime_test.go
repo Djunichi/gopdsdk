@@ -266,6 +266,7 @@ func TestAudioCompletionAndFadeCallbacks(t *testing.T) {
 	}
 	InvokeAudioCallback(finishID, false)
 	InvokeAudioCallback(finishID, false)
+	DrainAudioCallbacks()
 	if completed != 2 {
 		t.Fatalf("completed = %d", completed)
 	}
@@ -275,6 +276,7 @@ func TestAudioCompletionAndFadeCallbacks(t *testing.T) {
 	}
 	InvokeAudioCallback(oldFinishID, false)
 	InvokeAudioCallback(finishID, false)
+	DrainAudioCallbacks()
 	if completed != 12 {
 		t.Fatalf("completed after replacement = %d", completed)
 	}
@@ -283,6 +285,7 @@ func TestAudioCompletionAndFadeCallbacks(t *testing.T) {
 	}
 	InvokeAudioCallback(fadeID, true)
 	InvokeAudioCallback(fadeID, true)
+	DrainAudioCallbacks()
 	if faded != 1 {
 		t.Fatalf("faded = %d", faded)
 	}
@@ -419,8 +422,8 @@ func TestAudioChannelOwnership(t *testing.T) {
 	if err := channel.AddSource(source); err != nil {
 		t.Fatal(err)
 	}
-	if err := channel.AddSource(source); err != nil || added != 1 {
-		t.Fatalf("duplicate AddSource = %v, %d", err, added)
+	if err := channel.AddSource(source); err != nil || added != 2 {
+		t.Fatalf("refresh AddSource = %v, %d", err, added)
 	}
 	if err := source.Close(); err != nil || removed != 1 {
 		t.Fatalf("source Close = %v, removed %d", err, removed)
@@ -467,13 +470,146 @@ func TestSynthSignalOwnership(t *testing.T) {
 func TestAudioChannelRoutesSynthSource(t *testing.T) {
 	synth := NewSynth(4, SynthDriver{Audio: AudioDriver{Source: func(handle uintptr) uintptr { return handle }}})
 	var routed uintptr
-	channel := NewAudioChannel(9, AudioChannelDriver{AddSource: func(_, source uintptr) bool { routed = source; return true }})
+	adds := 0
+	channel := NewAudioChannel(9, AudioChannelDriver{AddSource: func(_, source uintptr) bool { routed = source; adds++; return true }})
 	if err := channel.AddSource(synth); err != nil || routed != 4 {
 		t.Fatalf("AddSource(synth) = %v, routed %d", err, routed)
+	}
+	if err := channel.AddSource(synth); err != nil || adds != 2 {
+		t.Fatalf("AddSource(synth) refresh = %v, calls %d", err, adds)
+	}
+}
+
+func TestAudioChannelMovesSourceFromPreviousChannel(t *testing.T) {
+	synth := NewSynth(4, SynthDriver{Audio: AudioDriver{Source: func(handle uintptr) uintptr { return handle }}})
+	var removedFrom, addedTo uintptr
+	driver := AudioChannelDriver{
+		AddSource:    func(channel, _ uintptr) bool { addedTo = channel; return true },
+		RemoveSource: func(channel, _ uintptr) bool { removedFrom = channel; return true },
+	}
+	first := NewAudioChannel(8, driver)
+	second := NewAudioChannel(9, driver)
+	if err := first.AddSource(synth); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.AddSource(synth); err != nil {
+		t.Fatal(err)
+	}
+	if removedFrom != 8 || addedTo != 9 {
+		t.Fatalf("move route removed from %d, added to %d", removedFrom, addedTo)
+	}
+	if err := first.RemoveSource(synth); err != nil || removedFrom != 8 {
+		t.Fatalf("stale first route = %v, removed from %d", err, removedFrom)
+	}
+	if err := second.RemoveSource(synth); err != nil || removedFrom != 9 {
+		t.Fatalf("active second route = %v, removed from %d", err, removedFrom)
 	}
 }
 
 type musicContext struct{ testContext }
+
+func TestAudioEffectGraphDetachesBothDirections(t *testing.T) {
+	var added, removed uintptr
+	channel := NewAudioChannel(9, AudioChannelDriver{
+		AddEffect:    func(_, effect uintptr) bool { added = effect; return true },
+		RemoveEffect: func(_, effect uintptr) bool { removed = effect; return true },
+		Remove:       func(uintptr) bool { return true }, Free: func(uintptr) {},
+	})
+	var modulator uintptr
+	freed := 0
+	effect := NewRingModulator(7, RingModulatorDriver{
+		Effect:       EffectDriver{SetMix: func(uintptr, float32) {}, SetMixModulator: func(uintptr, uintptr) {}, Free: func(uintptr) { freed++ }},
+		SetFrequency: func(uintptr, float32) {}, SetFrequencyModulator: func(_, signal uintptr) { modulator = signal },
+	})
+	signal := NewLFO(3, LFODriver{Signal: SignalDriver{Value: func(uintptr) float32 { return 0 }, SetScale: func(uintptr, float32) {}, SetOffset: func(uintptr, float32) {}, Free: func(uintptr) {}}})
+	if err := channel.AddEffect(effect); err != nil || added != 7 {
+		t.Fatalf("AddEffect = %v, %d", err, added)
+	}
+	if err := effect.SetFrequencyModulator(signal); err != nil || modulator != 3 {
+		t.Fatalf("SetFrequencyModulator = %v, %d", err, modulator)
+	}
+	if err := signal.Close(); err != nil || modulator != 0 {
+		t.Fatalf("signal Close = %v, modulator %d", err, modulator)
+	}
+	if err := effect.Close(); err != nil || removed != 7 || freed != 1 {
+		t.Fatalf("effect Close = %v, removed %d, freed %d", err, removed, freed)
+	}
+}
+
+func TestAudioChannelRoutesDelayTap(t *testing.T) {
+	var routed uintptr
+	channel := NewAudioChannel(9, AudioChannelDriver{AddSource: func(_, source uintptr) bool { routed = source; return true }})
+	delay := NewDelayLine(7, DelayLineDriver{AddTap: func(uintptr, int) uintptr { return 5 }, Tap: AudioDriver{Source: func(h uintptr) uintptr { return h }}})
+	tap, err := delay.AddTap(100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = channel.AddSource(tap); err != nil || routed != 5 {
+		t.Fatalf("AddSource(delay tap) = %v, routed %d", err, routed)
+	}
+}
+
+func TestSequenceOwnershipAndCallbackLifetime(t *testing.T) {
+	var trackInstrument, routedTrack uintptr
+	var callback uint32
+	trackCount := uint(0)
+	freed := [3]int{}
+	synth := NewSynth(1, SynthDriver{Audio: AudioDriver{Source: func(h uintptr) uintptr { return h }, Stop: func(uintptr) {}, Free: func(uintptr) { freed[0]++ }}}).(*synth)
+	instrument := NewInstrument(2, InstrumentDriver{AddVoice: func(_, _ uintptr, _, _ uint8, _ float32) bool { return true }, Free: func(uintptr) { freed[1]++ }}).(*instrument)
+	track := NewSequenceTrack(3, TrackDriver{SetInstrument: func(_, value uintptr) { trackInstrument = value }, Free: func(uintptr) { freed[2]++ }}).(*sequenceTrack)
+	sequence := NewSequence(4, SequenceDriver{TrackCount: func(uintptr) uint { return trackCount }, AddTrack: func(uintptr) uintptr { trackCount++; return 99 }, SetTrack: func(_ uintptr, _ uint, value uintptr) { routedTrack = value }, Play: func(_ uintptr, value uint32) { callback = value }, Stop: func(uintptr) {}, Free: func(uintptr) {}}).(*sequence)
+	if err := instrument.AddVoice(synth, 0, 127, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := instrument.AddVoice(synth, 0, 127, 0); !errors.Is(err, playdate.ErrAudioRoute) {
+		t.Fatalf("duplicate instrument voice = %v", err)
+	}
+	if err := NewAudioChannel(8, AudioChannelDriver{}).AddSource(synth); !errors.Is(err, playdate.ErrAudioRoute) {
+		t.Fatalf("instrument synth channel route = %v", err)
+	}
+	if err := synth.Close(); !errors.Is(err, playdate.ErrAudioRoute) {
+		t.Fatalf("attached synth Close = %v", err)
+	}
+	if err := track.SetInstrument(instrument); err != nil || trackInstrument != 2 {
+		t.Fatalf("SetInstrument = %v, %d", err, trackInstrument)
+	}
+	if err := sequence.SetTrack(0, track); err != nil || routedTrack != 3 {
+		t.Fatalf("SetTrack = %v, %d", err, routedTrack)
+	}
+	if trackCount != 1 {
+		t.Fatalf("native track slots = %d", trackCount)
+	}
+	called := 0
+	if err := sequence.Play(func() { called++ }); err != nil || callback == 0 {
+		t.Fatalf("Play = %v, callback %d", err, callback)
+	}
+	InvokeAudioCallback(callback, true)
+	DrainAudioCallbacks()
+	if called != 1 {
+		t.Fatalf("completion calls = %d", called)
+	}
+	if err := instrument.Close(); err != nil || trackInstrument != 0 {
+		t.Fatalf("instrument Close = %v, track instrument %d", err, trackInstrument)
+	}
+	if err := synth.Close(); err != nil || freed[0] != 1 {
+		t.Fatalf("detached synth Close = %v, frees %d", err, freed[0])
+	}
+	if err := track.Close(); err != nil || routedTrack != 0 || freed[2] != 1 {
+		t.Fatalf("track Close = %v, sequence track %d, frees %d", err, routedTrack, freed[2])
+	}
+}
+
+func TestInstrumentRejectsChannelRoutedSynth(t *testing.T) {
+	synth := NewSynth(1, SynthDriver{Audio: AudioDriver{Source: func(h uintptr) uintptr { return h }}})
+	channel := NewAudioChannel(2, AudioChannelDriver{AddSource: func(uintptr, uintptr) bool { return true }})
+	if err := channel.AddSource(synth); err != nil {
+		t.Fatal(err)
+	}
+	instrument := NewInstrument(3, InstrumentDriver{AddVoice: func(uintptr, uintptr, uint8, uint8, float32) bool { t.Fatal("native addVoice called"); return true }})
+	if err := instrument.AddVoice(synth, 0, 127, 0); !errors.Is(err, playdate.ErrAudioRoute) {
+		t.Fatalf("AddVoice routed synth = %v", err)
+	}
+}
 
 func (musicContext) NewAudioChannel() (playdate.AudioChannel, error) {
 	return NewAudioChannel(1, AudioChannelDriver{}), nil
@@ -490,6 +626,16 @@ func (musicContext) NewEnvelope(float32, float32, float32, float32) (playdate.En
 func (musicContext) NewControlSignal() (playdate.ControlSignal, error) {
 	return NewControlSignal(1, ControlSignalDriver{}), nil
 }
+func (musicContext) NewInstrument() (playdate.Instrument, error)       { return nil, nil }
+func (musicContext) NewSequenceTrack() (playdate.SequenceTrack, error) { return nil, nil }
+func (musicContext) NewSequence() (playdate.Sequence, error)           { return nil, nil }
+func (musicContext) NewTwoPoleFilter(playdate.FilterType) (playdate.TwoPoleFilter, error) {
+	return nil, nil
+}
+func (musicContext) NewBitCrusher() (playdate.BitCrusher, error)        { return nil, nil }
+func (musicContext) NewRingModulator() (playdate.RingModulator, error)  { return nil, nil }
+func (musicContext) NewDelayLine(int, bool) (playdate.DelayLine, error) { return nil, nil }
+func (musicContext) NewOverdrive() (playdate.Overdrive, error)          { return nil, nil }
 
 func TestApplicationForwardsMusicGraph(t *testing.T) {
 	application, err := NewApplication(testGame{init: func(context playdate.Context) error {
@@ -498,6 +644,20 @@ func TestApplicationForwardsMusicGraph(t *testing.T) {
 		}
 		if _, ok := context.(playdate.Synthesizers); !ok {
 			return errors.New("synthesizers not forwarded")
+		}
+		sequencers, ok := context.(playdate.Sequencers)
+		if !ok {
+			return errors.New("sequencers not forwarded")
+		}
+		if _, err := sequencers.NewSequence(); err != nil {
+			return err
+		}
+		effects, ok := context.(playdate.AudioEffects)
+		if !ok {
+			return errors.New("audio effects not forwarded")
+		}
+		if _, err := effects.NewOverdrive(); err != nil {
+			return err
 		}
 		return nil
 	}}, musicContext{}, nil)
