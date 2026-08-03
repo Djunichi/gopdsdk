@@ -407,6 +407,108 @@ func TestApplicationForwardsSamplePlayers(t *testing.T) {
 	}
 }
 
+func TestAudioChannelOwnership(t *testing.T) {
+	var added, removed, freed int
+	source := NewSamplePlayer(7, AudioDriver{Source: func(uintptr) uintptr { return 70 }, Stop: func(uintptr) {}, Free: func(uintptr) {}})
+	channel := NewAudioChannel(9, AudioChannelDriver{
+		AddSource:    func(channel, source uintptr) bool { added++; return channel == 9 && source == 70 },
+		RemoveSource: func(channel, source uintptr) bool { removed++; return channel == 9 && source == 70 },
+		SetVolume:    func(uintptr, float32) {}, Volume: func(uintptr) float32 { return .5 }, SetPan: func(uintptr, float32) {},
+		Remove: func(uintptr) bool { return true }, Free: func(uintptr) { freed++ },
+	})
+	if err := channel.AddSource(source); err != nil {
+		t.Fatal(err)
+	}
+	if err := channel.AddSource(source); err != nil || added != 1 {
+		t.Fatalf("duplicate AddSource = %v, %d", err, added)
+	}
+	if err := source.Close(); err != nil || removed != 1 {
+		t.Fatalf("source Close = %v, removed %d", err, removed)
+	}
+	if err := channel.Close(); err != nil || freed != 1 {
+		t.Fatalf("channel Close = %v, freed %d", err, freed)
+	}
+	if err := channel.SetPan(0); !errors.Is(err, playdate.ErrAudioChannelClosed) {
+		t.Fatalf("closed SetPan = %v", err)
+	}
+}
+
+func TestSynthSignalOwnership(t *testing.T) {
+	var frequency, amplitude uintptr
+	var signalFreed, synthFreed int
+	signalDriver := SignalDriver{Value: func(uintptr) float32 { return .25 }, SetScale: func(uintptr, float32) {}, SetOffset: func(uintptr, float32) {}, Free: func(uintptr) { signalFreed++ }}
+	lfo := NewLFO(3, LFODriver{Signal: signalDriver, SetRate: func(uintptr, float32) {}, SetPhase: func(uintptr, float32) {}, SetCenter: func(uintptr, float32) {}, SetDepth: func(uintptr, float32) {}, SetRetrigger: func(uintptr, bool) {}})
+	synth := NewSynth(4, SynthDriver{
+		Audio:       AudioDriver{Source: func(handle uintptr) uintptr { return handle }, Stop: func(uintptr) {}, Free: func(uintptr) { synthFreed++ }},
+		SetWaveform: func(uintptr, playdate.Waveform) {}, SetEnvelope: func(uintptr, float32, float32, float32, float32) {}, SetTranspose: func(uintptr, float32) {},
+		SetFrequencyModulator: func(_ uintptr, signal uintptr) { frequency = signal }, SetAmplitudeModulator: func(_ uintptr, signal uintptr) { amplitude = signal },
+		PlayMIDINote: func(uintptr, float32, float32, float32, uint32) {}, NoteOff: func(uintptr, uint32) {},
+	})
+	if err := synth.SetFrequencyModulator(lfo); err != nil || frequency != 3 {
+		t.Fatalf("SetFrequencyModulator = %v, %d", err, frequency)
+	}
+	if err := synth.SetAmplitudeModulator(lfo); err != nil || amplitude != 3 {
+		t.Fatalf("SetAmplitudeModulator = %v, %d", err, amplitude)
+	}
+	if err := lfo.Close(); err != nil || frequency != 0 || amplitude != 0 || signalFreed != 1 {
+		t.Fatalf("LFO Close = %v, %d, %d, %d", err, frequency, amplitude, signalFreed)
+	}
+	if err := synth.PlayMIDINote(60, 1, .5, 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := synth.PlayMIDINote(60, 2, .5, 100); !errors.Is(err, playdate.ErrAudioParameter) {
+		t.Fatalf("velocity = %v", err)
+	}
+	if err := synth.Close(); err != nil || synthFreed != 1 {
+		t.Fatalf("Synth Close = %v, %d", err, synthFreed)
+	}
+}
+
+func TestAudioChannelRoutesSynthSource(t *testing.T) {
+	synth := NewSynth(4, SynthDriver{Audio: AudioDriver{Source: func(handle uintptr) uintptr { return handle }}})
+	var routed uintptr
+	channel := NewAudioChannel(9, AudioChannelDriver{AddSource: func(_, source uintptr) bool { routed = source; return true }})
+	if err := channel.AddSource(synth); err != nil || routed != 4 {
+		t.Fatalf("AddSource(synth) = %v, routed %d", err, routed)
+	}
+}
+
+type musicContext struct{ testContext }
+
+func (musicContext) NewAudioChannel() (playdate.AudioChannel, error) {
+	return NewAudioChannel(1, AudioChannelDriver{}), nil
+}
+func (musicContext) NewSynth(playdate.Waveform) (playdate.Synth, error) {
+	return NewSynth(1, SynthDriver{}), nil
+}
+func (musicContext) NewLFO(playdate.LFOType) (playdate.LFO, error) {
+	return NewLFO(1, LFODriver{}), nil
+}
+func (musicContext) NewEnvelope(float32, float32, float32, float32) (playdate.Envelope, error) {
+	return NewEnvelope(1, EnvelopeDriver{}), nil
+}
+func (musicContext) NewControlSignal() (playdate.ControlSignal, error) {
+	return NewControlSignal(1, ControlSignalDriver{}), nil
+}
+
+func TestApplicationForwardsMusicGraph(t *testing.T) {
+	application, err := NewApplication(testGame{init: func(context playdate.Context) error {
+		if _, ok := context.(playdate.AudioChannels); !ok {
+			return errors.New("audio channels not forwarded")
+		}
+		if _, ok := context.(playdate.Synthesizers); !ok {
+			return errors.New("synthesizers not forwarded")
+		}
+		return nil
+	}}, musicContext{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBitmapOwnershipLifecycle(t *testing.T) {
 	var freed []uintptr
 	var fills []playdate.Color

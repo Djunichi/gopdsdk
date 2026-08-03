@@ -22,12 +22,24 @@ that out.
   close-time release, and 44.1 kHz frame timing.
 - P5.2 Simulator/device ABI forwarding and acceptance-scene controls for
   play/fade/stop, completion counters, and sampled audio time.
+- Optional owned `AudioChannel`, `Synth`, `LFO`, `Envelope`, and
+  `ControlSignal` APIs with explicit routing/modulation edge lifetimes.
+- P5.3 forwarding through `NewApplication` and both native ABI contexts,
+  including channel volume/pan, waveform synth scheduling, ADSR parameters,
+  and frequency/amplitude modulation.
+- A full P5.3 acceptance matrix covering routed sample/file/synth sources, all
+  synth waveforms and LFO shapes, amplitude/frequency LFO modulation, envelope
+  and control signals, transpose, scheduled note-off, channel volume, and pan.
 
 ### Fixed
 
 - Reject reverse `FilePlayer` rates before entering the native API. The official
   streaming player supports positive rates only; reverse remains available to
   PCM `SamplePlayer` assets and is unsupported for ADPCM.
+- Treat `addChannel` and `removeChannel` as graph mutations rather than channel
+  allocation status; channel creation fails only when `newChannel` returns nil.
+- Log Simulator lifecycle/update errors and draw initialization failures instead
+  of leaving a silent gray screen.
 
 ### Compatibility
 
@@ -46,6 +58,13 @@ that out.
   Windows Simulator and on a physical Playdate on 2026-08-02; installation
   through COM3 and launch succeeded. Extended soak, memory-growth measurement,
   lifecycle stress, and post-run crashlog inspection remain pending.
+- P5.3 is unit-tested and passes official Windows Simulator and conservative
+  hard-float device builds. Its full acceptance matrix passed audible interaction
+  in Windows Simulator and on a physical Playdate on 2026-08-02. The device
+  artifact uses 273,456 bytes of static RAM and produces a 146,771-byte PDX;
+  installation through COM3 and launch succeeded. macOS/Linux SDK integration,
+  extended soak, memory-growth measurement, lifecycle stress, and post-run
+  crashlog inspection remain pending.
 
 ## v0.4.0 - release candidate (2026-08-02)
 

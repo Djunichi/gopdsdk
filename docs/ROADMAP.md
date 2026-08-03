@@ -432,17 +432,55 @@ growth, and crashlog inspection remain unverified.
   memory-growth measurement, lifecycle stress, and crashlog inspection remain
   unverified.
 
-### Later P5 slices
+### P5.3 — routing, synthesizers, and signals
 
-- Channels and routing with explicit graph ownership.
-- Synthesizers, instruments, sequences, signals, and effects only as separate
-  vertical slices with explicit graph ownership.
-- Bounded callback work and zero-allocation steady-state playback where the
-  official audio callback requires it.
-- Acceptance through dynamic music and sound scenes on Simulator and hardware.
+- Add explicitly owned channels without widening the base `Context`.
+- Route sample, file, and synth sources through owned graph edges; source and
+  channel closure must detach edges before native resources are released.
+- Support channel volume and pan and make modulator attachment explicit.
+- Add owned waveform synthesizers, envelopes, LFOs, and control signals as one
+  vertical slice, including scheduled note-on and note-off behavior.
+- Keep custom render and signal callbacks out of the public contract until their
+  bounded, zero-allocation steady-state behavior can be proven end to end.
+- Detach every retained routing and modulation edge before either endpoint is
+  released.
+- Unit tests and official Windows Simulator and conservative hard-float device
+  builds pass. On 2026-08-02 the full routing, waveform, modulation, envelope,
+  control-signal, transpose, note-off, volume, and pan matrix passed audible
+  interaction in Windows Simulator and on a physical Playdate after USB
+  installation through COM3 and launch. macOS/Linux SDK integration, extended
+  soak, memory-growth measurement, lifecycle stress, and post-run crashlog
+  inspection remain unverified.
 
-Microphone input remains optional unless a concrete game requires it and the
-permission, privacy, callback, and memory contracts can be tested end to end.
+### P5.4 — instruments, sequences, and effects
+
+- Add explicitly owned instruments, voice ranges, tracks, note and control
+  events, and sequences with documented parent/child ownership.
+- Support MIDI loading and programmatic dynamic-music construction without
+  transferring ownership implicitly between tracks, instruments, and synths.
+- Bound completion callbacks and release retained callbacks on replacement,
+  stop, and close.
+- Add typed filters, bit crushing, ring modulation, delay, and overdrive as
+  separate owned effect values attached through channel graph edges.
+- Keep effect parameters and signal modulators explicit; detach effects and
+  delay taps before freeing either side of an edge.
+- Accept the combined P5 graph through dynamic music and sound scenes in the
+  Simulator and on hardware.
+
+### P5.5 — microphone input
+
+- Add microphone input as an optional `Context` capability without widening the
+  base application contract.
+- Expose explicit permission request and denial states, input-source selection,
+  and owned start/stop recording lifetime.
+- Keep native recording callbacks bounded and allocation-free, copy samples
+  only into caller-provided bounded buffers, and never retain a game buffer
+  after its call completes.
+- Stop recording and release callbacks on lifecycle termination, permission
+  revocation, replacement, and close.
+- Test permission, privacy, callback, overflow, and memory behavior end to end;
+  accept recording audibly in the Simulator and on physical hardware without
+  claiming microphone readiness from build or discovery alone.
 
 ## P6 — advanced graphics, media, and performance
 
