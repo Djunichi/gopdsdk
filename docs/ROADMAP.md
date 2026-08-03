@@ -493,6 +493,14 @@ growth, and crashlog inspection remain unverified.
 - Test permission, privacy, callback, overflow, and memory behavior end to end;
   accept recording audibly in the Simulator and on physical hardware without
   claiming microphone readiness from build or discovery alone.
+- The optional capability, distinct microphone error domain, both native ABI
+  forwarders, bounded caller-buffer copy, replacement/close/termination cleanup,
+  and `examples/microphone` acceptance scene are implemented and unit-tested.
+  On 2026-08-03 the official Windows Simulator granted permission, delivered
+  live input blocks with changing peak levels, and passed recorder stop/start.
+  Physical-device acceptance, denial/revocation interaction, long-run overflow
+  and memory measurement, audible capture/playback, and macOS/Linux SDK
+  integration remain unverified.
 
 ## P6 — advanced graphics, media, and performance
 

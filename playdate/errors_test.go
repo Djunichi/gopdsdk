@@ -16,6 +16,7 @@ func TestSentinelErrorDomains(t *testing.T) {
 		{"animation", ErrAnimationConfig, func(err error) bool { _, ok := err.(animationError); return ok }},
 		{"sprite", ErrSpriteClosed, func(err error) bool { _, ok := err.(spriteError); return ok }},
 		{"audio", ErrAudioClosed, func(err error) bool { _, ok := err.(audioError); return ok }},
+		{"microphone", ErrMicrophoneClosed, func(err error) bool { _, ok := err.(microphoneError); return ok }},
 		{"font", ErrFontClosed, func(err error) bool { _, ok := err.(fontError); return ok }},
 	}
 	for _, test := range tests {

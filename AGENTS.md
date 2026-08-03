@@ -1,10 +1,9 @@
 # Repository contract
 
-Build `gopdsdk`, an independent cross-platform Go SDK for Playdate. Official
-Playdate SDK headers, documentation, examples, and observable tool behavior are
-normative. pdgo is behavioral reference only: never copy or mechanically
-translate its code, structure, comments, tests, generated files, scripts,
-patches, or linker files.
+Build `gopdsdk`, an independent cross-platform Go SDK for Playdate. Official SDK
+headers, docs, examples, and observable tools are normative. pdgo is behavioral
+reference only: never copy or mechanically translate its code, structure,
+comments, tests, generated files, scripts, patches, or linker files.
 
 Use `$implement` for code changes and `$review` for reviews. Keep changes scoped,
 preserve unrelated user edits, and do not commit or publish unless requested.
@@ -14,14 +13,12 @@ preserve unrelated user edits, and do not commit or publish unless requested.
 - `cmd/<binary>`: input parsing, dependency composition, and exit codes only.
 - `internal/features/<feature>`: feature-owned logic, models, and tests.
 - `internal/shared/<component>`: only after two real feature consumers exist.
-- When adding an optional `playdate.Context` capability, implement it in each
-  native ABI context and forward it through runtime `applicationContext`.
-  Regression-test the capability assertion and call path through
-  `NewApplication`; testing the ABI context alone is insufficient.
+- Optional `playdate.Context` capabilities must exist in every native ABI
+  context, forward through runtime `applicationContext`, and have regression
+  coverage through `NewApplication` (ABI-only tests are insufficient).
 
-Prefer feature cohesion; never add generic `util`, `common`, `helpers`, or
-`misc` packages. Use the standard library by default and document why any new
-dependency is needed.
+Prefer feature cohesion; never add `util`, `common`, `helpers`, or `misc`.
+Default to the standard library; justify new dependencies.
 
 ## Go contract
 
@@ -35,8 +32,7 @@ dependency is needed.
 - Do not claim readiness from executable discovery alone; require the relevant
   probe.
 
-Verification claims must name their actual level: unit, external-consumer CLI,
-native CI, SDK integration, or physical device. CI, cross-compilation, dry-runs,
-and Docker do not prove SDK, Simulator, USB, or hardware readiness.
-Physical-device acceptance requires a connected Playdate. Check the post-run
-crashlog only when the user explicitly requests it.
+Name the actual verification level: unit, external-consumer CLI, native CI, SDK
+integration, or physical device. CI, cross-compilation, dry-runs, and Docker do
+not prove SDK, Simulator, USB, or hardware readiness. Physical-device acceptance
+requires a connected Playdate; check its post-run crashlog only when requested.

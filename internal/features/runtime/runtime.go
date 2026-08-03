@@ -1234,6 +1234,7 @@ type applicationContext struct {
 	playdate.Context
 	input                playdate.Input
 	menuItems            []playdate.MenuItem
+	microphoneRecorder   playdate.MicrophoneRecorder
 	accelerometerEnabled bool
 	terminated           bool
 }
@@ -1254,6 +1255,17 @@ func (context *applicationContext) LoadSamplePlayer(path string) (playdate.Sampl
 		return nil, playdate.ErrAudioUnavailable
 	}
 	return samples.LoadSamplePlayer(path)
+}
+
+func (context *applicationContext) NewPCMPlayer(samples []int16, sampleRate uint32) (playdate.SamplePlayer, error) {
+	players, _ := context.Context.(playdate.PCMPlayers)
+	if players == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	if len(samples) == 0 || sampleRate == 0 {
+		return nil, playdate.ErrAudioParameter
+	}
+	return players.NewPCMPlayer(samples, sampleRate)
 }
 
 func (context *applicationContext) NewAudioChannel() (playdate.AudioChannel, error) {
@@ -1348,6 +1360,43 @@ func (context *applicationContext) NewOverdrive() (playdate.Overdrive, error) {
 		return nil, playdate.ErrAudioUnavailable
 	}
 	return v.NewOverdrive()
+}
+
+func (context *applicationContext) RequestMicrophoneAccess(purpose string, callback func(playdate.MicrophonePermission)) (playdate.MicrophonePermission, error) {
+	if callback == nil {
+		return playdate.MicrophonePermissionPending, playdate.ErrMicrophoneCallback
+	}
+	microphones, _ := context.Context.(playdate.Microphones)
+	if microphones == nil || context.terminated {
+		return playdate.MicrophonePermissionPending, playdate.ErrMicrophoneUnavailable
+	}
+	return microphones.RequestMicrophoneAccess(purpose, func(permission playdate.MicrophonePermission) {
+		if !context.terminated {
+			callback(permission)
+		}
+	})
+}
+
+func (context *applicationContext) StartMicrophoneRecording(source playdate.MicrophoneSource, callback func(playdate.MicrophoneSamples) bool) (playdate.MicrophoneRecorder, error) {
+	if callback == nil {
+		return nil, playdate.ErrMicrophoneCallback
+	}
+	microphones, _ := context.Context.(playdate.Microphones)
+	if microphones == nil || context.terminated {
+		return nil, playdate.ErrMicrophoneUnavailable
+	}
+	if context.microphoneRecorder != nil {
+		_ = context.microphoneRecorder.Close()
+		context.microphoneRecorder = nil
+	}
+	recorder, err := microphones.StartMicrophoneRecording(source, func(samples playdate.MicrophoneSamples) bool {
+		return !context.terminated && callback(samples)
+	})
+	if err != nil {
+		return nil, err
+	}
+	context.microphoneRecorder = recorder
+	return recorder, nil
 }
 
 func (context *applicationContext) PollDebugMessage() (string, bool) {
@@ -1753,6 +1802,13 @@ func NewApplication(game playdate.Game, context playdate.Context, beforeInit fun
 				err = lifecycle.HandleLifecycle(gameContext, event)
 			}
 			if event == playdate.LifecycleTerminate {
+				if gameContext.microphoneRecorder != nil {
+					_ = gameContext.microphoneRecorder.Close()
+					gameContext.microphoneRecorder = nil
+				}
+				if cleanup, ok := gameContext.Context.(interface{ CloseMicrophone() }); ok {
+					cleanup.CloseMicrophone()
+				}
 				gameContext.disableAccelerometer()
 				gameContext.removeMenuItems()
 				if messages, ok := gameContext.Context.(playdate.DebugMessages); ok {

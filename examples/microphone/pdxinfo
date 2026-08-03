@@ -1,0 +1,6 @@
+name=P5.5 Microphone
+author=gopdsdk
+description=Microphone permission and bounded input acceptance
+bundleID=dev.gopdsdk.microphone
+version=1.0.0
+buildNumber=1

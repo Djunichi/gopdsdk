@@ -370,7 +370,7 @@ go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK
 ```
 
 The original P2 implementation and generated ABI remain regression-tested.
-Synthesis, microphone input, and the full Playdate sound binding remain outside
+Advanced synthesis and microphone input remain optional capabilities outside
 that base slice.
 
 ## P2.5 fonts and game UI
@@ -747,6 +747,26 @@ and are delivered to Go on the next update frame. Extended soak, memory-growth
 measurement, lifecycle stress, post-run crashlog inspection, and macOS/Linux SDK
 integration remain unverified.
 
+## P5.5 microphone input
+
+Games capability-assert `Microphones` without widening `Context`. Permission is
+explicitly pending, denied, or granted; recording selects automatic, internal,
+or headset input and returns an owned recorder. Native sample views expire when
+their callback returns. `MicrophoneSamples.CopyTo` copies only into the game's
+bounded destination and never retains that buffer.
+
+`examples/microphone` requests permission, starts recording, and displays the
+live peak and delivered-block count. A stops or restarts the recorder:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/microphone
+```
+
+On 2026-08-03 permission grant, changing peak/block counters, and stop/start
+passed in the official Windows Simulator. Physical-device recording,
+denial/revocation interaction, audible capture/playback, long-run overflow and
+memory measurement, and macOS/Linux SDK integration remain unverified.
+
 ## Development and CI
 
 Run the repository checks with:
@@ -781,6 +801,6 @@ toolchain without pretending to verify GUI or USB behavior.
 - Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
   callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
   covers P2.4 sound effects/file players, P5.1 advanced sample controls, P5.2
-  timed fades/completion callbacks, and P5.3 owned routing, waveform synths,
-  and modulation signals; instruments, sequencing, effects, and microphone
-  input remain open.
+  timed fades/completion callbacks, P5.3 owned routing, waveform synths and
+  modulation signals, P5.4 instruments/sequencing/effects, and P5.5 bounded
+  microphone input. Physical-device microphone acceptance remains open.

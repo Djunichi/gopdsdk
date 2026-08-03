@@ -802,6 +802,8 @@ func bridgeSpriteRemove(sprite uintptr)
 func bridgeUpdateAndDrawSprites()
 //go:linkname bridgeLoadSoundEffect bridgeLoadSoundEffect
 func bridgeLoadSoundEffect(path *byte) uintptr
+//go:linkname bridgeNewPCMPlayer bridgeNewPCMPlayer
+func bridgeNewPCMPlayer(samples *int16, count int32, sampleRate uint32) uintptr
 //go:linkname bridgeSoundEffectPlay bridgeSoundEffectPlay
 func bridgeSoundEffectPlay(effect uintptr) int32
 //go:linkname bridgeSamplePlayerPlayBits bridgeSamplePlayerPlayBits
@@ -1022,6 +1024,16 @@ func bridgeSourceSetVolumeBits(source uintptr, left, right uint32)
 func bridgeSourceVolumeBits(source uintptr, left, right *uint32)
 //go:linkname bridgeSourceIsPlaying bridgeSourceIsPlaying
 func bridgeSourceIsPlaying(source uintptr) int32
+//go:linkname bridgeRequestMicAccess bridgeRequestMicAccess
+func bridgeRequestMicAccess(purpose *byte) int32
+//go:linkname bridgeStartMicrophone bridgeStartMicrophone
+func bridgeStartMicrophone(source int32) int32
+//go:linkname bridgeStopMicrophone bridgeStopMicrophone
+func bridgeStopMicrophone()
+//go:linkname bridgePollMicrophonePermission bridgePollMicrophonePermission
+func bridgePollMicrophonePermission() int32
+//go:linkname bridgePollMicrophoneSamples bridgePollMicrophoneSamples
+func bridgePollMicrophoneSamples(destination *int16, capacity int32) int32
 
 func float32FromBits(bits uint32) float32 { return *(*float32)(unsafe.Pointer(&bits)) }
 
@@ -1040,11 +1052,16 @@ var _ sdkPlaydate.DebugMessages = playdateContext{}
 var _ sdkPlaydate.AudioClock = playdateContext{}
 var _ sdkPlaydate.AudioChannels = playdateContext{}
 var _ sdkPlaydate.Synthesizers = playdateContext{}
+var _ sdkPlaydate.Microphones = playdateContext{}
+var _ sdkPlaydate.PCMPlayers = playdateContext{}
 var _ sdkPlaydate.Sequencers = playdateContext{}
 var _ sdkPlaydate.AudioEffects = playdateContext{}
 
 //export goAudioCallback
 func goAudioCallback(callback uint32, oneShot int32){sdkRuntime.InvokeAudioCallback(callback,oneShot!=0)}
+var microphonePermissionCallback func(bool)
+var microphoneRecordingCallback func([]int16)bool
+var microphonePollBuffer [256]int16
 
 var debugMessages=sdkRuntime.NewDebugMessageQueue(8,256)
 //export goSerialMessage
@@ -1248,6 +1265,7 @@ var filePlayerDriver = sdkRuntime.AudioDriver{
 }
 func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSoundEffect(handle, soundEffectDriver), nil }
 func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil }
+func(playdateContext)NewPCMPlayer(samples []int16,rate uint32)(sdkPlaydate.SamplePlayer,error){if len(samples)==0||rate==0{return nil,sdkPlaydate.ErrAudioParameter};handle:=bridgeNewPCMPlayer(&samples[0],int32(len(samples)),rate);if handle==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSamplePlayer(handle,soundEffectDriver),nil}
 func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadFilePlayer(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil }
 var audioChannelDriver=sdkRuntime.AudioChannelDriver{AddSource:func(c,s uintptr)bool{return bridgeAudioChannelAddSource(c,s)!=0},RemoveSource:func(c,s uintptr)bool{return bridgeAudioChannelRemoveSource(c,s)!=0},AddEffect:func(c,e uintptr)bool{return bridgeAudioChannelAddEffect(c,e)!=0},RemoveEffect:func(c,e uintptr)bool{return bridgeAudioChannelRemoveEffect(c,e)!=0},SetVolume:func(h uintptr,v float32){bridgeAudioChannelSetVolumeBits(h,float32Bits(v))},Volume:func(h uintptr)float32{return float32FromBits(bridgeAudioChannelVolumeBits(h))},SetPan:func(h uintptr,v float32){bridgeAudioChannelSetPanBits(h,float32Bits(v))},Remove:func(h uintptr)bool{return bridgeRemoveAudioChannel(h)!=0},Free:bridgeFreeAudioChannel}
 func(playdateContext)NewAudioChannel()(sdkPlaydate.AudioChannel,error){h:=bridgeNewAudioChannel();if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewAudioChannel(h,audioChannelDriver),nil}
@@ -1260,6 +1278,10 @@ func(playdateContext)NewSynth(w sdkPlaydate.Waveform)(sdkPlaydate.Synth,error){i
 func(playdateContext)NewLFO(t sdkPlaydate.LFOType)(sdkPlaydate.LFO,error){if t>sdkPlaydate.LFOTypeArpeggiator{return nil,sdkPlaydate.ErrAudioWaveform};h:=bridgeNewLFO(int32(t));if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=lfoDriver;d.Signal.Free=bridgeFreeLFO;return sdkRuntime.NewLFO(h,d),nil}
 func(playdateContext)NewEnvelope(a,d,s,r float32)(sdkPlaydate.Envelope,error){if err:=sdkRuntime.ValidateEnvelope(a,d,s,r);err!=nil{return nil,err};h:=bridgeNewEnvelopeBits(float32Bits(a),float32Bits(d),float32Bits(s),float32Bits(r));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=envelopeDriver;driver.Signal.Free=bridgeFreeEnvelope;return sdkRuntime.NewEnvelope(h,driver),nil}
 func(playdateContext)NewControlSignal()(sdkPlaydate.ControlSignal,error){h:=bridgeNewControlSignal();if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=controlSignalDriver;d.Signal.Free=bridgeFreeControlSignal;return sdkRuntime.NewControlSignal(h,d),nil}
+var microphoneService=sdkRuntime.NewMicrophoneService(sdkRuntime.MicrophoneDriver{Request:func(purpose string,callback func(bool))sdkPlaydate.MicrophonePermission{microphonePermissionCallback=callback;return sdkPlaydate.MicrophonePermission(bridgeRequestMicAccess(terminatedPath(purpose)))},Start:func(source sdkPlaydate.MicrophoneSource,callback func([]int16)bool)sdkPlaydate.MicrophoneSource{microphoneRecordingCallback=callback;used:=sdkPlaydate.MicrophoneSource(bridgeStartMicrophone(int32(source)));if used==sdkPlaydate.MicrophoneSourceAutomatic{microphoneRecordingCallback=nil};return used},Stop:func(){bridgeStopMicrophone();microphoneRecordingCallback=nil}})
+func(playdateContext)RequestMicrophoneAccess(purpose string,callback func(sdkPlaydate.MicrophonePermission))(sdkPlaydate.MicrophonePermission,error){return microphoneService.RequestMicrophoneAccess(purpose,callback)}
+func(playdateContext)StartMicrophoneRecording(source sdkPlaydate.MicrophoneSource,callback func(sdkPlaydate.MicrophoneSamples)bool)(sdkPlaydate.MicrophoneRecorder,error){return microphoneService.StartMicrophoneRecording(source,callback)}
+func(playdateContext)CloseMicrophone(){microphoneService.Close();microphonePermissionCallback=nil;microphoneRecordingCallback=nil}
 var instrumentDriver=sdkRuntime.InstrumentDriver{AddVoice:func(i,s uintptr,a,b uint8,t float32)bool{return bridgeInstrumentAddVoiceBits(i,s,int32(a),int32(b),float32Bits(t))!=0},SetPitchBend:func(h uintptr,v float32){bridgeInstrumentSetValueBits(h,0,float32Bits(v))},SetPitchBendRange:func(h uintptr,v float32){bridgeInstrumentSetValueBits(h,1,float32Bits(v))},SetTranspose:func(h uintptr,v float32){bridgeInstrumentSetValueBits(h,2,float32Bits(v))},NoteOff:func(h uintptr,n uint8,w uint32){bridgeInstrumentNoteOff(h,int32(n),w)},AllNotesOff:bridgeInstrumentAllNotesOff,SetVolume:func(h uintptr,l,r float32){bridgeInstrumentSetVolumeBits(h,float32Bits(l),float32Bits(r))},Volume:func(h uintptr)(float32,float32){var l,r uint32;bridgeInstrumentVolumeBits(h,&l,&r);return float32FromBits(l),float32FromBits(r)},ActiveVoiceCount:func(h uintptr)int{return int(bridgeInstrumentActiveVoiceCount(h))},Free:bridgeFreeInstrument}
 var trackDriver=sdkRuntime.TrackDriver{SetInstrument:bridgeTrackSetInstrument,AddNote:func(h uintptr,s,l uint32,n uint8,v float32){bridgeTrackAddNoteBits(h,s,l,int32(n),float32Bits(v))},RemoveNote:func(h uintptr,s uint32,n uint8){bridgeTrackRemoveNote(h,s,int32(n))},ClearNotes:bridgeTrackClearNotes,AddControlEvent:func(h uintptr,c,s int,v float32,i bool)bool{var f int32;if i{f=1};return bridgeTrackControlEventBits(h,int32(c),int32(s),float32Bits(v),f,0)!=0},RemoveControlEvent:func(h uintptr,c,s int)bool{return bridgeTrackControlEventBits(h,int32(c),int32(s),0,0,1)!=0},ClearControlEvents:bridgeTrackClearControlEvents,SetMuted:func(h uintptr,v bool){var f int32;if v{f=1};bridgeTrackSetMuted(h,f)},Length:bridgeTrackLength,Free:bridgeFreeTrack}
 var sequenceDriver=sdkRuntime.SequenceDriver{LoadMIDI:func(h uintptr,p string)bool{z:=p+"\x00";return bridgeSequenceLoadMIDI(h,unsafe.StringData(z))!=0},SetTempo:func(h uintptr,v float32){bridgeSequenceSetTempoBits(h,float32Bits(v))},Tempo:func(h uintptr)float32{return float32FromBits(bridgeSequenceTempoBits(h))},SetLoops:func(h uintptr,a,b,c int){bridgeSequenceSetLoops(h,int32(a),int32(b),int32(c))},SetTrack:func(h uintptr,i uint,t uintptr){bridgeSequenceSetTrack(h,uint32(i),t)},Play:bridgeSequencePlay,Stop:bridgeSequenceStop,IsPlaying:func(h uintptr)bool{return bridgeSequenceIsPlaying(h)!=0},Time:bridgeSequenceTime,SetTime:bridgeSequenceSetTime,Length:bridgeSequenceLength,Free:bridgeFreeSequence}
@@ -1303,6 +1325,8 @@ func goUpdate() int32 {
 		}
 		sdkRuntime.InvokeAudioCallback(callback, oneShot != 0)
 	}
+	if allowed:=bridgePollMicrophonePermission();allowed>=0{callback:=microphonePermissionCallback;microphonePermissionCallback=nil;if callback!=nil{callback(allowed!=0)}}
+	for microphoneRecordingCallback!=nil{count:=bridgePollMicrophoneSamples(&microphonePollBuffer[0],int32(len(microphonePollBuffer)));if count==0{break};if !microphoneRecordingCallback(microphonePollBuffer[:count]){bridgeStopMicrophone();microphoneRecordingCallback=nil;break}}
 	refresh, err := application.Update(sdkRuntime.RawInput{
 		Buttons: sdkPlaydate.Buttons(bridgeButtons()), CrankAngle: float32FromBits(bridgeCrankAngleBits()),
 		CrankDelta: float32FromBits(bridgeCrankDeltaBits()), CrankDocked: bridgeCrankDocked() != 0,
@@ -1529,6 +1553,8 @@ void bridgeSpriteRemove(uintptr_t sprite) { activePlaydate->sprite->removeSprite
 void bridgeUpdateAndDrawSprites(void) { activePlaydate->sprite->updateAndDrawSprites(); }
 typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
 extern void goAudioCallback(uint32_t callback,int32_t oneShot);
+extern void goMicrophonePermission(int32_t allowed);
+extern int32_t goMicrophoneSamples(uintptr_t data,int32_t length);
 typedef struct{uint32_t callback;int32_t oneShot;}BridgePendingAudioCallback;
 static volatile BridgePendingAudioCallback bridgeAudioCallbacks[8];static volatile uint32_t bridgeAudioCallbackRead=0,bridgeAudioCallbackWrite=0;
 static void bridgeQueueAudioCallback(uint32_t callback,int32_t oneShot){uint32_t next=(bridgeAudioCallbackWrite+1)%8;if(next==bridgeAudioCallbackRead)return;bridgeAudioCallbacks[bridgeAudioCallbackWrite].callback=callback;bridgeAudioCallbacks[bridgeAudioCallbackWrite].oneShot=oneShot;bridgeAudioCallbackWrite=next;}
@@ -1536,6 +1562,7 @@ int32_t bridgePollAudioCallback(uint32_t* callback,int32_t* oneShot){if(bridgeAu
 static void bridgeAudioFinishCallback(SoundSource* source,void* userdata){(void)source;bridgeQueueAudioCallback((uint32_t)(uintptr_t)userdata,0);}
 static void bridgeAudioFadeCallback(SoundSource* source,void* userdata){(void)source;bridgeQueueAudioCallback((uint32_t)(uintptr_t)userdata,1);}
 uintptr_t bridgeLoadSoundEffect(const char* path) { AudioSample* sample=activePlaydate->sound->sample->load(path); if(!sample)return 0; SamplePlayer* player=activePlaydate->sound->sampleplayer->newPlayer(); if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;} BridgeSoundEffect* effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect)); if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;} effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect; }
+uintptr_t bridgeNewPCMPlayer(const int16_t*samples,int32_t count,uint32_t rate){if(!samples||count<=0||rate==0)return 0;int32_t bytes=count*2;uint8_t*copy=activePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,samples,(size_t)bytes);AudioSample*sample=activePlaydate->sound->sample->newSampleFromData(copy,kSound16bitMono,rate,bytes,1);if(!sample){activePlaydate->system->realloc(copy,0);return 0;}SamplePlayer*player=activePlaydate->sound->sampleplayer->newPlayer();if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;}BridgeSoundEffect*effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;}effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect;}
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect){return(BridgeSoundEffect*)effect;}
 int32_t bridgeSoundEffectPlay(uintptr_t effect){return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,1,1.0f);}
 int32_t bridgeSamplePlayerPlayBits(uintptr_t effect,int32_t repeat,uint32_t rate){union{uint32_t bits;float value;}r={.bits=rate};return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,repeat,r.value);}
@@ -1570,6 +1597,7 @@ int32_t bridgeAudioChannelAddEffect(uintptr_t c,uintptr_t e){return activePlayda
 void bridgeAudioChannelSetVolumeBits(uintptr_t c,uint32_t b){union{uint32_t bits;float value;}v={.bits=b};activePlaydate->sound->channel->setVolume((SoundChannel*)c,v.value);} uint32_t bridgeAudioChannelVolumeBits(uintptr_t c){return bridgeFloatBits(activePlaydate->sound->channel->getVolume((SoundChannel*)c));} void bridgeAudioChannelSetPanBits(uintptr_t c,uint32_t b){union{uint32_t bits;float value;}v={.bits=b};activePlaydate->sound->channel->setPan((SoundChannel*)c,v.value);}
 int32_t bridgeRemoveAudioChannel(uintptr_t c){activePlaydate->sound->removeChannel((SoundChannel*)c);return 1;} void bridgeFreeAudioChannel(uintptr_t c){activePlaydate->sound->channel->freeChannel((SoundChannel*)c);}
 void bridgeSourceStop(uintptr_t s){activePlaydate->sound->synth->stop((PDSynth*)s);} void bridgeSourceSetVolumeBits(uintptr_t s,uint32_t l,uint32_t r){union{uint32_t bits;float value;}a={.bits=l},b={.bits=r};activePlaydate->sound->source->setVolume((SoundSource*)s,a.value,b.value);} void bridgeSourceVolumeBits(uintptr_t s,uint32_t*l,uint32_t*r){union{float value;uint32_t bits;}a,b;activePlaydate->sound->source->getVolume((SoundSource*)s,&a.value,&b.value);*l=a.bits;*r=b.bits;} int32_t bridgeSourceIsPlaying(uintptr_t s){return activePlaydate->sound->source->isPlaying((SoundSource*)s);}
+static volatile int32_t bridgeMicrophonePermission=-1;static volatile uint32_t bridgeMicrophoneRead=0,bridgeMicrophoneWrite=0;static int16_t bridgeMicrophoneBuffer[2048];static void bridgeMicrophonePermissionCallback(bool allowed,void*userdata){(void)userdata;bridgeMicrophonePermission=allowed?1:0;}static int bridgeMicrophoneSamplesCallback(void*context,int16_t*data,int length){(void)context;for(int i=0;i<length;i++){uint32_t next=(bridgeMicrophoneWrite+1)%2048;if(next==bridgeMicrophoneRead)break;bridgeMicrophoneBuffer[bridgeMicrophoneWrite]=data[i];bridgeMicrophoneWrite=next;}return 1;}int32_t bridgePollMicrophonePermission(void){int32_t value=bridgeMicrophonePermission;bridgeMicrophonePermission=-1;return value;}int32_t bridgePollMicrophoneSamples(int16_t*destination,int32_t capacity){int32_t count=0;while(count<capacity&&bridgeMicrophoneRead!=bridgeMicrophoneWrite){destination[count++]=bridgeMicrophoneBuffer[bridgeMicrophoneRead];bridgeMicrophoneRead=(bridgeMicrophoneRead+1)%2048;}return count;}int32_t bridgeRequestMicAccess(const char*purpose){bridgeMicrophonePermission=-1;return activePlaydate->sound->requestMicAccess(purpose,bridgeMicrophonePermissionCallback,NULL);}int32_t bridgeStartMicrophone(int32_t source){bridgeMicrophoneRead=bridgeMicrophoneWrite=0;return activePlaydate->sound->setMicCallback(bridgeMicrophoneSamplesCallback,NULL,(enum MicSource)source);}void bridgeStopMicrophone(void){activePlaydate->sound->setMicCallback(NULL,NULL,kMicInputAutodetect);bridgeMicrophoneRead=bridgeMicrophoneWrite=0;}
 uintptr_t bridgeNewSynth(int32_t w){PDSynth*s=activePlaydate->sound->synth->newSynth();if(s)activePlaydate->sound->synth->setWaveform(s,(SoundWaveform)w);return(uintptr_t)s;} void bridgeSynthSetWaveform(uintptr_t s,int32_t w){activePlaydate->sound->synth->setWaveform((PDSynth*)s,(SoundWaveform)w);}
 void bridgeSynthSetEnvelopeBits(uintptr_t s,uint32_t a,uint32_t d,uint32_t v,uint32_t r){union{uint32_t bits;float value;}aa={.bits=a},dd={.bits=d},vv={.bits=v},rr={.bits=r};activePlaydate->sound->synth->setAttackTime((PDSynth*)s,aa.value);activePlaydate->sound->synth->setDecayTime((PDSynth*)s,dd.value);activePlaydate->sound->synth->setSustainLevel((PDSynth*)s,vv.value);activePlaydate->sound->synth->setReleaseTime((PDSynth*)s,rr.value);} void bridgeSynthSetTransposeBits(uintptr_t s,uint32_t b){union{uint32_t bits;float value;}v={.bits=b};activePlaydate->sound->synth->setTranspose((PDSynth*)s,v.value);}
 void bridgeSynthSetFrequencyModulator(uintptr_t s,uintptr_t m){activePlaydate->sound->synth->setFrequencyModulator((PDSynth*)s,(PDSynthSignalValue*)m);} void bridgeSynthSetAmplitudeModulator(uintptr_t s,uintptr_t m){activePlaydate->sound->synth->setAmplitudeModulator((PDSynth*)s,(PDSynthSignalValue*)m);}
@@ -1772,6 +1800,7 @@ void bridgeSpriteRemove(uintptr_t sprite) { activePlaydate->sprite->removeSprite
 void bridgeUpdateAndDrawSprites(void) { activePlaydate->sprite->updateAndDrawSprites(); }
 typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
 uintptr_t bridgeLoadSoundEffect(const char* path) { AudioSample* sample=activePlaydate->sound->sample->load(path); if(!sample)return 0; SamplePlayer* player=activePlaydate->sound->sampleplayer->newPlayer(); if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;} BridgeSoundEffect* effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect)); if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;} effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect; }
+uintptr_t bridgeNewPCMPlayer(const int16_t*samples,int32_t count,uint32_t rate){if(!samples||count<=0||rate==0)return 0;int32_t bytes=count*2;uint8_t*copy=activePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,samples,(size_t)bytes);AudioSample*sample=activePlaydate->sound->sample->newSampleFromData(copy,kSound16bitMono,rate,bytes,1);if(!sample){activePlaydate->system->realloc(copy,0);return 0;}SamplePlayer*player=activePlaydate->sound->sampleplayer->newPlayer();if(!player){activePlaydate->sound->sample->freeSample(sample);return 0;}BridgeSoundEffect*effect=activePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!effect){activePlaydate->sound->sampleplayer->freePlayer(player);activePlaydate->sound->sample->freeSample(sample);return 0;}effect->sample=sample;effect->player=player;activePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect;}
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect){return(BridgeSoundEffect*)effect;}
 int32_t bridgeSoundEffectPlay(uintptr_t effect){return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,1,1.0f);}
 int32_t bridgeSamplePlayerPlayBits(uintptr_t effect,int32_t repeat,uint32_t rate){union{uint32_t bits;float value;}r={.bits=rate};return activePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player,repeat,r.value);}
@@ -1797,6 +1826,8 @@ void bridgeFilePlayerSetRateBits(uintptr_t player,uint32_t rate){union{uint32_t 
 uint32_t bridgeFilePlayerRateBits(uintptr_t player){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->fileplayer->getRate((FilePlayer*)player)};return v.bits;}
 uint32_t bridgeCurrentAudioTime(void){return activePlaydate->sound->getCurrentTime();}
 extern void goAudioCallback(uint32_t callback,int32_t oneShot);
+extern void goMicrophonePermission(int32_t allowed);
+extern int32_t goMicrophoneSamples(uintptr_t data,int32_t length);
 typedef struct{uint32_t callback;int32_t oneShot;}BridgePendingAudioCallback;
 static volatile BridgePendingAudioCallback bridgeAudioCallbacks[8];static volatile uint32_t bridgeAudioCallbackRead=0,bridgeAudioCallbackWrite=0;
 static void bridgeQueueAudioCallback(uint32_t callback,int32_t oneShot){uint32_t next=(bridgeAudioCallbackWrite+1)%8;if(next==bridgeAudioCallbackRead)return;bridgeAudioCallbacks[bridgeAudioCallbackWrite].callback=callback;bridgeAudioCallbacks[bridgeAudioCallbackWrite].oneShot=oneShot;bridgeAudioCallbackWrite=next;}
