@@ -2,8 +2,8 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1 through P4 scopes are implemented**. `v0.4.0` is the
-current release candidate; `v0.3.0` remains the latest published release until
+The **P0 foundation and P1 through P5 scopes are implemented**. `v0.5.0` is the
+current release candidate; `v0.4.0` remains the latest published release until
 the candidate gates, tag, and post-tag module-proxy check complete. The public
 API is snapshot-tested and documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
@@ -756,16 +756,22 @@ their callback returns. `MicrophoneSamples.CopyTo` copies only into the game's
 bounded destination and never retains that buffer.
 
 `examples/microphone` requests permission, starts recording, and displays the
-live peak and delivered-block count. A stops or restarts the recorder:
+live peak and delivered-block count. A stops or restarts the recorder. B saves
+up to one second as `microphone.wav` in Data and audibly plays the same capture
+through native-owned copied PCM:
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/microphone
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/microphone
 ```
 
-On 2026-08-03 permission grant, changing peak/block counters, and stop/start
-passed in the official Windows Simulator. Physical-device recording,
-denial/revocation interaction, audible capture/playback, long-run overflow and
-memory measurement, and macOS/Linux SDK integration remain unverified.
+On 2026-08-03 permission, changing peak/block counters, stop/start, WAV save,
+and audible playback passed in the official Windows Simulator and on a physical
+Playdate installed through COM3. Device input reaches Go through a bounded
+native FIFO on update frames. The accepted hard-float artifact uses 282,824
+bytes of static RAM and produces a 50,601-byte PDX. Denial/revocation,
+long-run overflow/memory measurement, lifecycle stress, post-run crashlog
+inspection, and macOS/Linux SDK integration remain unverified.
 
 ## Development and CI
 
@@ -803,4 +809,4 @@ toolchain without pretending to verify GUI or USB behavior.
   covers P2.4 sound effects/file players, P5.1 advanced sample controls, P5.2
   timed fades/completion callbacks, P5.3 owned routing, waveform synths and
   modulation signals, P5.4 instruments/sequencing/effects, and P5.5 bounded
-  microphone input. Physical-device microphone acceptance remains open.
+  microphone input with Simulator and physical-device acceptance.

@@ -43,7 +43,10 @@ that out.
   microphone error domain, explicit input-source selection, owned recorder
   lifetime, callback-scoped samples, and bounded caller-buffer copying.
 - Simulator/device microphone ABI forwarding and `examples/microphone`, which
-  displays permission, recording state, live peak level, and delivered blocks.
+  displays permission, recording state, live peak level, delivered blocks, WAV
+  persistence, and audible playback through native-owned copied PCM.
+- Optional `PCMPlayers` construction that copies mono signed 16-bit caller PCM
+  into an owned native sample without retaining the caller slice.
 
 ### Fixed
 
@@ -54,6 +57,8 @@ that out.
   allocation status; channel creation fails only when `newChannel` returns nil.
 - Log Simulator lifecycle/update errors and draw initialization failures instead
   of leaving a silent gray screen.
+- Defer device microphone delivery through a bounded native FIFO instead of
+  re-entering Go from the native audio thread.
 
 ### Compatibility
 
@@ -86,13 +91,16 @@ that out.
   uses 278,900 bytes of static RAM and produces a 168,558-byte PDX; USB install
   through COM3 and launch succeeded. Extended soak, memory-growth measurement,
   lifecycle stress, and post-run crashlog inspection remain pending.
-- P5.5 unit tests and the official Windows Simulator integration build pass. On
-  2026-08-03 Simulator permission grant, changing live microphone peak/block
-  counters, and recorder stop/start passed. Physical-device recording,
-  denial/revocation interaction, audible capture/playback, long-run overflow and
-  memory measurement, and macOS/Linux SDK integration remain pending.
+- P5.5 unit tests and official Windows Simulator/device integration builds pass.
+  On 2026-08-03 permission, changing peak/block counters, recorder stop/start,
+  one-second WAV save, and audible native-owned PCM playback passed in Simulator
+  and on a physical Playdate. The hard-float artifact uses 282,824 bytes of
+  static RAM and produces a 50,601-byte PDX; USB install through COM3 and launch
+  succeeded. Denial/revocation, long-run overflow/memory measurement, lifecycle
+  stress, post-run crashlog inspection, and macOS/Linux SDK integration remain
+  pending.
 
-## v0.4.0 - release candidate (2026-08-02)
+## v0.4.0 (2026-08-02)
 
 ### Added
 

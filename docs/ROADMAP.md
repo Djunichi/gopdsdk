@@ -1,6 +1,6 @@
 # Product roadmap
 
-Status: `v0.4.0` release candidate preparation, updated 2026-08-02.
+Status: `v0.5.0` release candidate preparation, updated 2026-08-03.
 
 This document is the canonical high-level roadmap from the released `v0.3.0`
 baseline to `v1.0.0`. The detailed P0, P1, and P2 documents retain their
@@ -46,8 +46,8 @@ cross-build does not promote a capability to device-ready.
 | P1 | `v0.1.x` | Lifecycle, input, bitmap graphics, resources, device runtime | Complete |
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
-| P4 | `v0.4.0` | Persistence and Playdate system integration | Release candidate; final gates pending |
-| P5 | `v0.5.0` | Advanced audio and music | In progress; P5.1-P5.2 device-accepted |
+| P4 | `v0.4.0` | Persistence and Playdate system integration | Released |
+| P5 | `v0.5.0` | Advanced audio and music | Release candidate; P5.1-P5.5 device-accepted |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
 
@@ -498,9 +498,26 @@ growth, and crashlog inspection remain unverified.
   and `examples/microphone` acceptance scene are implemented and unit-tested.
   On 2026-08-03 the official Windows Simulator granted permission, delivered
   live input blocks with changing peak levels, and passed recorder stop/start.
-  Physical-device acceptance, denial/revocation interaction, long-run overflow
-  and memory measurement, audible capture/playback, and macOS/Linux SDK
-  integration remain unverified.
+  Physical Playdate acceptance then passed permission, live peak/block updates,
+  stop/start, bounded one-second PCM capture, Data-file WAV persistence, and
+  audible native-owned PCM playback after installation and launch through COM3.
+  Device audio input crosses a bounded native FIFO before Go update delivery.
+  The accepted hard-float artifact uses 282,824 bytes of static RAM and produces
+  a 50,601-byte PDX. Denial/revocation interaction, long-run overflow and memory
+  measurement, lifecycle stress, post-run crashlog inspection, and macOS/Linux
+  SDK integration remain unverified.
+
+### P5.6 — `v0.5.0` release candidate preparation
+
+- Freeze and review the P5 public API snapshot, migration notes, compatibility
+  evidence, changelog, and release procedure.
+- Run the full Go/vet/diff/doctor gates and observe green Windows/macOS/Linux
+  native CI before tagging.
+- Repeat focused Windows Simulator and conservative physical-device audio
+  acceptance, including lifecycle and bounded-memory soak; inspect crashlogs
+  only when explicitly requested for that release run.
+- After tagging, verify a clean external consumer through the module proxy
+  without a local `replace`.
 
 ## P6 — advanced graphics, media, and performance
 

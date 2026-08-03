@@ -1,6 +1,6 @@
 # Public API
 
-This document describes the public contract proposed for gopdsdk `v0.4.0`.
+This document describes the public contract proposed for gopdsdk `v0.5.0`.
 The module is still pre-v1: minor releases may make intentional breaking
 changes, which must be called out in release notes. Patch releases preserve the
 documented API and behavior.
@@ -172,6 +172,10 @@ recording, handle pending/denied/granted explicitly, and close the owned
 the needed samples into a bounded caller-owned `[]int16`. The view expires when
 the callback returns and the runtime never retains the destination. Microphone
 failures use the separate `ErrMicrophone*` domain rather than audio errors.
+On device, microphone input first enters a bounded native FIFO and is delivered
+to Go during update frames rather than re-entering Go from the audio thread.
+`PCMPlayers.NewPCMPlayer` synchronously copies mono signed 16-bit PCM into
+native-owned storage and never retains the caller slice.
 
 `LFO.SetArpeggiation` requires at least one finite half-step offset and configures
 the native arpeggiator sequence; an empty or non-finite step list returns
