@@ -1,7 +1,7 @@
 # Compatibility and evidence
 
-The `v0.4.0` release candidate retains the exact toolchain profile accepted by
-the released `v0.3.0` baseline.
+The `v0.5.0` release candidate retains the exact toolchain profile accepted by
+the published `v0.4.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -156,6 +156,22 @@ physical hardware work on that host. Docker does not promote those levels.
   launch command. Physical multi-session restart/update, injected power loss,
   corrupt-save recovery observation, soak, memory growth, cleanup observation,
   and post-run crashlog comparison remain unverified.
+- P5.1-P5.4 implemented: advanced samples, timed completion/fades, owned audio
+  routing and modulation graphs, instruments, sequences, and typed effects are
+  covered by unit and generated-ABI tests. Their combined acceptance scene
+  passed official Windows Simulator interaction and physical Playdate audible
+  acceptance through P5.4. The latest P5.4 hard-float artifact used 278,900
+  bytes of static RAM and produced a 168,558-byte PDX.
+- P5.5 implemented: optional permission-gated microphone input, its separate
+  error domain, callback-scoped sample views, bounded native device FIFO,
+  recorder cleanup, WAV persistence, and native-owned PCM copying are covered
+  by unit and both generated-ABI tests. On 2026-08-03 `examples/microphone`
+  passed permission, live peak/block delivery, stop/start, one-second WAV save,
+  and audible playback in Windows Simulator and on a physical Playdate after
+  USB installation through COM3. The accepted hard-float artifact used 282,824
+  bytes of static RAM and produced a 50,601-byte PDX. Denial/revocation,
+  long-run overflow and memory measurement, lifecycle stress, and post-run
+  crashlog inspection remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
