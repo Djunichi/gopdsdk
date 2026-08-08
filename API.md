@@ -1,7 +1,7 @@
 # Public API
 
 This document describes the current public contract after released `v0.5.0`,
-including implemented P6.1 and initial P6.2 additions intended for `v0.6.0`. The module is still
+including implemented P6.1, P6.2, and optional P6.3 additions intended for `v0.6.0`. The module is still
 pre-v1: minor releases may make intentional breaking changes, which must be
 called out in release notes. Patch releases preserve the documented API and
 behavior.
@@ -101,6 +101,18 @@ value; neither runtime adapter retains a pointer after the drawing call.
 `DrawMode` mirrors the official copy, transparent, fill, XOR/NXOR, and inverted
 bitmap compositing modes. Restore offsets, clipping, and draw mode after a
 localized drawing pass because these values are native graphics state.
+
+Games that need PDV playback assert the optional `Videos` capability.
+`LoadVideo` returns an explicitly owned `VideoPlayer`; close it exactly once.
+`Info` reports dimensions, rate, frame count, and decoder position.
+`RenderFrame` validates the frame index and reports native decoder errors as
+`VideoOperationError`. `SetContext` borrows a live owned bitmap without taking
+ownership; keep it open until selecting the screen or another bitmap.
+The four-second `examples/video` consumer passed visual and audible acceptance
+in the official Windows Simulator and on a physical Playdate on 2026-08-08.
+This evidence covers synchronized companion audio, pause/resume, looping,
+stepping, and screen/offscreen targets; it does not cover long-run performance,
+memory growth, soak, or post-run device logs.
 
 ## Input
 

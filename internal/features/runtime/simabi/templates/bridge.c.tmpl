@@ -158,6 +158,13 @@ void bridgePushContext(uintptr_t bitmap) { bridgePlaydate->graphics->pushContext
 void bridgePopContext(void) { bridgePlaydate->graphics->popContext(); }
 void bridgeSetStencil(uintptr_t bitmap, int tiled) { bridgePlaydate->graphics->setStencilImage((LCDBitmap*)bitmap, tiled); }
 void bridgeClearStencil(void) { bridgePlaydate->graphics->setStencil(NULL); }
+uintptr_t bridgeLoadVideo(const char* path) { return (uintptr_t)bridgePlaydate->graphics->video->loadVideo(path); }
+void bridgeFreeVideo(uintptr_t p) { bridgePlaydate->graphics->video->freePlayer((LCDVideoPlayer*)p); }
+const char* bridgeVideoError(uintptr_t p) { return bridgePlaydate->graphics->video->getError((LCDVideoPlayer*)p); }
+void bridgeVideoInfo(uintptr_t p,int* w,int* h,float* r,int* c,int* f) { bridgePlaydate->graphics->video->getInfo((LCDVideoPlayer*)p,w,h,r,c,f); }
+int bridgeVideoSetContext(uintptr_t p,uintptr_t b) { return bridgePlaydate->graphics->video->setContext((LCDVideoPlayer*)p,(LCDBitmap*)b); }
+void bridgeVideoUseScreenContext(uintptr_t p) { bridgePlaydate->graphics->video->useScreenContext((LCDVideoPlayer*)p); }
+int bridgeVideoRenderFrame(uintptr_t p,int f) { return bridgePlaydate->graphics->video->renderFrame((LCDVideoPlayer*)p,f); }
 void bridgeDisplaySetRefreshRate(float rate) { bridgePlaydate->display->setRefreshRate(rate); }
 void bridgeDisplaySetInverted(int flag) { bridgePlaydate->display->setInverted(flag); }
 void bridgeDisplaySetScale(unsigned int scale) { bridgePlaydate->display->setScale(scale); }

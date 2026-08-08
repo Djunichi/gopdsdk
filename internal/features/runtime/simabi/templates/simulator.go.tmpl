@@ -90,6 +90,7 @@ void bridgePushContext(uintptr_t bitmap);
 void bridgePopContext(void);
 void bridgeSetStencil(uintptr_t bitmap, int tiled);
 void bridgeClearStencil(void);
+uintptr_t bridgeLoadVideo(const char* path); void bridgeFreeVideo(uintptr_t); const char* bridgeVideoError(uintptr_t); void bridgeVideoInfo(uintptr_t,int*,int*,float*,int*,int*); int bridgeVideoSetContext(uintptr_t,uintptr_t); void bridgeVideoUseScreenContext(uintptr_t); int bridgeVideoRenderFrame(uintptr_t,int);
 void bridgeDisplaySetRefreshRate(float rate);
 void bridgeDisplaySetInverted(int flag);
 void bridgeDisplaySetScale(unsigned int scale);
@@ -455,6 +456,9 @@ func (playdateContext) DrawRotatedBitmap(bitmap sdkPlaydate.Bitmap, x, y int, de
 	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
 	C.bridgeDrawRotatedBitmap(C.uintptr_t(handle), C.int(x), C.int(y), C.float(degrees), C.float(centerX), C.float(centerY), C.float(scaleX), C.float(scaleY)); return nil
 }
+func videoError(handle uintptr) string { value:=C.bridgeVideoError(C.uintptr_t(handle));if value==nil{return ""};return C.GoString(value) }
+var videoDriver=sdkRuntime.VideoDriver{Info:func(handle uintptr)sdkPlaydate.VideoInfo{var w,h,c,f C.int;var r C.float;C.bridgeVideoInfo(C.uintptr_t(handle),&w,&h,&r,&c,&f);return sdkPlaydate.VideoInfo{Width:int(w),Height:int(h),FrameRate:float32(r),FrameCount:int(c),CurrentFrame:int(f)}},SetContext:func(p,b uintptr)(bool,string){if C.bridgeVideoSetContext(C.uintptr_t(p),C.uintptr_t(b))==0{return false,videoError(p)};return true,""},UseScreenContext:func(p uintptr){C.bridgeVideoUseScreenContext(C.uintptr_t(p))},RenderFrame:func(p uintptr,f int)(bool,string){if C.bridgeVideoRenderFrame(C.uintptr_t(p),C.int(f))==0{return false,videoError(p)};return true,""},Free:func(p uintptr){C.bridgeFreeVideo(C.uintptr_t(p))}}
+func (playdateContext) LoadVideo(path string)(sdkPlaydate.VideoPlayer,error){if path==""{return nil,sdkPlaydate.ErrVideoPath};value:=C.CString(path);defer C.free(unsafe.Pointer(value));handle:=uintptr(C.bridgeLoadVideo(value));if handle==0{return nil,sdkPlaydate.ErrVideoLoad};return sdkRuntime.NewVideoPlayer(handle,videoDriver),nil}
 
 func paintArgs(paint sdkPlaydate.Paint) (C.int, *C.uint8_t, C.int, [16]byte) {
 	solid, pattern, patterned := paint.Components(); flag := C.int(0); if patterned { flag = 1 }

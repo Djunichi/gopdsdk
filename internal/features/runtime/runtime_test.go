@@ -926,6 +926,86 @@ func TestDisplayAndDirtyRegionValidation(t *testing.T) {
 	}
 }
 
+func TestVideoPlayerOwnershipValidationAndErrors(t *testing.T) {
+	var freed int
+	bitmap := NewOwnedBitmap(7, BitmapDriver{Dimensions: func(uintptr) (int, int) { return 80, 60 }, Free: func(uintptr) {}})
+	player := NewVideoPlayer(9, VideoDriver{
+		Info: func(uintptr) playdate.VideoInfo {
+			return playdate.VideoInfo{Width: 80, Height: 60, FrameRate: 20, FrameCount: 3}
+		},
+		SetContext:       func(player, context uintptr) (bool, string) { return player == 9 && context == 7, "bad context" },
+		UseScreenContext: func(uintptr) {},
+		RenderFrame:      func(_ uintptr, frame int) (bool, string) { return frame != 1, "decode failed" },
+		Free:             func(uintptr) { freed++ },
+	})
+	if info, err := player.Info(); err != nil || info.FrameCount != 3 {
+		t.Fatalf("Info() = %+v, %v", info, err)
+	}
+	if err := player.SetContext(bitmap); err != nil {
+		t.Fatal(err)
+	}
+	if err := player.RenderFrame(-1); !errors.Is(err, playdate.ErrVideoFrame) {
+		t.Fatalf("negative frame error = %v", err)
+	}
+	if err := player.RenderFrame(1); err == nil || err.Error() != "render frame video failed: decode failed" {
+		t.Fatalf("decoder error = %v", err)
+	}
+	if err := bitmap.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := player.RenderFrame(0); !errors.Is(err, playdate.ErrBitmapClosed) {
+		t.Fatalf("closed context error = %v", err)
+	}
+	if err := player.UseScreenContext(); err != nil {
+		t.Fatal(err)
+	}
+	if err := player.RenderFrame(0); err != nil {
+		t.Fatal(err)
+	}
+	if err := player.Close(); err != nil || freed != 1 {
+		t.Fatalf("Close() = %v, frees %d", err, freed)
+	}
+	if err := player.Close(); !errors.Is(err, playdate.ErrVideoClosed) {
+		t.Fatalf("second Close() = %v", err)
+	}
+}
+
+type videoContext struct {
+	testContext
+	player playdate.VideoPlayer
+}
+
+func (c videoContext) LoadVideo(path string) (playdate.VideoPlayer, error) {
+	if path != "intro.pdv" {
+		return nil, errors.New("wrong path")
+	}
+	return c.player, nil
+}
+
+type videoCapabilityGame struct{ got playdate.VideoPlayer }
+
+func (g *videoCapabilityGame) Init(context playdate.Context) error {
+	player, err := context.(playdate.Videos).LoadVideo("intro.pdv")
+	g.got = player
+	return err
+}
+func (*videoCapabilityGame) Update(playdate.Context) (bool, error) { return false, nil }
+
+func TestNewApplicationForwardsVideoCapability(t *testing.T) {
+	player := NewVideoPlayer(1, VideoDriver{})
+	game := &videoCapabilityGame{}
+	application, err := NewApplication(game, videoContext{player: player}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	if game.got != player {
+		t.Fatal("video player was not forwarded")
+	}
+}
+
 type displayCapabilityContext struct {
 	testContext
 	calls int
