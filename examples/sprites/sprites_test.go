@@ -95,6 +95,10 @@ func (c *testContext) SetRefreshRate(float32) error {
 	c.operations = append(c.operations, "refresh")
 	return nil
 }
+func (*testContext) Width() int            { return 400 }
+func (*testContext) Height() int           { return 240 }
+func (*testContext) RefreshRate() float32  { return 30 }
+func (*testContext) FPS() float32          { return 29.5 }
 func (c *testContext) SetInverted(bool)    { c.operations = append(c.operations, "inverted") }
 func (c *testContext) SetScale(uint) error { c.operations = append(c.operations, "scale"); return nil }
 func (c *testContext) SetMosaic(uint, uint) error {

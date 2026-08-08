@@ -179,6 +179,10 @@ void bridgeSetStencil(uintptr_t bitmap,int32_t tiled){activePlaydate->graphics->
 void bridgeClearStencil(void){activePlaydate->graphics->setStencil(NULL);}
 uintptr_t bridgeLoadVideo(const char* path){return(uintptr_t)activePlaydate->graphics->video->loadVideo(path);}void bridgeFreeVideo(uintptr_t p){activePlaydate->graphics->video->freePlayer((LCDVideoPlayer*)p);}const char* bridgeVideoError(uintptr_t p){return activePlaydate->graphics->video->getError((LCDVideoPlayer*)p);}void bridgeVideoInfoBits(uintptr_t p,int32_t*w,int32_t*h,uint32_t*r,int32_t*c,int32_t*f){int width,height,count,frame;float rate;activePlaydate->graphics->video->getInfo((LCDVideoPlayer*)p,&width,&height,&rate,&count,&frame);union{float value;uint32_t bits;}v={.value=rate};*w=(int32_t)width;*h=(int32_t)height;*r=v.bits;*c=(int32_t)count;*f=(int32_t)frame;}int32_t bridgeVideoSetContext(uintptr_t p,uintptr_t b){return activePlaydate->graphics->video->setContext((LCDVideoPlayer*)p,(LCDBitmap*)b);}void bridgeVideoUseScreenContext(uintptr_t p){activePlaydate->graphics->video->useScreenContext((LCDVideoPlayer*)p);}int32_t bridgeVideoRenderFrame(uintptr_t p,int32_t f){return activePlaydate->graphics->video->renderFrame((LCDVideoPlayer*)p,(int)f);}
 void bridgeDisplaySetRefreshRateBits(uint32_t bits){union{uint32_t bits;float value;}v={.bits=bits};activePlaydate->display->setRefreshRate(v.value);}
+int32_t bridgeDisplayWidth(void){return(int32_t)activePlaydate->display->getWidth();}
+int32_t bridgeDisplayHeight(void){return(int32_t)activePlaydate->display->getHeight();}
+uint32_t bridgeDisplayRefreshRateBits(void){union{float value;uint32_t bits;}v={.value=activePlaydate->display->getRefreshRate()};return v.bits;}
+uint32_t bridgeDisplayFPSBits(void){union{float value;uint32_t bits;}v={.value=activePlaydate->display->getFPS()};return v.bits;}
 void bridgeDisplaySetInverted(int32_t flag){activePlaydate->display->setInverted(flag);}
 void bridgeDisplaySetScale(uint32_t scale){activePlaydate->display->setScale(scale);}
 void bridgeDisplaySetMosaic(uint32_t x,uint32_t y){activePlaydate->display->setMosaic(x,y);}

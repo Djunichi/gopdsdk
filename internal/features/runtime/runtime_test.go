@@ -983,10 +983,18 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 func TestDisplayAndDirtyRegionValidation(t *testing.T) {
 	var displayCalls int
 	display := NewDisplay(DisplayDriver{
+		Width: func() int { return 200 }, Height: func() int { return 120 },
+		RefreshRate: func() float32 { return 30 }, FPS: func() float32 { return 29.5 },
 		SetRefreshRate: func(float32) { displayCalls++ }, SetInverted: func(bool) { displayCalls++ },
 		SetScale: func(uint) { displayCalls++ }, SetMosaic: func(uint, uint) { displayCalls++ },
 		SetFlipped: func(bool, bool) { displayCalls++ }, SetOffset: func(int, int) { displayCalls++ },
 	})
+	if width, height := display.Width(), display.Height(); width != 200 || height != 120 {
+		t.Fatalf("display size = %dx%d", width, height)
+	}
+	if rate, fps := display.RefreshRate(), display.FPS(); rate != 30 || fps != 29.5 {
+		t.Fatalf("display rates = %v/%v", rate, fps)
+	}
 	if err := display.SetRefreshRate(50); err != nil {
 		t.Fatal(err)
 	}
@@ -1110,6 +1118,10 @@ type displayCapabilityContext struct {
 	calls int
 }
 
+func (*displayCapabilityContext) Width() int                              { return 200 }
+func (*displayCapabilityContext) Height() int                             { return 120 }
+func (*displayCapabilityContext) RefreshRate() float32                    { return 30 }
+func (*displayCapabilityContext) FPS() float32                            { return 29 }
 func (c *displayCapabilityContext) SetRefreshRate(float32) error          { c.calls++; return nil }
 func (*displayCapabilityContext) SetInverted(bool)                        {}
 func (*displayCapabilityContext) SetScale(uint) error                     { return nil }
@@ -1122,7 +1134,11 @@ func (c *displayCapabilityContext) AddDirtyRect(int, int, int, int) error { c.ca
 type displayCapabilityGame struct{}
 
 func (displayCapabilityGame) Init(context playdate.Context) error {
-	if err := context.(playdate.Display).SetRefreshRate(30); err != nil {
+	display := context.(playdate.Display)
+	if display.Width() != 200 || display.Height() != 120 || display.RefreshRate() != 30 || display.FPS() != 29 {
+		return errors.New("display introspection was not forwarded")
+	}
+	if err := display.SetRefreshRate(30); err != nil {
 		return err
 	}
 	context.(playdate.SpriteRedraw).SetAlwaysRedraw(false)

@@ -37,6 +37,22 @@ func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 	}
 }
 
+func TestBothDeviceAdaptersContainDisplayIntrospection(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{"bridgeDisplayWidth", "bridgeDisplayHeight", "bridgeDisplayRefreshRateBits", "bridgeDisplayFPSBits"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("probe source does not contain %q", want)
+		}
+	}
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{"display->getWidth", "display->getHeight", "display->getRefreshRate", "display->getFPS"} {
+			if !strings.Contains(bootstrap, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+	}
+}
+
 func TestProbeSourceContainsCollisionBridge(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "sdkRuntime.NativeCollision", "bridgeFreeList(list)"} {

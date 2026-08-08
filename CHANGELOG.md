@@ -6,6 +6,20 @@ that out.
 
 ## Unreleased
 
+- Added P7.4 logical display width/height, nominal refresh-rate, and measured
+  FPS introspection through `playdate.Display`, `NewApplication`, and both
+  native adapters. The existing sprite/display acceptance scene now reports
+  all four live values. Debug-framebuffer and explicit flush entry points
+  remain intentionally outside the public contract.
+- Passed deterministic tests and official Windows SDK 3.1.1 Simulator visual
+  execution for the P7.4 acceptance scene. Built it with the conservative-GC
+  hard-float profile, installed it over COM3, launched it, and confirmed
+  matching logical dimensions, nominal refresh rate, measured FPS, redraw,
+  and presentation behavior on a physical Playdate on 2026-08-08. The device
+  artifact uses 292,016 bytes of static RAM and produces a 1,018,708-byte ELF
+  and a 69,505-byte PDX. Full graphics regression, performance,
+  bounded-memory, soak, and post-run device-log gates remain pending before
+  `v0.7.0` release.
 - Added the P7.2 owned-bitmap data surface, copying and in-place loading,
   owned bitmap-table creation/loading, mask lifetime and collision operations,
   rotated-bitmap creation, and persistent display-buffer snapshots on both

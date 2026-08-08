@@ -1296,6 +1296,10 @@ func (p *VideoPlayer) Close() error {
 
 // DisplayDriver contains platform display presentation operations.
 type DisplayDriver struct {
+	Width          func() int
+	Height         func() int
+	RefreshRate    func() float32
+	FPS            func() float32
 	SetRefreshRate func(float32)
 	SetInverted    func(bool)
 	SetScale       func(uint)
@@ -1309,6 +1313,11 @@ type Display struct{ driver DisplayDriver }
 
 // NewDisplay creates a display capability backed by platform operations.
 func NewDisplay(driver DisplayDriver) *Display { return &Display{driver: driver} }
+
+func (d *Display) Width() int           { return d.driver.Width() }
+func (d *Display) Height() int          { return d.driver.Height() }
+func (d *Display) RefreshRate() float32 { return d.driver.RefreshRate() }
+func (d *Display) FPS() float32         { return d.driver.FPS() }
 
 func (d *Display) SetRefreshRate(rate float32) error {
 	if math.IsNaN(float64(rate)) || math.IsInf(float64(rate), 0) || rate < 0 || rate > 50 {
@@ -1702,6 +1711,34 @@ func (context *applicationContext) SetRefreshRate(rate float32) error {
 		return err
 	}
 	return display.SetRefreshRate(rate)
+}
+func (context *applicationContext) Width() int {
+	display, err := context.display()
+	if err != nil {
+		return 0
+	}
+	return display.Width()
+}
+func (context *applicationContext) Height() int {
+	display, err := context.display()
+	if err != nil {
+		return 0
+	}
+	return display.Height()
+}
+func (context *applicationContext) RefreshRate() float32 {
+	display, err := context.display()
+	if err != nil {
+		return 0
+	}
+	return display.RefreshRate()
+}
+func (context *applicationContext) FPS() float32 {
+	display, err := context.display()
+	if err != nil {
+		return 0
+	}
+	return display.FPS()
 }
 func (context *applicationContext) SetInverted(value bool) {
 	if display, err := context.display(); err == nil {

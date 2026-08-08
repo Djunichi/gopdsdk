@@ -182,6 +182,10 @@ int bridgeVideoSetContext(uintptr_t p,uintptr_t b) { return bridgePlaydate->grap
 void bridgeVideoUseScreenContext(uintptr_t p) { bridgePlaydate->graphics->video->useScreenContext((LCDVideoPlayer*)p); }
 int bridgeVideoRenderFrame(uintptr_t p,int f) { return bridgePlaydate->graphics->video->renderFrame((LCDVideoPlayer*)p,f); }
 void bridgeDisplaySetRefreshRate(float rate) { bridgePlaydate->display->setRefreshRate(rate); }
+int bridgeDisplayWidth(void) { return bridgePlaydate->display->getWidth(); }
+int bridgeDisplayHeight(void) { return bridgePlaydate->display->getHeight(); }
+float bridgeDisplayRefreshRate(void) { return bridgePlaydate->display->getRefreshRate(); }
+float bridgeDisplayFPS(void) { return bridgePlaydate->display->getFPS(); }
 void bridgeDisplaySetInverted(int flag) { bridgePlaydate->display->setInverted(flag); }
 void bridgeDisplaySetScale(unsigned int scale) { bridgePlaydate->display->setScale(scale); }
 void bridgeDisplaySetMosaic(unsigned int x, unsigned int y) { bridgePlaydate->display->setMosaic(x, y); }

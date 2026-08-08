@@ -1,8 +1,10 @@
-// Package sprites exercises the P6.2 display and sprite-redraw API.
+// Package sprites exercises the display, display-introspection, and
+// sprite-redraw API.
 package sprites
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/Djunichi/gopdsdk/playdate"
 )
@@ -13,7 +15,7 @@ const (
 	presentationModes = 6
 )
 
-var errCapabilities = errors.New("P6.2 display and sprite-redraw capabilities are unavailable")
+var errCapabilities = errors.New("display and sprite-redraw capabilities are unavailable")
 
 type game struct {
 	bitmaps      [2]playdate.Bitmap
@@ -180,10 +182,15 @@ func (g *game) drawOverlay(context playdate.Context) {
 	if g.fullRedraw {
 		mode = "FULL"
 	}
-	context.DrawText("P6.2 "+mode+" / "+g.presentationName(), 6, 4)
+	display := context.(playdate.Display)
+	context.DrawText("P7.4 "+mode+" / "+g.presentationName(), 6, 4)
 	context.DrawText("A redraw  B display  UP reset", 6, 24)
 	context.DrawText("Crank: top square", 6, 44)
 	context.DrawText("Bar halves change separately", 6, 64)
+	metrics := strconv.Itoa(display.Width()) + "x" + strconv.Itoa(display.Height()) +
+		"  target " + strconv.FormatFloat(float64(display.RefreshRate()), 'f', 1, 32) +
+		"  actual " + strconv.FormatFloat(float64(display.FPS()), 'f', 1, 32) + " FPS"
+	context.DrawText(metrics, 6, 84)
 }
 
 func (g *game) presentationName() string {

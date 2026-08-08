@@ -217,6 +217,14 @@ func bridgeVideoUseScreenContext(uintptr)
 func bridgeVideoRenderFrame(uintptr,int32) int32
 //go:linkname bridgeDisplaySetRefreshRateBits bridgeDisplaySetRefreshRateBits
 func bridgeDisplaySetRefreshRateBits(uint32)
+//go:linkname bridgeDisplayWidth bridgeDisplayWidth
+func bridgeDisplayWidth() int32
+//go:linkname bridgeDisplayHeight bridgeDisplayHeight
+func bridgeDisplayHeight() int32
+//go:linkname bridgeDisplayRefreshRateBits bridgeDisplayRefreshRateBits
+func bridgeDisplayRefreshRateBits() uint32
+//go:linkname bridgeDisplayFPSBits bridgeDisplayFPSBits
+func bridgeDisplayFPSBits() uint32
 //go:linkname bridgeDisplaySetInverted bridgeDisplaySetInverted
 func bridgeDisplaySetInverted(int32)
 //go:linkname bridgeDisplaySetScale bridgeDisplaySetScale
@@ -729,7 +737,11 @@ func (playdateContext) SetLineCapStyle(style sdkPlaydate.LineCapStyle) error {if
 func (playdateContext) SetBackgroundColor(color sdkPlaydate.Color) error {if color>sdkPlaydate.ColorBlack{return sdkPlaydate.ErrGraphicsColor};bridgeSetBackgroundColor(int32(color));return nil}
 func (playdateContext) SetScreenClipRect(x,y,width,height int) error {if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0);err!=nil{return err};bridgeSetScreenClipRect(int32(x),int32(y),int32(width),int32(height));return nil}
 
-var display=sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{SetRefreshRate:func(v float32){bridgeDisplaySetRefreshRateBits(float32Bits(v))},SetInverted:func(v bool){var n int32;if v{n=1};bridgeDisplaySetInverted(n)},SetScale:func(v uint){bridgeDisplaySetScale(uint32(v))},SetMosaic:func(x,y uint){bridgeDisplaySetMosaic(uint32(x),uint32(y))},SetFlipped:func(x,y bool){var a,b int32;if x{a=1};if y{b=1};bridgeDisplaySetFlipped(a,b)},SetOffset:func(x,y int){bridgeDisplaySetOffset(int32(x),int32(y))}})
+var display=sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{Width:func()int{return int(bridgeDisplayWidth())},Height:func()int{return int(bridgeDisplayHeight())},RefreshRate:func()float32{return float32FromBits(bridgeDisplayRefreshRateBits())},FPS:func()float32{return float32FromBits(bridgeDisplayFPSBits())},SetRefreshRate:func(v float32){bridgeDisplaySetRefreshRateBits(float32Bits(v))},SetInverted:func(v bool){var n int32;if v{n=1};bridgeDisplaySetInverted(n)},SetScale:func(v uint){bridgeDisplaySetScale(uint32(v))},SetMosaic:func(x,y uint){bridgeDisplaySetMosaic(uint32(x),uint32(y))},SetFlipped:func(x,y bool){var a,b int32;if x{a=1};if y{b=1};bridgeDisplaySetFlipped(a,b)},SetOffset:func(x,y int){bridgeDisplaySetOffset(int32(x),int32(y))}})
+func(playdateContext)Width()int{return display.Width()}
+func(playdateContext)Height()int{return display.Height()}
+func(playdateContext)RefreshRate()float32{return display.RefreshRate()}
+func(playdateContext)FPS()float32{return display.FPS()}
 func(playdateContext)SetRefreshRate(v float32)error{return display.SetRefreshRate(v)}
 func(playdateContext)SetInverted(v bool){display.SetInverted(v)}
 func(playdateContext)SetScale(v uint)error{return display.SetScale(v)}

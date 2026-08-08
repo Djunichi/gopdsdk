@@ -263,7 +263,7 @@ type ControlSignal interface{AddEvent(step int, value float32, interpolate bool)
 type DebugMessages interface{PollDebugMessage() (message string, ok bool)}
 type DelayLine interface{AddTap(delayFrames int) (DelayTap, error); SetFeedback(float32) error; SetLength(frames int) error; AudioEffect}
 type DelayTap interface{Close() error; SetChannelsFlipped(bool) error; SetDelay(frames int) error; SetDelayModulator(Signal) error; AudioSource}
-type Display interface{SetFlipped(x bool, y bool); SetInverted(bool); SetMosaic(x uint, y uint) error; SetOffset(x int, y int); SetRefreshRate(framesPerSecond float32) error; SetScale(uint) error}
+type Display interface{FPS() float32; Height() int; RefreshRate() float32; SetFlipped(x bool, y bool); SetInverted(bool); SetMosaic(x uint, y uint) error; SetOffset(x int, y int); SetRefreshRate(framesPerSecond float32) error; SetScale(uint) error; Width() int}
 type DrawMode uint8
 type Envelope interface{SetAttack(seconds float32) error; SetDecay(seconds float32) error; SetLegato(legato bool) error; SetRelease(seconds float32) error; SetRetrigger(retrigger bool) error; SetSustain(level float32) error; Signal}
 type FadingPlayer interface{FadeVolume(left float32, right float32, audioFrames uint32, callback func()) error}
