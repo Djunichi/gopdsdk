@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The released `v0.7.0` retains the exact toolchain profile accepted by
+The declared `v0.8.0` retains the exact toolchain profile accepted by
 the published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
@@ -40,3 +40,12 @@ does not itself prove target timing or memory behavior.
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
 actually exercised.
+
+The P8 sprite acceptance scene passed the official Windows SDK 3.1.1
+Simulator, conservative hard-float device build, USB deployment, and physical
+Playdate execution on 2026-08-09. The accepted device artifact uses 283,104
+bytes of static RAM and produces a 1,479,780-byte ELF and 73,656-byte PDX. The
+user-confirmed physical run covered procedural drawing, continuously delivered
+update callbacks, pair-specific collision response, the complete presentation
+and query matrix, the required 60-second conservative-GC soak, bounded memory
+growth, and unchanged post-run `crashlog.txt` and `errorlog.txt`.

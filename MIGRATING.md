@@ -1,26 +1,29 @@
-# Migrating to v0.7.0
+# Migrating to v0.8.0
 
-`v0.7.0` adds advanced drawing state, owned bitmap data and masks, text layout
-and font metrics, and display introspection. Existing v0.6 games can update
-their module requirement and continue unchanged; all new capabilities are
-additive.
+`v0.8.0` completes the offline sprite and collision surface with geometry and
+presentation controls, native sprite tilemaps, detailed queries and
+display-list operations, and bounded per-sprite callbacks. Existing v0.7 games
+can update their module requirement and continue unchanged; all new
+capabilities are additive.
 
-## Drawing and bitmap data
+## Sprite presentation and tilemaps
 
-Use the expanded `Graphics` surface for filled polygons, rounded rectangles,
-line caps, background color, and screen-coordinate clipping. Owned bitmap data
-is exposed only inside its callback lifetime; mark modified data dirty before
-the callback returns. Keep borrowed mask views and glyph bitmaps within the
-lifetime of their owning bitmap or font.
+Owned sprites now expose center, bounds, position getters, image flip, draw
+mode, opacity, stencil, clip rectangle, draw-offset policy, and deterministic
+update/collision enable state. Games needing official native sprite tilemaps
+can assert `playdate.SpriteTileMaps`; retain attached bitmap tables until the
+tilemap and its sprites no longer use them.
 
-## Text, fonts, and display
+## Queries, display-list control, and callbacks
 
-Use bounded text drawing and wrapping-height measurement for rectangle layout.
-Glyph metrics and kerning support custom renderers while packaged `.fnt` files
-remain the portable custom-font path. The expanded `Display` capability reports
-logical dimensions, nominal refresh rate, and measured FPS.
+Assert `playdate.SpriteQueries` for line and detailed-hit queries and
+`playdate.SpriteDisplayList` for count, bulk membership, remove-all, and
+collision-world reset. Callback registration is bounded to 64 slots per
+context. Draw and update callbacks run synchronously in display-list order;
+collision callbacks select the response for the ordered sprite pair. Clear
+callbacks or close their sprites to release registrations deterministically.
 
 ## Published-module verification
 
-Remove any local `replace`, require `github.com/Djunichi/gopdsdk v0.7.0`, and
+Remove any local `replace`, require `github.com/Djunichi/gopdsdk v0.8.0`, and
 repeat the clean module-proxy check from [RELEASING.md](RELEASING.md).

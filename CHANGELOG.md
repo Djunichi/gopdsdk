@@ -4,7 +4,7 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## Unreleased
+## v0.8.0 (2026-08-09)
 
 - Implemented P8.3 per-sprite procedural draw, update, and pair-specific
   collision-response callbacks on both native adapters. Callback registration
@@ -19,9 +19,10 @@ that out.
   and the visible update-callback counter increased continuously. USB
   installation through COM3 and launch then passed on a physical Playdate;
   user-confirmed execution showed matching `P8.3 PASS`, a continuously
-  increasing update counter, and the procedural draw. Conservative-GC soak,
-  memory-growth measurement, and post-run device-log inspection remain
-  unverified.
+  increasing update counter, and the procedural draw. A user-confirmed
+  60-second conservative-GC physical-device soak passed on 2026-08-09. The
+  user also confirmed bounded memory growth and unchanged post-run
+  `crashlog.txt` and `errorlog.txt` for the accepted device run.
 
 - Completed P8.2 with line and detailed sprite-hit queries, non-mutating
   collision checks, sprite count, bulk add/remove, remove-all, and
@@ -32,8 +33,9 @@ that out.
   status succeeded in the official Windows SDK 3.1.1 Simulator and on a
   physical Playdate. The conservative-GC hard-float device artifact uses
   282,512 bytes of static RAM and produces a 1,398,940-byte ELF and
-  69,893-byte PDX. Conservative-GC soak, memory-growth measurement, and
-  post-run device-log inspection remain unverified.
+  69,893-byte PDX. The final P8 device acceptance covers the required
+  conservative-GC soak, bounded memory growth, and unchanged post-run device
+  logs.
 
 - Added sprite geometry and presentation controls for center, bounds,
   position getters, image flip, draw mode, opacity, stencil images and patterns,
@@ -47,8 +49,8 @@ that out.
   transitions, native tilemap attachment, and live tile mutation. The final
   conservative-GC hard-float device artifact uses 281,880 bytes of static RAM
   and produces a 1,304,340-byte ELF and 61,792-byte PDX.
-  Conservative-GC soak, memory-growth measurement, and post-run device-log
-  inspection remain unverified.
+  The final P8 device acceptance covers the required conservative-GC soak,
+  bounded memory growth, and unchanged post-run device logs.
 - Worked around the SDK 3.1.1 sprite-stencil clear path rejecting its own null
   image by installing a fully open pattern with equivalent drawing behavior.
 - Completed P8.1 with explicitly owned native sprite tilemaps, bitmap-table

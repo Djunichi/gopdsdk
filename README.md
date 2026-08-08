@@ -2,12 +2,12 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The latest published release is **`v0.7.0`**. It completes the offline bitmap,
-drawing, text, font, and display facilities planned for P7 on top of the bitmap
-composition, sprite redraw, optional video, and bounded external-game
-diagnostics accepted in `v0.6.0`. P7 acceptance, soak, bounded-memory, and
-post-run device-log checks passed on the verified Windows Simulator and
-physical-device profile.
+The latest declared release is **`v0.8.0`**; publication remains pending until
+its tag and hosted release exist. It completes the offline sprite and collision
+facilities with presentation controls, native tilemaps, detailed queries,
+display-list operations, and bounded callbacks. P8 acceptance, soak,
+bounded-memory, and post-run device-log checks passed on the verified Windows
+Simulator and physical-device profile.
 The public API is snapshot-tested and documented,
 but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
@@ -22,7 +22,7 @@ external-consumer CLI suite natively on all three hosts. Windows is additionally
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
 
-The exact `v0.7.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+The exact `v0.8.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
 TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
 solely by version number: `doctor` reports them as `UNVERIFIED` until the
 relevant probe succeeds.
@@ -49,13 +49,14 @@ deployment works on that host.
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
-## Install the current release
+## Install v0.8.0 after publication
 
-Run the released CLI directly at that version:
+After the `v0.8.0` tag is published and the module-proxy check passes, run the
+released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.7.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.7.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.8.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.8.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -419,15 +420,16 @@ offset-ignoring sprites.
 On 2026-08-08 this scene passed visual acceptance in the official Windows SDK
 3.1.1 Simulator and on a physical Playdate. The conservative-GC hard-float
 device artifact uses 281,880 bytes of static RAM and produces a 1,304,340-byte
-ELF and 61,792-byte PDX. Long-running conservative-GC soak, memory-growth
-measurement, and post-run device-log inspection remain unverified.
+ELF and 61,792-byte PDX. The final P8 device acceptance covers the required
+conservative-GC soak, bounded memory growth, and unchanged post-run device
+logs.
 
 On 2026-08-09 the expanded P8.2 startup self-check and visible PASS status
 succeeded in the official Windows SDK 3.1.1 Simulator and on a physical
 Playdate. The conservative-GC hard-float device artifact uses 282,512 bytes of
-static RAM and produces a 1,398,940-byte ELF and 69,893-byte PDX. Long-running
-conservative-GC soak, memory-growth measurement, and post-run device-log
-inspection remain unverified.
+static RAM and produces a 1,398,940-byte ELF and 69,893-byte PDX. The final P8
+device acceptance covers the required conservative-GC soak, bounded memory
+growth, and unchanged post-run device logs.
 
 On 2026-08-09 the P8.3 build displayed `P8.3 PASS` in the official Windows SDK
 3.1.1 Simulator. Its startup pair-specific collision-response check succeeded,
@@ -435,9 +437,10 @@ and the visible update-callback counter increased continuously. The conservative
 hard-float device build uses 283,104 bytes of static RAM and produces a
 1,479,780-byte ELF and a 73,656-byte PDX. USB installation through COM3 and
 launch passed; user-confirmed physical execution showed matching `P8.3 PASS`, a
-continuously increasing update counter, and the procedural draw. Conservative-GC
-soak, memory-growth measurement, and post-run device-log inspection remain
-unverified.
+continuously increasing update counter, and the procedural draw. A
+user-confirmed 60-second conservative-GC physical-device soak passed on
+2026-08-09. The user also confirmed bounded memory growth and unchanged
+post-run `crashlog.txt` and `errorlog.txt` for the accepted device run.
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/spritepresentation
