@@ -1,10 +1,10 @@
 # Public API
 
-This document describes the published `v0.7.0` public contract, including
+This document describes the declared `v0.8.0` public contract, including
 advanced drawing, bitmap data and masks, text and font metrics, display
-introspection, bitmap composition, sprite-redraw controls, optional video, and
-the bounded diagnostics package. The module is still pre-v1: minor releases may
-make intentional breaking changes, which must be called out in release notes.
+introspection, complete offline sprite and collision facilities, optional
+video, and the bounded diagnostics package. The module is still pre-v1: minor
+releases may make intentional breaking changes, which must be called out in release notes.
 Patch releases preserve the documented API and behavior.
 
 Applications import the native contract from

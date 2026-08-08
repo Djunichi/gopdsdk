@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.7.0` released; the remaining offline official-SDK capability gaps
-are allocated through `v0.12.0`, followed by the `v1.0.0` contract release,
-updated 2026-08-09.
+Status: `v0.8.0` declared; publication is pending. The remaining offline
+official-SDK capability gaps are allocated through `v0.12.0`, followed by the
+`v1.0.0` contract release, updated 2026-08-09.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -50,7 +50,6 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P8 | `v0.8.0` | Complete offline sprite and collision facilities | Planned |
 | P9 | `v0.9.0` | Complete offline sound, sample, and output facilities | Planned |
 | P10 | `v0.10.0` | Complete offline system and lifecycle facilities | Planned |
 | P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | Planned |
@@ -68,7 +67,7 @@ cross-build does not promote a capability to device-ready.
 
 ## Offline official-SDK completion policy
 
-P8 through P11 close every remaining known official C SDK gap that can materially block
+P9 through P11 close every remaining known official C SDK gap that can materially block
 an offline game. Selection is based on lost capability, not anticipated
 popularity: a feature is in scope even when uncommon if omitting it prevents a
 game design that the official C SDK supports.
@@ -90,62 +89,6 @@ both native contexts, deterministic tests, a repository-owned acceptance
 consumer, official Simulator integration, device build, and applicable physical
 device behavior. Callback APIs additionally require bounded queues, no unsafe
 re-entry into Go, termination suppression, and overflow behavior.
-
-## P8 — complete sprites and collisions — `v0.8.0`
-
-P8 removes restrictions that prevent representing an official native sprite
-configuration or collision query.
-
-### P8.1 — sprite geometry and presentation
-
-Status: complete. Geometry, presentation, useful getters, update/collision
-enable state, native tilemap ownership and attachment, both native adapters,
-deterministic tests, and Simulator/device visual acceptance are complete.
-
-- Add center, bounds, image flip, draw mode, opacity, stencil image/pattern,
-  clip rectangle, draw-offset policy, tilemap attachment when it is not
-  equivalent to the portable tile layer, and the corresponding useful getters.
-- Add update-enabled and collision-enabled state with deterministic lifecycle
-  behavior.
-
-### P8.2 — queries and display-list control
-
-Status: complete. Line and detailed-hit queries, non-mutating collision checks,
-sprite count, atomic-validation bulk membership changes, remove-all state
-synchronization, collision-world reset, both native adapters, and deterministic
-tests are complete. The repository-owned self-check scene passed the official
-Windows SDK 3.1.1 Simulator and physical Playdate acceptance on 2026-08-09.
-
-- Add line queries and their detailed hit information, collision checks,
-  sprite count, bulk add/remove, remove-all, and collision-world reset.
-- Omit bulk functions only where repeated typed Go operations are behaviorally
-  identical, preserve ordering, and cannot introduce partial-failure behavior.
-
-### P8.3 — bounded callbacks
-
-Status: complete. Per-sprite draw, update,
-and collision-response callbacks, the 64-slot per-context bound, deterministic
-cleanup and termination suppression, both native adapters, deterministic
-tests, Simulator integration build, and conservative hard-float device build
-are complete. On 2026-08-09 the official Windows SDK 3.1.1 Simulator displayed
-`P8.3 PASS`; the startup collision-response self-check succeeded and the visible
-update-callback counter increased continuously. USB installation through COM3,
-launch, matching `P8.3 PASS`, continuous update callbacks, and the procedural
-draw passed on a physical Playdate the same day. Conservative-GC soak,
-memory-growth measurement, and post-run device-log inspection remain
-unverified.
-
-- Add per-sprite draw, update, and collision-response callbacks.
-- Define callback ordering, frame lifetime, panic/error policy, mutation rules,
-  cleanup, queue bounds, and behavior after termination on both ABIs.
-- Do not expose raw C userdata; Go-owned callback identity and state provide the
-  same useful capability.
-
-### P8.4 — release
-
-- Exercise procedural sprites, dynamic pair-specific collision responses,
-  line queries, stencils, flips, clipping, enable transitions, and cleanup in a
-  repository-owned acceptance scene before releasing `v0.8.0`.
 
 ## P9 — complete sound — `v0.9.0`
 
