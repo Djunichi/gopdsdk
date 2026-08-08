@@ -347,6 +347,8 @@ func bridgeSpriteMarkDirty(sprite uintptr)
 func bridgeSpriteMarkDirtyRectBits(sprite uintptr,x,y,width,height uint32)
 //go:linkname bridgeSpriteMoveWithCollisionsBits bridgeSpriteMoveWithCollisionsBits
 func bridgeSpriteMoveWithCollisionsBits(sprite uintptr, x, y uint32, actualX, actualY *uint32, count *int32) uintptr
+//go:linkname bridgeSpriteCheckCollisionsBits bridgeSpriteCheckCollisionsBits
+func bridgeSpriteCheckCollisionsBits(sprite uintptr, x, y uint32, actualX, actualY *uint32, count *int32) uintptr
 //go:linkname bridgeCollisionValueBits bridgeCollisionValueBits
 func bridgeCollisionValueBits(collisions uintptr, index, field int32) uint32
 //go:linkname bridgeCollisionOther bridgeCollisionOther
@@ -357,6 +359,14 @@ func bridgeFreeList(list uintptr)
 func bridgeQuerySpritesAtPointBits(x, y uint32, count *int32) uintptr
 //go:linkname bridgeQuerySpritesInRectBits bridgeQuerySpritesInRectBits
 func bridgeQuerySpritesInRectBits(x, y, width, height uint32, count *int32) uintptr
+//go:linkname bridgeQuerySpritesAlongLineBits bridgeQuerySpritesAlongLineBits
+func bridgeQuerySpritesAlongLineBits(x1,y1,x2,y2 uint32,count *int32)uintptr
+//go:linkname bridgeQuerySpriteInfoAlongLineBits bridgeQuerySpriteInfoAlongLineBits
+func bridgeQuerySpriteInfoAlongLineBits(x1,y1,x2,y2 uint32,count *int32)uintptr
+//go:linkname bridgeSpriteQueryInfoValueBits bridgeSpriteQueryInfoValueBits
+func bridgeSpriteQueryInfoValueBits(uintptr,int32,int32)uint32
+//go:linkname bridgeSpriteQueryInfoSprite bridgeSpriteQueryInfoSprite
+func bridgeSpriteQueryInfoSprite(uintptr,int32)uintptr
 //go:linkname bridgeSpriteListItem bridgeSpriteListItem
 func bridgeSpriteListItem(list uintptr, index int32) uintptr
 //go:linkname bridgeOverlappingSprites bridgeOverlappingSprites
@@ -365,6 +375,14 @@ func bridgeOverlappingSprites(sprite uintptr, count *int32) uintptr
 func bridgeSpriteAdd(sprite uintptr)
 //go:linkname bridgeSpriteRemove bridgeSpriteRemove
 func bridgeSpriteRemove(sprite uintptr)
+//go:linkname bridgeSpriteRemoveMany bridgeSpriteRemoveMany
+func bridgeSpriteRemoveMany(*uintptr,int32)
+//go:linkname bridgeRemoveAllSprites bridgeRemoveAllSprites
+func bridgeRemoveAllSprites()
+//go:linkname bridgeSpriteCount bridgeSpriteCount
+func bridgeSpriteCount()int32
+//go:linkname bridgeResetCollisionWorld bridgeResetCollisionWorld
+func bridgeResetCollisionWorld()
 //go:linkname bridgeSetAlwaysRedraw bridgeSetAlwaysRedraw
 func bridgeSetAlwaysRedraw(int32)
 //go:linkname bridgeAddDirtyRect bridgeAddDirtyRect
@@ -832,7 +850,9 @@ func(playdateContext)SetFlipped(x,y bool){display.SetFlipped(x,y)}
 func(playdateContext)SetOffset(x,y int){display.SetOffset(x,y)}
 
 func float32Bits(value float32) uint32 { return *(*uint32)(unsafe.Pointer(&value)) }
+var spriteDisplayList=sdkRuntime.NewSpriteDisplayListState()
 var spriteDriver = sdkRuntime.SpriteDriver{
+	DisplayList: spriteDisplayList,
 	SetBitmap: bridgeSpriteSetBitmap,
 	SetCenter: func(s uintptr,x,y float32){bridgeSpriteSetCenterBits(s,float32Bits(x),float32Bits(y))}, Center: func(s uintptr)(float32,float32){return spritePoint(s,true)},
 	SetBounds: func(s uintptr,r sdkPlaydate.Rect){bridgeSpriteSetBoundsBits(s,float32Bits(r.X),float32Bits(r.Y),float32Bits(r.Width),float32Bits(r.Height))}, Bounds: func(s uintptr)sdkPlaydate.Rect{return spriteRect(s,false)},
@@ -854,6 +874,7 @@ var spriteDriver = sdkRuntime.SpriteDriver{
 	MarkDirty: bridgeSpriteMarkDirty,
 	MarkDirtyRect: func(sprite uintptr,rect sdkPlaydate.Rect){bridgeSpriteMarkDirtyRectBits(sprite,float32Bits(rect.X),float32Bits(rect.Y),float32Bits(rect.Width),float32Bits(rect.Height))},
 	MoveWithCollisions: moveWithCollisions,
+	CheckCollisions: checkCollisions,
 	Add: bridgeSpriteAdd, Remove: bridgeSpriteRemove, Free: bridgeFreeSprite,
 }
 var spriteTileMapDriver=sdkRuntime.SpriteTileMapDriver{SetImageTable:bridgeSpriteTileMapSetImageTable,SetSize:func(m uintptr,w,h int){bridgeSpriteTileMapSetSize(m,int32(w),int32(h))},Size:func(m uintptr)(int,int){var w,h int32;bridgeSpriteTileMapSize(m,&w,&h);return int(w),int(h)},PixelSize:func(m uintptr)(int,int){var w,h uint32;bridgeSpriteTileMapPixelSize(m,&w,&h);return int(w),int(h)},SetTiles:func(m uintptr,v []uint16,row int){bridgeSpriteTileMapSetTiles(m,&v[0],int32(len(v)),int32(row))},SetTile:func(m uintptr,x,y int,v uint16){bridgeSpriteTileMapSetTile(m,int32(x),int32(y),v)},Tile:func(m uintptr,x,y int)uint16{return uint16(bridgeSpriteTileMapTile(m,int32(x),int32(y)))},Free:bridgeFreeSpriteTileMap}
@@ -862,7 +883,14 @@ func boolInt32(v bool)int32{if v{return 1};return 0}
 func spritePoint(s uintptr,center bool)(float32,float32){var x,y uint32;bridgeSpriteGetPointBits(s,boolInt32(center),&x,&y);return float32FromBits(x),float32FromBits(y)}
 func spriteRect(s uintptr,collide bool)sdkPlaydate.Rect{return sdkPlaydate.Rect{X:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),0)),Y:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),1)),Width:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),2)),Height:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),3))}}
 func moveWithCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
-	var actualX, actualY uint32; var count int32; list := bridgeSpriteMoveWithCollisionsBits(sprite, float32Bits(x), float32Bits(y), &actualX, &actualY, &count)
+	return collisionQuery(bridgeSpriteMoveWithCollisionsBits,sprite,x,y)
+}
+func checkCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
+	return collisionQuery(bridgeSpriteCheckCollisionsBits,sprite,x,y)
+}
+func collisionQuery(call func(uintptr,uint32,uint32,*uint32,*uint32,*int32)uintptr,sprite uintptr,x,y float32)(float32,float32,[]sdkRuntime.NativeCollision){
+	var actualX, actualY uint32; var count int32
+	list := call(sprite,float32Bits(x),float32Bits(y),&actualX,&actualY,&count)
 	result := make([]sdkRuntime.NativeCollision, int(count)); for index := range result { value := func(field int32) float32 { return float32FromBits(bridgeCollisionValueBits(list, int32(index), field)) }; result[index] = sdkRuntime.NativeCollision{Other: bridgeCollisionOther(list, int32(index)), ResponseType: sdkPlaydate.CollisionResponse(bridgeCollisionValueBits(list, int32(index), 14)), Overlaps: bridgeCollisionValueBits(list, int32(index), 15) != 0, Time: value(0), Move: sdkPlaydate.Point{X:value(1),Y:value(2)}, Normal:sdkPlaydate.Point{X:value(3),Y:value(4)}, Touch:sdkPlaydate.Point{X:value(5),Y:value(6)}, SpriteRect:sdkPlaydate.Rect{X:value(7),Y:value(8),Width:value(9),Height:value(10)}, OtherRect:sdkPlaydate.Rect{X:value(11),Y:value(12),Width:value(13),Height:value(16)}} }; bridgeFreeList(list); return float32FromBits(actualX), float32FromBits(actualY), result
 }
 func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
@@ -872,7 +900,14 @@ func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
 func borrowedSpriteList(list uintptr, count int32) []sdkPlaydate.Sprite { handles := make([]uintptr, int(count)); for index := range handles { handles[index] = bridgeSpriteListItem(list, int32(index)) }; sprites := sdkRuntime.BorrowedSprites(handles, spriteDriver); bridgeFreeList(list); return sprites }
 func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesAtPointBits(float32Bits(x), float32Bits(y), &count); return borrowedSpriteList(list, count) }
 func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesInRectBits(float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height), &count); return borrowedSpriteList(list, count) }
+func(playdateContext)QuerySpritesAlongLine(a,b,c,d float32)[]sdkPlaydate.Sprite{var n int32;return borrowedSpriteList(bridgeQuerySpritesAlongLineBits(float32Bits(a),float32Bits(b),float32Bits(c),float32Bits(d),&n),n)}
+func(playdateContext)QuerySpriteInfoAlongLine(a,b,c,d float32)[]sdkPlaydate.SpriteQueryInfo{var n int32;p:=bridgeQuerySpriteInfoAlongLineBits(float32Bits(a),float32Bits(b),float32Bits(c),float32Bits(d),&n);r:=make([]sdkPlaydate.SpriteQueryInfo,int(n));for i:=range r{v:=func(f int32)float32{return float32FromBits(bridgeSpriteQueryInfoValueBits(p,int32(i),f))};r[i]=sdkPlaydate.SpriteQueryInfo{Sprite:sdkRuntime.NewBorrowedSprite(bridgeSpriteQueryInfoSprite(p,int32(i)),spriteDriver),EntryTime:v(0),ExitTime:v(1),EntryPoint:sdkPlaydate.Point{X:v(2),Y:v(3)},ExitPoint:sdkPlaydate.Point{X:v(4),Y:v(5)}}};bridgeFreeList(p);return r}
 func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count int32; list := bridgeOverlappingSprites(handle, &count); return borrowedSpriteList(list, count), nil }
+func(playdateContext)SpriteCount()int{return int(bridgeSpriteCount())}
+func(playdateContext)AddSprites(s []sdkPlaydate.Sprite)error{return sdkRuntime.SetSpritesAdded(s,true,func(h []uintptr){for _,v:=range h{bridgeSpriteAdd(v)}})}
+func(playdateContext)RemoveSprites(s []sdkPlaydate.Sprite)error{return sdkRuntime.SetSpritesAdded(s,false,func(h []uintptr){if len(h)>0{bridgeSpriteRemoveMany(&h[0],int32(len(h)))}})}
+func(playdateContext)RemoveAllSprites(){bridgeRemoveAllSprites();spriteDisplayList.RemoveAll()}
+func(playdateContext)ResetCollisionWorld(){bridgeResetCollisionWorld()}
 func(playdateContext)SetAlwaysRedraw(v bool){var n int32;if v{n=1};bridgeSetAlwaysRedraw(n)}
 func(playdateContext)AddDirtyRect(x,y,w,h int)error{if err:=sdkRuntime.ValidateScreenDirtyRect(x,y,w,h);err!=nil{return err};bridgeAddDirtyRect(int32(x),int32(y),int32(w),int32(h));return nil}
 func (playdateContext) UpdateAndDrawSprites() { bridgeUpdateAndDrawSprites() }

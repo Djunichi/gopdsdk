@@ -1,5 +1,5 @@
-// Package spritepresentation visually exercises P8.1 sprite geometry and
-// presentation controls.
+// Package spritepresentation visually exercises P8 sprite presentation,
+// queries, and display-list controls.
 package spritepresentation
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/Djunichi/gopdsdk/playdate"
 )
 
-var errCapabilities = errors.New("P8.1 sprite presentation capabilities are unavailable")
+var errCapabilities = errors.New("P8 sprite capabilities are unavailable")
 
 type game struct {
 	bitmaps           []playdate.Bitmap
@@ -17,6 +17,8 @@ type game struct {
 	tileMaps          []playdate.SpriteTileMap
 	sprites           []playdate.Sprite
 	display           playdate.Display
+	queries           playdate.SpriteQueries
+	displayList       playdate.SpriteDisplayList
 	updatesEnabled    bool
 	collisionsEnabled bool
 	offset            bool
@@ -27,7 +29,7 @@ type game struct {
 	tileValue         uint16
 }
 
-// New creates the P8.1 sprite-presentation acceptance scene.
+// New creates the P8 sprite-presentation acceptance scene.
 func New() playdate.Game {
 	return &game{updatesEnabled: true, collisionsEnabled: true, stencils: true, clip: true}
 }
@@ -38,11 +40,15 @@ func (g *game) Init(context playdate.Context) error {
 	nativeTileMaps, tileMapsOK := context.(playdate.SpriteTileMaps)
 	redraw, redrawOK := context.(playdate.SpriteRedraw)
 	display, displayOK := context.(playdate.Display)
-	if !offscreenOK || !primitivesOK || !tileMapsOK || !redrawOK || !displayOK {
+	queries, queriesOK := context.(playdate.SpriteQueries)
+	displayList, displayListOK := context.(playdate.SpriteDisplayList)
+	if !offscreenOK || !primitivesOK || !tileMapsOK || !redrawOK || !displayOK || !queriesOK || !displayListOK {
 		return errCapabilities
 	}
 	redraw.SetAlwaysRedraw(true)
 	g.display = display
+	g.queries = queries
+	g.displayList = displayList
 	base, err := context.NewBitmap(48, 32)
 	if err != nil {
 		return err
@@ -173,7 +179,10 @@ func (g *game) Init(context playdate.Context) error {
 	if err != nil || !ok || got != tileMap {
 		return errors.Join(errors.New("tilemap getter mismatch"), err)
 	}
-	return g.verifyGetters()
+	if err := g.verifyGetters(); err != nil {
+		return err
+	}
+	return g.verifyP82()
 }
 
 func setup(sprite playdate.Sprite, bitmap playdate.Bitmap, x, y float32, flip playdate.BitmapFlip) error {
@@ -251,6 +260,58 @@ func (g *game) verifyGetters() error {
 	tag, err := s.Tag()
 	if err != nil || tag != 81 {
 		return errors.Join(errors.New("tag getter mismatch"), err)
+	}
+	return nil
+}
+
+func (g *game) verifyP82() error {
+	if count := g.displayList.SpriteCount(); count != len(g.sprites) {
+		return errors.New("P8.2 sprite count mismatch: " + strconv.Itoa(count))
+	}
+	line := g.queries.QuerySpritesAlongLine(0, 72, 399, 72)
+	detailed := g.queries.QuerySpriteInfoAlongLine(0, 72, 399, 72)
+	if len(line) != 4 || len(detailed) != len(line) {
+		return errors.New("P8.2 line query mismatch")
+	}
+	for index, hit := range detailed {
+		if hit.Sprite == nil || hit.EntryTime > hit.ExitTime || index > 0 && detailed[index-1].EntryTime > hit.EntryTime {
+			return errors.New("P8.2 detailed line hit mismatch")
+		}
+	}
+	x, y, err := g.sprites[0].Position()
+	if err != nil {
+		return err
+	}
+	checked, err := g.sprites[0].CheckCollisions(150, 72)
+	if err != nil || len(checked.Collisions) == 0 {
+		return errors.Join(errors.New("P8.2 collision check mismatch"), err)
+	}
+	actualX, actualY, err := g.sprites[0].Position()
+	if err != nil || actualX != x || actualY != y {
+		return errors.Join(errors.New("P8.2 collision check moved sprite"), err)
+	}
+	batch := g.sprites[:2]
+	if err := g.displayList.RemoveSprites(batch); err != nil {
+		return err
+	}
+	if count := g.displayList.SpriteCount(); count != len(g.sprites)-len(batch) {
+		return errors.New("P8.2 bulk remove mismatch")
+	}
+	if err := g.displayList.AddSprites(batch); err != nil {
+		return err
+	}
+	g.displayList.RemoveAllSprites()
+	if count := g.displayList.SpriteCount(); count != 0 {
+		return errors.New("P8.2 remove-all mismatch")
+	}
+	if err := g.displayList.AddSprites(g.sprites); err != nil {
+		return err
+	}
+	g.displayList.ResetCollisionWorld()
+	for _, sprite := range g.sprites[:len(g.sprites)-1] {
+		if err := sprite.SetCollideRect(playdate.Rect{Width: 48, Height: 32}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -350,7 +411,7 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 	context.Clear()
 	context.UpdateAndDrawSprites()
-	context.DrawText("P8.1 SPRITE PRESENTATION", 6, 4)
+	context.DrawText("P8 SPRITES  P8.2 PASS", 6, 4)
 	context.DrawText("FLIP: NONE        X          Y          XY", 6, 26)
 	context.DrawText("PATTERN       IMAGE MASK      CLIP HALF      INVERT+OPAQUE", 6, 98)
 	context.DrawText("OFFSET MOVES     TILEMAP "+strconv.Itoa(int(g.tileValue))+"       OFFSET IGNORED", 6, 164)

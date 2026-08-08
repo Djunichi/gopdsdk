@@ -242,10 +242,14 @@ For example, load `resources/images/player.png` as `images/player`.
 
 Sprite collision rectangles opt an owned sprite into collision queries.
 `MoveWithCollisions` resolves a goal position and returns the actual position
-plus ordered contacts using slide, freeze, overlap, or bounce responses.
-Point, rectangle, and overlap queries expose only sprites owned by the current
-runtime; a foreign or closed sprite passed to an operation returns the
-corresponding sprite error.
+plus ordered contacts using slide, freeze, overlap, or bounce responses;
+`CheckCollisions` returns the same result without moving the sprite. Point,
+rectangle, line, detailed line-hit, and overlap queries return borrowed sprites.
+Detailed line hits include ordered entry/exit times and points. Games assert
+`SpriteQueries` for line operations and `SpriteDisplayList` for sprite count,
+bulk add/remove, remove-all, and collision-world reset. Bulk operations validate
+the complete input before mutation and preserve its order. A foreign or closed
+sprite passed to an operation returns the corresponding sprite error.
 
 ## Bitmap tables and animation
 

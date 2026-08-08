@@ -1363,6 +1363,7 @@ func (d *Display) SetOffset(x, y int)   { d.driver.SetOffset(x, y) }
 
 // SpriteDriver contains platform operations for one native sprite handle.
 type SpriteDriver struct {
+	DisplayList          *SpriteDisplayListState
 	SetBitmap            func(sprite, bitmap uintptr)
 	SetCenter            func(uintptr, float32, float32)
 	Center               func(uintptr) (float32, float32)
@@ -1400,6 +1401,7 @@ type SpriteDriver struct {
 	MarkDirty            func(uintptr)
 	MarkDirtyRect        func(uintptr, playdate.Rect)
 	MoveWithCollisions   func(uintptr, float32, float32) (float32, float32, []NativeCollision)
+	CheckCollisions      func(uintptr, float32, float32) (float32, float32, []NativeCollision)
 	Add                  func(uintptr)
 	Remove               func(uintptr)
 	Free                 func(uintptr)
@@ -1425,9 +1427,32 @@ type Sprite struct {
 	tileMap *SpriteTileMap
 }
 
+// SpriteDisplayListState tracks owned wrappers so a native remove-all can keep
+// their deterministic Add/Remove/Close state synchronized.
+type SpriteDisplayListState struct{ sprites map[*Sprite]struct{} }
+
+// NewSpriteDisplayListState creates state shared by one native context.
+func NewSpriteDisplayListState() *SpriteDisplayListState {
+	return &SpriteDisplayListState{sprites: make(map[*Sprite]struct{})}
+}
+
+// RemoveAll marks every live owned wrapper as detached.
+func (state *SpriteDisplayListState) RemoveAll() {
+	if state == nil {
+		return
+	}
+	for sprite := range state.sprites {
+		sprite.added = false
+	}
+}
+
 // NewOwnedSprite wraps a sprite that must be explicitly closed.
 func NewOwnedSprite(handle uintptr, driver SpriteDriver) *Sprite {
-	return &Sprite{handle: handle, driver: driver, owned: true}
+	sprite := &Sprite{handle: handle, driver: driver, owned: true}
+	if driver.DisplayList != nil {
+		driver.DisplayList.sprites[sprite] = struct{}{}
+	}
+	return sprite
 }
 
 // NewBorrowedSprite wraps a query result owned by the Playdate display list.
@@ -1770,11 +1795,22 @@ func (s *Sprite) MoveWithCollisions(x, y float32) (playdate.MoveResult, error) {
 		return playdate.MoveResult{}, err
 	}
 	actualX, actualY, native := s.driver.MoveWithCollisions(handle, x, y)
+	return collisionResult(actualX, actualY, native, s.driver), nil
+}
+func (s *Sprite) CheckCollisions(x, y float32) (playdate.MoveResult, error) {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return playdate.MoveResult{}, err
+	}
+	actualX, actualY, native := s.driver.CheckCollisions(handle, x, y)
+	return collisionResult(actualX, actualY, native, s.driver), nil
+}
+func collisionResult(actualX, actualY float32, native []NativeCollision, driver SpriteDriver) playdate.MoveResult {
 	result := playdate.MoveResult{ActualX: actualX, ActualY: actualY, Collisions: make([]playdate.Collision, len(native))}
 	for index, collision := range native {
-		result.Collisions[index] = playdate.Collision{Other: NewBorrowedSprite(collision.Other, s.driver), ResponseType: collision.ResponseType, Overlaps: collision.Overlaps, Time: collision.Time, Move: collision.Move, Normal: collision.Normal, Touch: collision.Touch, SpriteRect: collision.SpriteRect, OtherRect: collision.OtherRect}
+		result.Collisions[index] = playdate.Collision{Other: NewBorrowedSprite(collision.Other, driver), ResponseType: collision.ResponseType, Overlaps: collision.Overlaps, Time: collision.Time, Move: collision.Move, Normal: collision.Normal, Touch: collision.Touch, SpriteRect: collision.SpriteRect, OtherRect: collision.OtherRect}
 	}
-	return result, nil
+	return result
 }
 func (s *Sprite) Add() error {
 	handle, err := s.nativeHandle()
@@ -1815,6 +1851,9 @@ func (s *Sprite) Close() error {
 		s.tileMap = nil
 	}
 	s.driver.Free(handle)
+	if s.driver.DisplayList != nil {
+		delete(s.driver.DisplayList.sprites, s)
+	}
 	s.closed = true
 	s.handle = 0
 	return nil
@@ -1944,6 +1983,39 @@ func BorrowedSprites(handles []uintptr, driver SpriteDriver) []playdate.Sprite {
 		result[index] = NewBorrowedSprite(handle, driver)
 	}
 	return result
+}
+
+// SpriteHandles validates a complete batch before a native display-list operation.
+func SpriteHandles(sprites []playdate.Sprite) ([]uintptr, error) {
+	handles := make([]uintptr, len(sprites))
+	for index, sprite := range sprites {
+		handle, err := SpriteHandle(sprite)
+		if err != nil {
+			return nil, err
+		}
+		handles[index] = handle
+	}
+	return handles, nil
+}
+
+// SetSpritesAdded atomically validates a batch, performs its native operation,
+// and synchronizes the owned wrappers' display-list state.
+func SetSpritesAdded(sprites []playdate.Sprite, added bool, operation func([]uintptr)) error {
+	handles, err := SpriteHandles(sprites)
+	if err != nil {
+		return err
+	}
+	effective := make([]uintptr, 0, len(handles))
+	for index, sprite := range sprites {
+		if sprite.(*Sprite).added != added {
+			effective = append(effective, handles[index])
+		}
+	}
+	operation(effective)
+	for _, sprite := range sprites {
+		sprite.(*Sprite).added = added
+	}
+	return nil
 }
 
 // ValidateSpriteRect rejects geometry that cannot describe a finite dirty area.
@@ -2076,6 +2148,57 @@ type applicationContext struct {
 	accelerometerEnabled bool
 	stencilActive        bool
 	terminated           bool
+}
+
+func (context *applicationContext) QuerySpritesAlongLine(x1, y1, x2, y2 float32) []playdate.Sprite {
+	if queries, ok := context.Context.(playdate.SpriteQueries); ok && !context.terminated {
+		return queries.QuerySpritesAlongLine(x1, y1, x2, y2)
+	}
+	return nil
+}
+func (context *applicationContext) QuerySpriteInfoAlongLine(x1, y1, x2, y2 float32) []playdate.SpriteQueryInfo {
+	if queries, ok := context.Context.(playdate.SpriteQueries); ok && !context.terminated {
+		return queries.QuerySpriteInfoAlongLine(x1, y1, x2, y2)
+	}
+	return nil
+}
+func (context *applicationContext) spriteDisplayList() (playdate.SpriteDisplayList, error) {
+	controls, ok := context.Context.(playdate.SpriteDisplayList)
+	if !ok || context.terminated {
+		return nil, playdate.ErrSpriteDisplayListUnavailable
+	}
+	return controls, nil
+}
+func (context *applicationContext) SpriteCount() int {
+	controls, err := context.spriteDisplayList()
+	if err != nil {
+		return 0
+	}
+	return controls.SpriteCount()
+}
+func (context *applicationContext) AddSprites(sprites []playdate.Sprite) error {
+	controls, err := context.spriteDisplayList()
+	if err != nil {
+		return err
+	}
+	return controls.AddSprites(sprites)
+}
+func (context *applicationContext) RemoveSprites(sprites []playdate.Sprite) error {
+	controls, err := context.spriteDisplayList()
+	if err != nil {
+		return err
+	}
+	return controls.RemoveSprites(sprites)
+}
+func (context *applicationContext) RemoveAllSprites() {
+	if controls, err := context.spriteDisplayList(); err == nil {
+		controls.RemoveAllSprites()
+	}
+}
+func (context *applicationContext) ResetCollisionWorld() {
+	if controls, err := context.spriteDisplayList(); err == nil {
+		controls.ResetCollisionWorld()
+	}
 }
 
 func (context *applicationContext) LoadVideo(path string) (playdate.VideoPlayer, error) {

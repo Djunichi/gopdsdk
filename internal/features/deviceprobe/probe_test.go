@@ -74,7 +74,7 @@ func TestBothDeviceAdaptersContainDisplayIntrospection(t *testing.T) {
 
 func TestProbeSourceContainsCollisionBridge(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "sdkRuntime.NativeCollision", "bridgeFreeList(list)"} {
+	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeSpriteCheckCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "bridgeQuerySpritesAlongLineBits", "bridgeQuerySpriteInfoAlongLineBits", "bridgeSpriteRemoveMany", "bridgeRemoveAllSprites", "bridgeSpriteCount", "bridgeResetCollisionWorld", "sdkRuntime.NativeCollision", "bridgeFreeList(list)"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}

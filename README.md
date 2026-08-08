@@ -400,11 +400,15 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/sprites
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/sprites
 ```
 
-`examples/spritepresentation` is the P8.1 visual acceptance scene for sprite
+`examples/spritepresentation` is the P8 sprite acceptance scene. Its P8.1
+coverage includes sprite
 center, bounds, position and state getters, all image flips, draw mode, opacity,
 stencil patterns and images, clipping, draw-offset policy, and independent
 update/collision enable state. It also attaches an explicitly owned native
 tilemap to a sprite and alternates one tile while reporting its native getter.
+At startup it additionally self-checks the P8.2 line and detailed-hit queries,
+non-mutating collision checks, sprite count, bulk add/remove, remove-all state,
+and collision-world reset before displaying `P8.2 PASS`.
 Press A or B to toggle the enable states, Up to
 clear or restore both stencils, Down to clear or restore clipping, and Left or
 Right to demonstrate the difference between offset-following and
@@ -416,6 +420,13 @@ device artifact uses 281,880 bytes of static RAM and produces a 1,304,340-byte
 ELF and 61,792-byte PDX. Long-running conservative-GC soak, memory-growth
 measurement, and post-run device-log inspection remain unverified.
 
+On 2026-08-09 the expanded P8.2 startup self-check and visible PASS status
+succeeded in the official Windows SDK 3.1.1 Simulator and on a physical
+Playdate. The conservative-GC hard-float device artifact uses 282,512 bytes of
+static RAM and produces a 1,398,940-byte ELF and 69,893-byte PDX. Long-running
+conservative-GC soak, memory-growth measurement, and post-run device-log
+inspection remain unverified.
+
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/spritepresentation
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/spritepresentation
@@ -425,8 +436,11 @@ go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK
 
 `examples/collision` is a deterministic collision scene using collide
 rectangles, slide/freeze/overlap/bounce responses, resolved movement, and
-point/rectangle/overlap queries. The portable result contains the actual
-position and ordered collision geometry without exposing native pointers.
+point/rectangle/overlap queries. The SDK additionally exposes non-mutating
+collision checks, simple and detailed line queries, sprite count, bulk
+display-list membership, remove-all, and collision-world reset. Portable
+results contain ordered collision or line-intersection geometry without
+exposing native pointers.
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/collision

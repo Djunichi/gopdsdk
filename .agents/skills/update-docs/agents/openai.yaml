@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Docs"
+  short_description: "Sync feature docs and acceptance evidence"
+  default_prompt: "Use $update-docs to synchronize repository documentation after a completed feature."
