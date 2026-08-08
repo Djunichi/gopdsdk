@@ -1,0 +1,6 @@
+name=P7.2 Bitmap Data
+author=gopdsdk
+description=Bitmap data, masks, collision, copies, tables, rotation, and display snapshot acceptance
+bundleID=dev.gopdsdk.bitmapdata
+version=1.0.0
+buildNumber=1

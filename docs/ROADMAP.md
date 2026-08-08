@@ -103,7 +103,7 @@ P7 completes offline drawing, bitmap, font, text, and presentation behavior.
 - Add only non-deprecated primitive variants; equivalent Go value types replace
   C pointer-oriented representations.
 
-### P7.2 — bitmap data, masks, and collision
+### P7.2 — bitmap data, masks, and collision — Implemented
 
 - Add owned-bitmap pixel/data access with explicit callback lifetime and dirty
   tracking, bitmap copy, loading into existing bitmaps and tables, masks,
@@ -112,6 +112,8 @@ P7 completes offline drawing, bitmap, font, text, and presentation behavior.
   supplied by the callback-scoped framebuffer API.
 - Preserve owned, borrowed, mask, and drawing-context lifetimes across every
   operation.
+- Cover the complete slice through the repository-owned `examples/bitmapdata`
+  scene on both native adapters.
 
 ### P7.3 — text and fonts
 

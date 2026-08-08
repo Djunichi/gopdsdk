@@ -346,6 +346,28 @@ The accepted display contains `PDX: 64x64`, a PASS line, the packaged icon at
 two scales, and a solid square created at runtime. Pure-Go tests verify the
 operation order and one-time ownership cleanup.
 
+For pixel editors, masks, collision maps, transformed assets, and persistent
+screen captures, assert `playdate.BitmapDataGraphics`. Its bitmap-data view is
+callback-scoped, while copies, rotations, tables, and display snapshots return
+owned resources that the game closes explicitly.
+
+`examples/bitmapdata` is the complete P7.2 acceptance scene. It edits owned
+pixels with dirty tracking, copies and reloads bitmaps, creates and reloads a
+table, attaches and inspects a mask, performs flipped mask collision, creates a
+rotated bitmap, and retains a display-buffer snapshot:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/bitmapdata
+go run ./cmd/gopdsdk run device --memory conservative --install --sdk /path/to/PlaydateSDK ./examples/bitmapdata
+```
+
+On 2026-08-08 this scene passed deterministic tests, official Windows SDK
+3.1.1 Simulator build and visual execution, conservative hard-float device
+build, USB installation through COM3, launch, and visual execution on a
+physical Playdate. The accepted device artifact uses 275,580 bytes of static
+RAM and produces an 872,964-byte ELF and a 38,768-byte PDX. Extended soak,
+memory-growth measurement, and post-run device-log inspection remain pending.
+
 The public package remains a single `playdate` import but is organized by
 domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, `audio`, and
 `errors`). `playdate.Context` composes narrower capabilities so application

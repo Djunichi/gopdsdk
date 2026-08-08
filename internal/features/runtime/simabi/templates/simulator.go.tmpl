@@ -72,6 +72,12 @@ uintptr_t bridgeNewBitmap(int width, int height);
 void bridgeFreeBitmap(uintptr_t bitmap);
 void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height);
 void bridgeFillBitmap(uintptr_t bitmap, int color);
+void bridgeBitmapData(uintptr_t,int*,int*,int*,uint8_t**,uint8_t**);
+uintptr_t bridgeCopyBitmap(uintptr_t); void bridgeLoadIntoBitmap(const char*,uintptr_t,const char**);
+uintptr_t bridgeNewBitmapTable(int,int,int); void bridgeLoadIntoBitmapTable(const char*,uintptr_t,const char**);
+int bridgeSetBitmapMask(uintptr_t,uintptr_t); uintptr_t bridgeGetBitmapMask(uintptr_t);
+int bridgeCheckMaskCollision(uintptr_t,int,int,int,uintptr_t,int,int,int,int,int,int,int);
+uintptr_t bridgeRotatedBitmap(uintptr_t,float,float,float,int*); uintptr_t bridgeCopyDisplayBuffer(void);
 void bridgeDrawBitmap(uintptr_t bitmap, int x, int y);
 void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY);
 void bridgeDrawRotatedBitmap(uintptr_t bitmap, int x, int y, float degrees, float centerX, float centerY, float scaleX, float scaleY);
@@ -288,6 +294,7 @@ var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
 var _ sdkPlaydate.GraphicsState = playdateContext{}
 var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
 var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
+var _ sdkPlaydate.BitmapDataGraphics = playdateContext{}
 var _ sdkPlaydate.Launcher = playdateContext{}
 var _ sdkPlaydate.FileSystem = playdateContext{}
 var _ sdkPlaydate.SystemMenu = playdateContext{}
@@ -421,6 +428,7 @@ func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
 
 var bitmapDriver = sdkRuntime.BitmapDriver{
 	Dimensions: func(handle uintptr) (int, int) { var width, height C.int; C.bridgeBitmapSize(C.uintptr_t(handle), &width, &height); return int(width), int(height) },
+	Data: func(handle uintptr)(int,int,int,[]byte,[]byte){var w,h,r C.int;var mask,data *C.uint8_t;C.bridgeBitmapData(C.uintptr_t(handle),&w,&h,&r,&mask,&data);size:=int(r*h);var masks []byte;if mask!=nil{masks=unsafe.Slice((*byte)(unsafe.Pointer(mask)),size)};return int(w),int(h),int(r),masks,unsafe.Slice((*byte)(unsafe.Pointer(data)),size)},
 	Fill: func(handle uintptr, color sdkPlaydate.Color) { C.bridgeFillBitmap(C.uintptr_t(handle), C.int(color)) },
 	Free: func(handle uintptr) { C.bridgeFreeBitmap(C.uintptr_t(handle)) },
 }
@@ -448,6 +456,19 @@ func (playdateContext) NewBitmap(width, height int) (sdkPlaydate.Bitmap, error) 
 	if handle == 0 { return nil, sdkPlaydate.ErrBitmapCreate }
 	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
 }
+func (playdateContext) WithBitmapData(bitmap sdkPlaydate.Bitmap,callback func(sdkPlaydate.BitmapData)error)error{return sdkRuntime.WithBitmapData(bitmap,callback)}
+func (playdateContext) CopyBitmap(bitmap sdkPlaydate.Bitmap)(sdkPlaydate.Bitmap,error){h,e:=sdkRuntime.BitmapHandle(bitmap);if e!=nil{return nil,e};copy:=uintptr(C.bridgeCopyBitmap(C.uintptr_t(h)));if copy==0{return nil,sdkPlaydate.ErrBitmapCreate};return sdkRuntime.NewOwnedBitmap(copy,bitmapDriver),nil}
+func bitmapMessage(message *C.char)error{if message!=nil{return sdkPlaydate.BitmapLoadError(C.GoString(message))};return sdkPlaydate.BitmapLoadError("unknown error")}
+func (playdateContext) LoadIntoBitmap(path string,bitmap sdkPlaydate.Bitmap)error{h,e:=sdkRuntime.OwnedBitmapHandle(bitmap);if e!=nil{return e};p:=C.CString(path);defer C.free(unsafe.Pointer(p));var message *C.char;C.bridgeLoadIntoBitmap(p,C.uintptr_t(h),(**C.char)(unsafe.Pointer(&message)));if message!=nil{return bitmapMessage(message)};return nil}
+func (playdateContext) NewBitmapTable(count,width,height int)(sdkPlaydate.BitmapTable,error){if e:=sdkRuntime.ValidateBitmapTableSize(count,width,height);e!=nil{return nil,e};h:=uintptr(C.bridgeNewBitmapTable(C.int(count),C.int(width),C.int(height)));if h==0{return nil,sdkPlaydate.ErrBitmapCreate};return sdkRuntime.NewOwnedBitmapTable(h,bitmapTableDriver,bitmapDriver),nil}
+func (playdateContext) LoadIntoBitmapTable(path string,table sdkPlaydate.BitmapTable)error{h,e:=sdkRuntime.OwnedBitmapTableHandle(table);if e!=nil{return e};p:=C.CString(path);defer C.free(unsafe.Pointer(p));var message *C.char;C.bridgeLoadIntoBitmapTable(p,C.uintptr_t(h),(**C.char)(unsafe.Pointer(&message)));if message!=nil{return bitmapMessage(message)};return nil}
+func setBitmapMask(a,b uintptr)bool{return C.bridgeSetBitmapMask(C.uintptr_t(a),C.uintptr_t(b))!=0}
+func (playdateContext) SetBitmapMask(bitmap,mask sdkPlaydate.Bitmap)error{return sdkRuntime.SetBitmapMask(bitmap,mask,setBitmapMask)}
+func (playdateContext) ClearBitmapMask(bitmap sdkPlaydate.Bitmap)error{return sdkRuntime.ClearBitmapMask(bitmap,setBitmapMask)}
+func (playdateContext) BitmapMask(bitmap sdkPlaydate.Bitmap)(sdkPlaydate.Bitmap,bool,error){return sdkRuntime.BitmapMask(bitmap,func(h uintptr)uintptr{return uintptr(C.bridgeGetBitmapMask(C.uintptr_t(h)))})}
+func (playdateContext) CheckBitmapMaskCollision(a sdkPlaydate.Bitmap,ax,ay int,af sdkPlaydate.BitmapFlip,b sdkPlaydate.Bitmap,bx,by int,bf sdkPlaydate.BitmapFlip,x,y,w,h int)(bool,error){if e:=sdkRuntime.ValidateBitmapFlip(af);e!=nil{return false,e};if e:=sdkRuntime.ValidateBitmapFlip(bf);e!=nil{return false,e};ah,e:=sdkRuntime.BitmapHandle(a);if e!=nil{return false,e};bh,e:=sdkRuntime.BitmapHandle(b);if e!=nil{return false,e};return C.bridgeCheckMaskCollision(C.uintptr_t(ah),C.int(ax),C.int(ay),C.int(af),C.uintptr_t(bh),C.int(bx),C.int(by),C.int(bf),C.int(x),C.int(y),C.int(w),C.int(h))!=0,nil}
+func (playdateContext) RotatedBitmap(bitmap sdkPlaydate.Bitmap,degrees,sx,sy float32)(sdkPlaydate.Bitmap,int,error){if e:=sdkRuntime.ValidateBitmapTransform(degrees,0,0,sx,sy);e!=nil{return nil,0,e};h,e:=sdkRuntime.BitmapHandle(bitmap);if e!=nil{return nil,0,e};var size C.int;result:=uintptr(C.bridgeRotatedBitmap(C.uintptr_t(h),C.float(degrees),C.float(sx),C.float(sy),&size));if result==0{return nil,0,sdkPlaydate.ErrBitmapCreate};return sdkRuntime.NewOwnedBitmap(result,bitmapDriver),int(size),nil}
+func (playdateContext) CopyDisplayBuffer()(sdkPlaydate.Bitmap,error){h:=uintptr(C.bridgeCopyDisplayBuffer());if h==0{return nil,sdkPlaydate.ErrBitmapCreate};return sdkRuntime.NewOwnedBitmap(h,bitmapDriver),nil}
 func (playdateContext) DrawBitmap(bitmap sdkPlaydate.Bitmap, x, y int) error {
 	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
 	C.bridgeDrawBitmap(C.uintptr_t(handle), C.int(x), C.int(y)); return nil

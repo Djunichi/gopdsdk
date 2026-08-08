@@ -30,4 +30,20 @@ var (
 	ErrBitmapTableBorrowed error = bitmapError("borrowed bitmap table cannot be closed")
 	// ErrBitmapFrameRange indicates a negative or missing table frame.
 	ErrBitmapFrameRange error = bitmapError("bitmap table frame is out of range")
+	// ErrBitmapDataCallback indicates a nil scoped bitmap-data callback.
+	ErrBitmapDataCallback error = bitmapError("bitmap data callback is required")
+	// ErrBitmapDataExpired indicates use after the bitmap-data callback returned.
+	ErrBitmapDataExpired error = bitmapError("bitmap data view has expired")
+	// ErrBitmapBounds indicates a pixel outside the bitmap.
+	ErrBitmapBounds error = bitmapError("bitmap coordinates are out of range")
+	// ErrBitmapMaskSize indicates a mask whose dimensions do not match its bitmap.
+	ErrBitmapMaskSize error = bitmapError("bitmap mask dimensions must match")
+	// ErrBitmapMask indicates failure to attach a native mask.
+	ErrBitmapMask error = bitmapError("set bitmap mask failed")
+	// ErrBitmapMaskInUse indicates a bitmap retained by a mask association or view.
+	ErrBitmapMaskInUse error = bitmapError("bitmap is still used by a mask")
+	// ErrBitmapFlip indicates an unsupported bitmap flip value.
+	ErrBitmapFlip error = bitmapError("invalid bitmap flip")
+	// ErrBitmapTableSize indicates invalid table dimensions or frame count.
+	ErrBitmapTableSize error = bitmapError("bitmap table dimensions and count must be positive")
 )

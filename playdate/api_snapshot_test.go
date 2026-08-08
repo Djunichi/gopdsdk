@@ -124,7 +124,11 @@ func lineDiff(baseline, current string) string {
 	return result.String()
 }
 
-const apiBaseline = `const ButtonA Buttons
+const apiBaseline = `const BitmapFlippedX BitmapFlip
+const BitmapFlippedXY BitmapFlip
+const BitmapFlippedY BitmapFlip
+const BitmapUnflipped BitmapFlip
+const ButtonA Buttons
 const ButtonB Buttons
 const ButtonDown Buttons
 const ButtonLeft Buttons
@@ -240,6 +244,9 @@ type AudioSource interface{SetVolume(left float32, right float32) error; State()
 type BitCrusher interface{SetDepth(float32) error; SetDepthModulator(Signal) error; SetDownsampling(float32) error; SetDownsamplingModulator(Signal) error; SetExponential(bool) error; AudioEffect}
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
 type BitmapCompositor interface{DrawRotatedBitmap(bitmap Bitmap, x int, y int, degrees float32, centerX float32, centerY float32, scaleX float32, scaleY float32) error; WithStencil(stencil Bitmap, tiled bool, callback func() error) error}
+type BitmapData interface{Bytes() ([]byte, error); Dirty() (bool, error); Height() int; MarkDirty() error; MaskBytes() ([]byte, error); Pixel(x int, y int) (Color, error); RowBytes() int; SetPixel(x int, y int, color Color) error; Width() int}
+type BitmapDataGraphics interface{BitmapMask(bitmap Bitmap) (Bitmap, bool, error); CheckBitmapMaskCollision(first Bitmap, firstX int, firstY int, firstFlip BitmapFlip, second Bitmap, secondX int, secondY int, secondFlip BitmapFlip, rectX int, rectY int, rectWidth int, rectHeight int) (bool, error); ClearBitmapMask(bitmap Bitmap) error; CopyBitmap(bitmap Bitmap) (Bitmap, error); CopyDisplayBuffer() (Bitmap, error); LoadIntoBitmap(path string, bitmap Bitmap) error; LoadIntoBitmapTable(path string, table BitmapTable) error; NewBitmapTable(count int, width int, height int) (BitmapTable, error); RotatedBitmap(bitmap Bitmap, degrees float32, scaleX float32, scaleY float32) (Bitmap, int, error); SetBitmapMask(bitmap Bitmap, mask Bitmap) error; WithBitmapData(bitmap Bitmap, callback func(BitmapData) error) error}
+type BitmapFlip uint8
 type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Board struct{ID string; Name string}
@@ -357,14 +364,22 @@ var ErrAudioUnavailable error
 var ErrAudioVolume error
 var ErrAudioWaveform error
 var ErrBitmapBorrowed error
+var ErrBitmapBounds error
 var ErrBitmapClosed error
 var ErrBitmapColor error
 var ErrBitmapCreate error
+var ErrBitmapDataCallback error
+var ErrBitmapDataExpired error
+var ErrBitmapFlip error
 var ErrBitmapFrameRange error
+var ErrBitmapMask error
+var ErrBitmapMaskInUse error
+var ErrBitmapMaskSize error
 var ErrBitmapScale error
 var ErrBitmapSize error
 var ErrBitmapTableBorrowed error
 var ErrBitmapTableClosed error
+var ErrBitmapTableSize error
 var ErrDisplayMosaic error
 var ErrDisplayRefreshRate error
 var ErrDisplayScale error
