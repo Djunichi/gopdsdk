@@ -90,6 +90,12 @@ void bridgePushContext(uintptr_t bitmap);
 void bridgePopContext(void);
 void bridgeSetStencil(uintptr_t bitmap, int tiled);
 void bridgeClearStencil(void);
+void bridgeDisplaySetRefreshRate(float rate);
+void bridgeDisplaySetInverted(int flag);
+void bridgeDisplaySetScale(unsigned int scale);
+void bridgeDisplaySetMosaic(unsigned int x, unsigned int y);
+void bridgeDisplaySetFlipped(int x, int y);
+void bridgeDisplaySetOffset(int x, int y);
 uintptr_t bridgeNewSprite(void);
 void bridgeFreeSprite(uintptr_t sprite);
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap);
@@ -100,6 +106,8 @@ void bridgeSpriteSetZIndex(uintptr_t sprite, int z);
 void bridgeSpriteSetCollideRect(uintptr_t sprite, float x, float y, float width, float height);
 void bridgeSpriteClearCollideRect(uintptr_t sprite);
 void bridgeSpriteSetTag(uintptr_t sprite, uint8_t tag);
+void bridgeSpriteMarkDirty(uintptr_t sprite);
+void bridgeSpriteMarkDirtyRect(uintptr_t sprite, float x, float y, float width, float height);
 void* bridgeSpriteMoveWithCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count);
 void bridgeCollisionInfo(void* collisions, int index, uintptr_t* other, int* response, int* overlaps, float* ti, float* values);
 void bridgeFreeCollisionList(void* collisions);
@@ -110,6 +118,8 @@ uintptr_t bridgeSpriteListItem(void* sprites, int index);
 void bridgeFreeSpriteList(void* sprites);
 void bridgeSpriteAdd(uintptr_t sprite);
 void bridgeSpriteRemove(uintptr_t sprite);
+void bridgeSetAlwaysRedraw(int flag);
+void bridgeAddDirtyRect(int x, int y, int width, int height);
 void bridgeUpdateAndDrawSprites(void);
 uintptr_t bridgeLoadSoundEffect(const char* path);
 uintptr_t bridgeNewPCMPlayer(const int16_t* samples, int count, uint32_t sampleRate);
@@ -465,6 +475,21 @@ func (playdateContext) ClearClipRect() { C.bridgeClearClipRect() }
 func (playdateContext) SetDrawOffset(dx, dy int) { C.bridgeSetDrawOffset(C.int(dx), C.int(dy)) }
 func (playdateContext) SetDrawMode(mode sdkPlaydate.DrawMode) error { if err := sdkRuntime.ValidateDrawMode(mode); err != nil { return err }; C.bridgeSetDrawMode(C.int(mode)); return nil }
 
+var display = sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{
+	SetRefreshRate: func(value float32) { C.bridgeDisplaySetRefreshRate(C.float(value)) },
+	SetInverted: func(value bool) { flag := C.int(0); if value { flag = 1 }; C.bridgeDisplaySetInverted(flag) },
+	SetScale: func(value uint) { C.bridgeDisplaySetScale(C.uint(value)) },
+	SetMosaic: func(x, y uint) { C.bridgeDisplaySetMosaic(C.uint(x), C.uint(y)) },
+	SetFlipped: func(x, y bool) { xv, yv := C.int(0), C.int(0); if x { xv = 1 }; if y { yv = 1 }; C.bridgeDisplaySetFlipped(xv, yv) },
+	SetOffset: func(x, y int) { C.bridgeDisplaySetOffset(C.int(x), C.int(y)) },
+})
+func (playdateContext) SetRefreshRate(value float32) error { return display.SetRefreshRate(value) }
+func (playdateContext) SetInverted(value bool) { display.SetInverted(value) }
+func (playdateContext) SetScale(value uint) error { return display.SetScale(value) }
+func (playdateContext) SetMosaic(x, y uint) error { return display.SetMosaic(x, y) }
+func (playdateContext) SetFlipped(x, y bool) { display.SetFlipped(x, y) }
+func (playdateContext) SetOffset(x, y int) { display.SetOffset(x, y) }
+
 var spriteDriver = sdkRuntime.SpriteDriver{
 	SetBitmap: func(sprite, bitmap uintptr) { C.bridgeSpriteSetBitmap(C.uintptr_t(sprite), C.uintptr_t(bitmap)) },
 	MoveTo: func(sprite uintptr, x, y float32) { C.bridgeSpriteMoveTo(C.uintptr_t(sprite), C.float(x), C.float(y)) },
@@ -474,6 +499,8 @@ var spriteDriver = sdkRuntime.SpriteDriver{
 	SetCollideRect: func(sprite uintptr, rect sdkPlaydate.Rect) { C.bridgeSpriteSetCollideRect(C.uintptr_t(sprite), C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height)) },
 	ClearCollideRect: func(sprite uintptr) { C.bridgeSpriteClearCollideRect(C.uintptr_t(sprite)) },
 	SetTag: func(sprite uintptr, tag uint8) { C.bridgeSpriteSetTag(C.uintptr_t(sprite), C.uint8_t(tag)) },
+	MarkDirty: func(sprite uintptr) { C.bridgeSpriteMarkDirty(C.uintptr_t(sprite)) },
+	MarkDirtyRect: func(sprite uintptr, rect sdkPlaydate.Rect) { C.bridgeSpriteMarkDirtyRect(C.uintptr_t(sprite), C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height)) },
 	MoveWithCollisions: moveWithCollisions,
 	Add: func(sprite uintptr) { C.bridgeSpriteAdd(C.uintptr_t(sprite)) },
 	Remove: func(sprite uintptr) { C.bridgeSpriteRemove(C.uintptr_t(sprite)) },
@@ -495,6 +522,8 @@ func querySprites(list unsafe.Pointer, count C.int) []sdkPlaydate.Sprite { defer
 func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { var count C.int; list := C.bridgeQuerySpritesAtPoint(C.float(x), C.float(y), &count); return querySprites(list, count) }
 func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count C.int; list := C.bridgeQuerySpritesInRect(C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height), &count); return querySprites(list, count) }
 func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count C.int; list := C.bridgeOverlappingSprites(C.uintptr_t(handle), &count); return querySprites(list, count), nil }
+func (playdateContext) SetAlwaysRedraw(value bool) { flag := C.int(0); if value { flag = 1 }; C.bridgeSetAlwaysRedraw(flag) }
+func (playdateContext) AddDirtyRect(x, y, width, height int) error { if err := sdkRuntime.ValidateScreenDirtyRect(x, y, width, height); err != nil { return err }; C.bridgeAddDirtyRect(C.int(x), C.int(y), C.int(width), C.int(height)); return nil }
 func (playdateContext) UpdateAndDrawSprites() { C.bridgeUpdateAndDrawSprites() }
 
 var soundEffectDriver = sdkRuntime.AudioDriver{

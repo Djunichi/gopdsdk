@@ -990,6 +990,47 @@ func OwnedBitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
 	return value.nativeHandle()
 }
 
+// DisplayDriver contains platform display presentation operations.
+type DisplayDriver struct {
+	SetRefreshRate func(float32)
+	SetInverted    func(bool)
+	SetScale       func(uint)
+	SetMosaic      func(uint, uint)
+	SetFlipped     func(bool, bool)
+	SetOffset      func(int, int)
+}
+
+// Display validates public display settings before forwarding them to an ABI.
+type Display struct{ driver DisplayDriver }
+
+// NewDisplay creates a display capability backed by platform operations.
+func NewDisplay(driver DisplayDriver) *Display { return &Display{driver: driver} }
+
+func (d *Display) SetRefreshRate(rate float32) error {
+	if math.IsNaN(float64(rate)) || math.IsInf(float64(rate), 0) || rate < 0 || rate > 50 {
+		return playdate.ErrDisplayRefreshRate
+	}
+	d.driver.SetRefreshRate(rate)
+	return nil
+}
+func (d *Display) SetInverted(value bool) { d.driver.SetInverted(value) }
+func (d *Display) SetScale(scale uint) error {
+	if scale != 1 && scale != 2 && scale != 4 && scale != 8 {
+		return playdate.ErrDisplayScale
+	}
+	d.driver.SetScale(scale)
+	return nil
+}
+func (d *Display) SetMosaic(x, y uint) error {
+	if x > 3 || y > 3 {
+		return playdate.ErrDisplayMosaic
+	}
+	d.driver.SetMosaic(x, y)
+	return nil
+}
+func (d *Display) SetFlipped(x, y bool) { d.driver.SetFlipped(x, y) }
+func (d *Display) SetOffset(x, y int)   { d.driver.SetOffset(x, y) }
+
 // SpriteDriver contains platform operations for one native sprite handle.
 type SpriteDriver struct {
 	SetBitmap          func(sprite, bitmap uintptr)
@@ -1000,6 +1041,8 @@ type SpriteDriver struct {
 	SetCollideRect     func(uintptr, playdate.Rect)
 	ClearCollideRect   func(uintptr)
 	SetTag             func(uintptr, uint8)
+	MarkDirty          func(uintptr)
+	MarkDirtyRect      func(uintptr, playdate.Rect)
 	MoveWithCollisions func(uintptr, float32, float32) (float32, float32, []NativeCollision)
 	Add                func(uintptr)
 	Remove             func(uintptr)
@@ -1119,6 +1162,25 @@ func (s *Sprite) SetTag(tag uint8) error {
 	s.driver.SetTag(handle, tag)
 	return nil
 }
+func (s *Sprite) MarkDirty() error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s.driver.MarkDirty(handle)
+	return nil
+}
+func (s *Sprite) MarkDirtyRect(rect playdate.Rect) error {
+	handle, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if err := ValidateSpriteRect(rect); err != nil {
+		return err
+	}
+	s.driver.MarkDirtyRect(handle, rect)
+	return nil
+}
 func (s *Sprite) MoveWithCollisions(x, y float32) (playdate.MoveResult, error) {
 	handle, err := s.nativeHandle()
 	if err != nil {
@@ -1178,6 +1240,29 @@ func BorrowedSprites(handles []uintptr, driver SpriteDriver) []playdate.Sprite {
 		result[index] = NewBorrowedSprite(handle, driver)
 	}
 	return result
+}
+
+// ValidateSpriteRect rejects geometry that cannot describe a finite dirty area.
+func ValidateSpriteRect(rect playdate.Rect) error {
+	values := [...]float32{rect.X, rect.Y, rect.Width, rect.Height}
+	for _, value := range values {
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			return playdate.ErrSpriteDirtyRect
+		}
+	}
+	if rect.Width <= 0 || rect.Height <= 0 {
+		return playdate.ErrSpriteDirtyRect
+	}
+	return nil
+}
+
+// ValidateScreenDirtyRect rejects empty or overflowing native LCD rectangles.
+func ValidateScreenDirtyRect(x, y, width, height int) error {
+	const minInt32, maxInt32 = -1 << 31, 1<<31 - 1
+	if width <= 0 || height <= 0 || x < minInt32 || x > maxInt32 || y < minInt32 || y > maxInt32 || width > maxInt32 || height > maxInt32 || x > maxInt32-width || y > maxInt32-height {
+		return playdate.ErrSpriteDirtyRect
+	}
+	return nil
 }
 
 // ValidateBitmapSize applies the common Simulator/device creation contract.
@@ -1271,6 +1356,62 @@ type applicationContext struct {
 	accelerometerEnabled bool
 	stencilActive        bool
 	terminated           bool
+}
+
+func (context *applicationContext) display() (playdate.Display, error) {
+	display, ok := context.Context.(playdate.Display)
+	if !ok {
+		return nil, playdate.ErrDisplayUnavailable
+	}
+	return display, nil
+}
+func (context *applicationContext) SetRefreshRate(rate float32) error {
+	display, err := context.display()
+	if err != nil {
+		return err
+	}
+	return display.SetRefreshRate(rate)
+}
+func (context *applicationContext) SetInverted(value bool) {
+	if display, err := context.display(); err == nil {
+		display.SetInverted(value)
+	}
+}
+func (context *applicationContext) SetScale(scale uint) error {
+	display, err := context.display()
+	if err != nil {
+		return err
+	}
+	return display.SetScale(scale)
+}
+func (context *applicationContext) SetMosaic(x, y uint) error {
+	display, err := context.display()
+	if err != nil {
+		return err
+	}
+	return display.SetMosaic(x, y)
+}
+func (context *applicationContext) SetFlipped(x, y bool) {
+	if display, err := context.display(); err == nil {
+		display.SetFlipped(x, y)
+	}
+}
+func (context *applicationContext) SetOffset(x, y int) {
+	if display, err := context.display(); err == nil {
+		display.SetOffset(x, y)
+	}
+}
+func (context *applicationContext) SetAlwaysRedraw(value bool) {
+	if redraw, ok := context.Context.(playdate.SpriteRedraw); ok {
+		redraw.SetAlwaysRedraw(value)
+	}
+}
+func (context *applicationContext) AddDirtyRect(x, y, width, height int) error {
+	redraw, ok := context.Context.(playdate.SpriteRedraw)
+	if !ok {
+		return playdate.ErrSpriteRedrawUnavailable
+	}
+	return redraw.AddDirtyRect(x, y, width, height)
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }

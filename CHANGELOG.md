@@ -8,6 +8,12 @@ that out.
 
 ### Added
 
+- Optional display presentation controls and sprite dirty-region/redraw
+  controls, validated before forwarding through `NewApplication` and both
+  native ABI contexts.
+- An interactive `examples/sprites` P6.2 acceptance scene covering dirty versus
+  full redraw, per-sprite partial invalidation, global dirty rectangles, all
+  display presentation controls, and reset behavior.
 - A read-only `gopdsdk errorlog` command alongside `crashlog`, backed by one
   cohesive device-log feature and the shared cross-platform host tool policy.
 - Optional `playdate.BitmapCompositor` transformed-bitmap and callback-scoped

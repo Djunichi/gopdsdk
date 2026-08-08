@@ -158,6 +158,12 @@ void bridgePushContext(uintptr_t bitmap) { bridgePlaydate->graphics->pushContext
 void bridgePopContext(void) { bridgePlaydate->graphics->popContext(); }
 void bridgeSetStencil(uintptr_t bitmap, int tiled) { bridgePlaydate->graphics->setStencilImage((LCDBitmap*)bitmap, tiled); }
 void bridgeClearStencil(void) { bridgePlaydate->graphics->setStencil(NULL); }
+void bridgeDisplaySetRefreshRate(float rate) { bridgePlaydate->display->setRefreshRate(rate); }
+void bridgeDisplaySetInverted(int flag) { bridgePlaydate->display->setInverted(flag); }
+void bridgeDisplaySetScale(unsigned int scale) { bridgePlaydate->display->setScale(scale); }
+void bridgeDisplaySetMosaic(unsigned int x, unsigned int y) { bridgePlaydate->display->setMosaic(x, y); }
+void bridgeDisplaySetFlipped(int x, int y) { bridgePlaydate->display->setFlipped(x, y); }
+void bridgeDisplaySetOffset(int x, int y) { bridgePlaydate->display->setOffset(x, y); }
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)bridgePlaydate->sprite->newSprite(); }
 void bridgeFreeSprite(uintptr_t sprite) { bridgePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { bridgePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
@@ -168,6 +174,8 @@ void bridgeSpriteSetZIndex(uintptr_t sprite, int z) { bridgePlaydate->sprite->se
 void bridgeSpriteSetCollideRect(uintptr_t sprite, float x, float y, float width, float height) { bridgePlaydate->sprite->setCollideRect((LCDSprite*)sprite, (PDRect){x, y, width, height}); }
 void bridgeSpriteClearCollideRect(uintptr_t sprite) { bridgePlaydate->sprite->clearCollideRect((LCDSprite*)sprite); }
 void bridgeSpriteSetTag(uintptr_t sprite, uint8_t tag) { bridgePlaydate->sprite->setTag((LCDSprite*)sprite, tag); }
+void bridgeSpriteMarkDirty(uintptr_t sprite) { bridgePlaydate->sprite->markDirty((LCDSprite*)sprite); }
+void bridgeSpriteMarkDirtyRect(uintptr_t sprite, float x, float y, float width, float height) { bridgePlaydate->sprite->markDirtyRect((LCDSprite*)sprite, (PDRect){x, y, width, height}); }
 void* bridgeSpriteMoveWithCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count) { return bridgePlaydate->sprite->moveWithCollisions((LCDSprite*)sprite, x, y, actualX, actualY, count); }
 void bridgeCollisionInfo(void* collisions, int index, uintptr_t* other, int* response, int* overlaps, float* ti, float* v) { SpriteCollisionInfo* c = &((SpriteCollisionInfo*)collisions)[index]; *other=(uintptr_t)c->other; *response=c->responseType; *overlaps=c->overlaps; *ti=c->ti; v[0]=c->move.x; v[1]=c->move.y; v[2]=c->normal.x; v[3]=c->normal.y; v[4]=c->touch.x; v[5]=c->touch.y; v[6]=c->spriteRect.x; v[7]=c->spriteRect.y; v[8]=c->spriteRect.width; v[9]=c->spriteRect.height; v[10]=c->otherRect.x; v[11]=c->otherRect.y; v[12]=c->otherRect.width; v[13]=c->otherRect.height; }
 void bridgeFreeCollisionList(void* collisions) { if (collisions) bridgePlaydate->system->realloc(collisions, 0); }
@@ -178,6 +186,8 @@ uintptr_t bridgeSpriteListItem(void* sprites, int index) { return (uintptr_t)((L
 void bridgeFreeSpriteList(void* sprites) { if (sprites) bridgePlaydate->system->realloc(sprites, 0); }
 void bridgeSpriteAdd(uintptr_t sprite) { bridgePlaydate->sprite->addSprite((LCDSprite*)sprite); }
 void bridgeSpriteRemove(uintptr_t sprite) { bridgePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
+void bridgeSetAlwaysRedraw(int flag) { bridgePlaydate->sprite->setAlwaysRedraw(flag); }
+void bridgeAddDirtyRect(int x, int y, int width, int height) { bridgePlaydate->sprite->addDirtyRect(LCDMakeRect(x, y, width, height)); }
 void bridgeUpdateAndDrawSprites(void) { bridgePlaydate->sprite->updateAndDrawSprites(); }
 
 typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;

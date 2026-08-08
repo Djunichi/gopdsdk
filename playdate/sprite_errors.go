@@ -13,4 +13,8 @@ var (
 	ErrSpriteBorrowed error = spriteError("borrowed sprite cannot be closed")
 	// ErrSpriteCreate indicates that Playdate could not allocate a sprite.
 	ErrSpriteCreate error = spriteError("create sprite failed")
+	// ErrSpriteDirtyRect indicates a dirty rectangle with invalid dimensions or coordinates.
+	ErrSpriteDirtyRect error = spriteError("invalid sprite dirty rectangle")
+	// ErrSpriteRedrawUnavailable indicates a context without redraw controls.
+	ErrSpriteRedrawUnavailable error = spriteError("sprite redraw controls are unavailable")
 )

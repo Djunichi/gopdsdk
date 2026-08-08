@@ -175,6 +175,18 @@ func bridgePopContext()
 func bridgeSetStencil(bitmap uintptr, tiled int32)
 //go:linkname bridgeClearStencil bridgeClearStencil
 func bridgeClearStencil()
+//go:linkname bridgeDisplaySetRefreshRateBits bridgeDisplaySetRefreshRateBits
+func bridgeDisplaySetRefreshRateBits(uint32)
+//go:linkname bridgeDisplaySetInverted bridgeDisplaySetInverted
+func bridgeDisplaySetInverted(int32)
+//go:linkname bridgeDisplaySetScale bridgeDisplaySetScale
+func bridgeDisplaySetScale(uint32)
+//go:linkname bridgeDisplaySetMosaic bridgeDisplaySetMosaic
+func bridgeDisplaySetMosaic(uint32,uint32)
+//go:linkname bridgeDisplaySetFlipped bridgeDisplaySetFlipped
+func bridgeDisplaySetFlipped(int32,int32)
+//go:linkname bridgeDisplaySetOffset bridgeDisplaySetOffset
+func bridgeDisplaySetOffset(int32,int32)
 //go:linkname bridgeSetDrawOffset bridgeSetDrawOffset
 func bridgeSetDrawOffset(dx, dy int32)
 //go:linkname bridgeSetDrawMode bridgeSetDrawMode
@@ -199,6 +211,10 @@ func bridgeSpriteSetCollideRectBits(sprite uintptr, x, y, width, height uint32)
 func bridgeSpriteClearCollideRect(sprite uintptr)
 //go:linkname bridgeSpriteSetTag bridgeSpriteSetTag
 func bridgeSpriteSetTag(sprite uintptr, tag uint8)
+//go:linkname bridgeSpriteMarkDirty bridgeSpriteMarkDirty
+func bridgeSpriteMarkDirty(sprite uintptr)
+//go:linkname bridgeSpriteMarkDirtyRectBits bridgeSpriteMarkDirtyRectBits
+func bridgeSpriteMarkDirtyRectBits(sprite uintptr,x,y,width,height uint32)
 //go:linkname bridgeSpriteMoveWithCollisionsBits bridgeSpriteMoveWithCollisionsBits
 func bridgeSpriteMoveWithCollisionsBits(sprite uintptr, x, y uint32, actualX, actualY *uint32, count *int32) uintptr
 //go:linkname bridgeCollisionValueBits bridgeCollisionValueBits
@@ -219,6 +235,10 @@ func bridgeOverlappingSprites(sprite uintptr, count *int32) uintptr
 func bridgeSpriteAdd(sprite uintptr)
 //go:linkname bridgeSpriteRemove bridgeSpriteRemove
 func bridgeSpriteRemove(sprite uintptr)
+//go:linkname bridgeSetAlwaysRedraw bridgeSetAlwaysRedraw
+func bridgeSetAlwaysRedraw(int32)
+//go:linkname bridgeAddDirtyRect bridgeAddDirtyRect
+func bridgeAddDirtyRect(int32,int32,int32,int32)
 //go:linkname bridgeUpdateAndDrawSprites bridgeUpdateAndDrawSprites
 func bridgeUpdateAndDrawSprites()
 //go:linkname bridgeLoadSoundEffect bridgeLoadSoundEffect
@@ -639,6 +659,14 @@ func (playdateContext) ClearClipRect(){bridgeClearClipRect()}
 func (playdateContext) SetDrawOffset(dx,dy int){bridgeSetDrawOffset(int32(dx),int32(dy))}
 func (playdateContext) SetDrawMode(mode sdkPlaydate.DrawMode) error {if err:=sdkRuntime.ValidateDrawMode(mode);err!=nil{return err};bridgeSetDrawMode(int32(mode));return nil}
 
+var display=sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{SetRefreshRate:func(v float32){bridgeDisplaySetRefreshRateBits(float32Bits(v))},SetInverted:func(v bool){var n int32;if v{n=1};bridgeDisplaySetInverted(n)},SetScale:func(v uint){bridgeDisplaySetScale(uint32(v))},SetMosaic:func(x,y uint){bridgeDisplaySetMosaic(uint32(x),uint32(y))},SetFlipped:func(x,y bool){var a,b int32;if x{a=1};if y{b=1};bridgeDisplaySetFlipped(a,b)},SetOffset:func(x,y int){bridgeDisplaySetOffset(int32(x),int32(y))}})
+func(playdateContext)SetRefreshRate(v float32)error{return display.SetRefreshRate(v)}
+func(playdateContext)SetInverted(v bool){display.SetInverted(v)}
+func(playdateContext)SetScale(v uint)error{return display.SetScale(v)}
+func(playdateContext)SetMosaic(x,y uint)error{return display.SetMosaic(x,y)}
+func(playdateContext)SetFlipped(x,y bool){display.SetFlipped(x,y)}
+func(playdateContext)SetOffset(x,y int){display.SetOffset(x,y)}
+
 func float32Bits(value float32) uint32 { return *(*uint32)(unsafe.Pointer(&value)) }
 var spriteDriver = sdkRuntime.SpriteDriver{
 	SetBitmap: bridgeSpriteSetBitmap,
@@ -649,6 +677,8 @@ var spriteDriver = sdkRuntime.SpriteDriver{
 	SetCollideRect: func(sprite uintptr, rect sdkPlaydate.Rect) { bridgeSpriteSetCollideRectBits(sprite, float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height)) },
 	ClearCollideRect: bridgeSpriteClearCollideRect,
 	SetTag: bridgeSpriteSetTag,
+	MarkDirty: bridgeSpriteMarkDirty,
+	MarkDirtyRect: func(sprite uintptr,rect sdkPlaydate.Rect){bridgeSpriteMarkDirtyRectBits(sprite,float32Bits(rect.X),float32Bits(rect.Y),float32Bits(rect.Width),float32Bits(rect.Height))},
 	MoveWithCollisions: moveWithCollisions,
 	Add: bridgeSpriteAdd, Remove: bridgeSpriteRemove, Free: bridgeFreeSprite,
 }
@@ -664,6 +694,8 @@ func borrowedSpriteList(list uintptr, count int32) []sdkPlaydate.Sprite { handle
 func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesAtPointBits(float32Bits(x), float32Bits(y), &count); return borrowedSpriteList(list, count) }
 func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesInRectBits(float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height), &count); return borrowedSpriteList(list, count) }
 func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count int32; list := bridgeOverlappingSprites(handle, &count); return borrowedSpriteList(list, count), nil }
+func(playdateContext)SetAlwaysRedraw(v bool){var n int32;if v{n=1};bridgeSetAlwaysRedraw(n)}
+func(playdateContext)AddDirtyRect(x,y,w,h int)error{if err:=sdkRuntime.ValidateScreenDirtyRect(x,y,w,h);err!=nil{return err};bridgeAddDirtyRect(int32(x),int32(y),int32(w),int32(h));return nil}
 func (playdateContext) UpdateAndDrawSprites() { bridgeUpdateAndDrawSprites() }
 
 var soundEffectDriver = sdkRuntime.AudioDriver{

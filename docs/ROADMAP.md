@@ -1,6 +1,7 @@
 # Product roadmap
 
-Status: `v0.5.0` released; P6 in progress with P6.1 implemented, updated
+Status: `v0.5.0` released; P6 in progress with P6.1 implemented and the P6.2
+display/redraw API slice implemented, updated
 2026-08-08.
 
 This is the only planning document under `docs/` and the canonical roadmap from
@@ -579,6 +580,17 @@ remain unverified.
   do not infer performance from API discovery or build success.
 - Keep custom native draw/update callbacks out of the public contract unless
   bounded callback execution and lifecycle cleanup are proven on both ABIs.
+
+The initial API slice exposes validated optional display presentation controls,
+global full-redraw and screen dirty-region controls, and per-sprite full or
+partial dirty marking. `examples/sprites` provides the interactive consumer for
+dirty/full redraw switching, partial sprite invalidation, global dirty regions,
+and each display transform. Unit, forwarding, generated-ABI, and Windows
+Simulator PDX build checks pass. Physical-device visual acceptance and
+comparative redraw measurements in Simulator and on hardware remain required
+before P6.2 is accepted; custom callbacks remain out of scope. On 2026-08-08 the interactive
+scene's dirty/full switching, partial bar updates, display effects, documented
+2x top-left scaling, and reset path passed Windows Simulator visual acceptance.
 
 ### P6.3 — specialized media
 

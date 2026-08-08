@@ -827,9 +827,13 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 		MoveBy:     func(uintptr, float32, float32) { operations = append(operations, "move") },
 		SetVisible: func(uintptr, bool) { operations = append(operations, "visible") },
 		SetZIndex:  func(uintptr, int) { operations = append(operations, "z") },
-		Add:        func(uintptr) { operations = append(operations, "add") },
-		Remove:     func(uintptr) { operations = append(operations, "remove") },
-		Free:       func(uintptr) { operations = append(operations, "free") },
+		MarkDirty:  func(uintptr) { operations = append(operations, "dirty") },
+		MarkDirtyRect: func(uintptr, playdate.Rect) {
+			operations = append(operations, "dirtyRect")
+		},
+		Add:    func(uintptr) { operations = append(operations, "add") },
+		Remove: func(uintptr) { operations = append(operations, "remove") },
+		Free:   func(uintptr) { operations = append(operations, "free") },
 	}
 	sprite := NewOwnedSprite(9, driver)
 	bitmap := NewOwnedBitmap(7, BitmapDriver{})
@@ -848,6 +852,12 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 	if err := sprite.SetZIndex(5); err != nil {
 		t.Fatal(err)
 	}
+	if err := sprite.MarkDirty(); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.MarkDirtyRect(playdate.Rect{Width: 2, Height: 3}); err != nil {
+		t.Fatal(err)
+	}
 	if err := sprite.Add(); err != nil {
 		t.Fatal(err)
 	}
@@ -857,7 +867,7 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 	if err := sprite.Close(); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"bitmap", "position", "move", "visible", "z", "add", "remove", "free"}
+	want := []string{"bitmap", "position", "move", "visible", "z", "dirty", "dirtyRect", "add", "remove", "free"}
 	if len(operations) != len(want) {
 		t.Fatalf("operations = %v, want %v", operations, want)
 	}
@@ -868,6 +878,90 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 	}
 	if err := sprite.Close(); !errors.Is(err, playdate.ErrSpriteClosed) {
 		t.Fatalf("double Close() = %v", err)
+	}
+}
+
+func TestDisplayAndDirtyRegionValidation(t *testing.T) {
+	var displayCalls int
+	display := NewDisplay(DisplayDriver{
+		SetRefreshRate: func(float32) { displayCalls++ }, SetInverted: func(bool) { displayCalls++ },
+		SetScale: func(uint) { displayCalls++ }, SetMosaic: func(uint, uint) { displayCalls++ },
+		SetFlipped: func(bool, bool) { displayCalls++ }, SetOffset: func(int, int) { displayCalls++ },
+	})
+	if err := display.SetRefreshRate(50); err != nil {
+		t.Fatal(err)
+	}
+	if err := display.SetScale(4); err != nil {
+		t.Fatal(err)
+	}
+	if err := display.SetMosaic(3, 0); err != nil {
+		t.Fatal(err)
+	}
+	display.SetInverted(true)
+	display.SetFlipped(true, false)
+	display.SetOffset(1, -1)
+	if displayCalls != 6 {
+		t.Fatalf("display calls = %d", displayCalls)
+	}
+	if err := display.SetRefreshRate(51); !errors.Is(err, playdate.ErrDisplayRefreshRate) {
+		t.Fatalf("refresh error = %v", err)
+	}
+	if err := display.SetScale(3); !errors.Is(err, playdate.ErrDisplayScale) {
+		t.Fatalf("scale error = %v", err)
+	}
+	if err := display.SetMosaic(0, 4); !errors.Is(err, playdate.ErrDisplayMosaic) {
+		t.Fatalf("mosaic error = %v", err)
+	}
+	if err := ValidateScreenDirtyRect(0, 0, 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateScreenDirtyRect(0, 0, 0, 1); !errors.Is(err, playdate.ErrSpriteDirtyRect) {
+		t.Fatalf("screen rect error = %v", err)
+	}
+	if err := ValidateSpriteRect(playdate.Rect{Width: 1, Height: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateSpriteRect(playdate.Rect{Width: -1, Height: 1}); !errors.Is(err, playdate.ErrSpriteDirtyRect) {
+		t.Fatalf("sprite rect error = %v", err)
+	}
+}
+
+type displayCapabilityContext struct {
+	testContext
+	calls int
+}
+
+func (c *displayCapabilityContext) SetRefreshRate(float32) error          { c.calls++; return nil }
+func (*displayCapabilityContext) SetInverted(bool)                        {}
+func (*displayCapabilityContext) SetScale(uint) error                     { return nil }
+func (*displayCapabilityContext) SetMosaic(uint, uint) error              { return nil }
+func (*displayCapabilityContext) SetFlipped(bool, bool)                   {}
+func (*displayCapabilityContext) SetOffset(int, int)                      {}
+func (c *displayCapabilityContext) SetAlwaysRedraw(bool)                  { c.calls++ }
+func (c *displayCapabilityContext) AddDirtyRect(int, int, int, int) error { c.calls++; return nil }
+
+type displayCapabilityGame struct{}
+
+func (displayCapabilityGame) Init(context playdate.Context) error {
+	if err := context.(playdate.Display).SetRefreshRate(30); err != nil {
+		return err
+	}
+	context.(playdate.SpriteRedraw).SetAlwaysRedraw(false)
+	return context.(playdate.SpriteRedraw).AddDirtyRect(1, 2, 3, 4)
+}
+func (displayCapabilityGame) Update(playdate.Context) (bool, error) { return false, nil }
+
+func TestApplicationForwardsDisplayAndSpriteRedrawCapabilities(t *testing.T) {
+	context := &displayCapabilityContext{}
+	application, err := NewApplication(displayCapabilityGame{}, context, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	if context.calls != 3 {
+		t.Fatalf("forwarded calls = %d", context.calls)
 	}
 }
 

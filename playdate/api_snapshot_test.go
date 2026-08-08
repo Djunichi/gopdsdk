@@ -250,6 +250,7 @@ type ControlSignal interface{AddEvent(step int, value float32, interpolate bool)
 type DebugMessages interface{PollDebugMessage() (message string, ok bool)}
 type DelayLine interface{AddTap(delayFrames int) (DelayTap, error); SetFeedback(float32) error; SetLength(frames int) error; AudioEffect}
 type DelayTap interface{Close() error; SetChannelsFlipped(bool) error; SetDelay(frames int) error; SetDelayModulator(Signal) error; AudioSource}
+type Display interface{SetFlipped(x bool, y bool); SetInverted(bool); SetMosaic(x uint, y uint) error; SetOffset(x int, y int); SetRefreshRate(framesPerSecond float32) error; SetScale(uint) error}
 type DrawMode uint8
 type Envelope interface{SetAttack(seconds float32) error; SetDecay(seconds float32) error; SetLegato(legato bool) error; SetRelease(seconds float32) error; SetRetrigger(retrigger bool) error; SetSustain(level float32) error; Signal}
 type FadingPlayer interface{FadeVolume(left float32, right float32, audioFrames uint32, callback func()) error}
@@ -309,7 +310,8 @@ type SequenceTrack interface{AddControlEvent(controller int, step int, value flo
 type Sequencers interface{NewInstrument() (Instrument, error); NewSequence() (Sequence, error); NewSequenceTrack() (SequenceTrack, error)}
 type Signal interface{Close() error; SetOffset(offset float32) error; SetScale(scale float32) error; Value() (float32, error)}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; Stop() error; AudioSource}
-type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
+type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MarkDirty() error; MarkDirtyRect(Rect) error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
+type SpriteRedraw interface{AddDirtyRect(x int, y int, width int, height int) error; SetAlwaysRedraw(bool)}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(note float32, velocity float32, length float32, when uint32) error; SetAmplitudeModulator(signal Signal) error; SetEnvelope(attack float32, decay float32, sustain float32, release float32) error; SetFrequencyModulator(signal Signal) error; SetTranspose(semitones float32) error; SetWaveform(waveform Waveform) error; Stop() error; AudioSource}
 type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelope(attack float32, decay float32, sustain float32, release float32) (Envelope, error); NewLFO(lfoType LFOType) (LFO, error); NewSynth(waveform Waveform) (Synth, error)}
@@ -350,6 +352,10 @@ var ErrBitmapScale error
 var ErrBitmapSize error
 var ErrBitmapTableBorrowed error
 var ErrBitmapTableClosed error
+var ErrDisplayMosaic error
+var ErrDisplayRefreshRate error
+var ErrDisplayScale error
+var ErrDisplayUnavailable error
 var ErrFileClosed error
 var ErrFileIO error
 var ErrFileMode error
@@ -390,6 +396,8 @@ var ErrScoreboardUnavailable error
 var ErrSpriteBorrowed error
 var ErrSpriteClosed error
 var ErrSpriteCreate error
+var ErrSpriteDirtyRect error
+var ErrSpriteRedrawUnavailable error
 var ErrTileMapBitmap error
 var ErrTileMapConfig error
 var ErrTileMapDraw error
