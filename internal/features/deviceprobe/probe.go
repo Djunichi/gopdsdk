@@ -742,6 +742,8 @@ func bridgeFillBitmap(bitmap uintptr, color int32)
 func bridgeDrawBitmap(bitmap uintptr, x, y int32)
 //go:linkname bridgeDrawScaledBitmapBits bridgeDrawScaledBitmapBits
 func bridgeDrawScaledBitmapBits(bitmap uintptr, x, y int32, scaleX, scaleY uint32)
+//go:linkname bridgeDrawRotatedBitmapBits bridgeDrawRotatedBitmapBits
+func bridgeDrawRotatedBitmapBits(bitmap uintptr, x, y int32, degrees, centerX, centerY, scaleX, scaleY uint32)
 //go:linkname bridgeDrawPrimitive bridgeDrawPrimitive
 func bridgeDrawPrimitive(kind, x1, y1, x2, y2, x3, y3, lineWidth, solid int32, startAngle, endAngle uint32, pattern uintptr, patterned int32)
 //go:linkname bridgeSetClipRect bridgeSetClipRect
@@ -754,6 +756,10 @@ func bridgePushContext(bitmap uintptr)
 
 //go:linkname bridgePopContext bridgePopContext
 func bridgePopContext()
+//go:linkname bridgeSetStencil bridgeSetStencil
+func bridgeSetStencil(bitmap uintptr, tiled int32)
+//go:linkname bridgeClearStencil bridgeClearStencil
+func bridgeClearStencil()
 //go:linkname bridgeSetDrawOffset bridgeSetDrawOffset
 func bridgeSetDrawOffset(dx, dy int32)
 //go:linkname bridgeSetDrawMode bridgeSetDrawMode
@@ -1077,6 +1083,9 @@ func (playdateContext) DrawInto(bitmap sdkPlaydate.Bitmap, callback func() error
 	if callback == nil{return sdkPlaydate.ErrOffscreenCallback}; handle,err:=sdkRuntime.OwnedBitmapHandle(bitmap);if err!=nil{return err}
 	bridgePushContext(handle);err=callback();bridgePopContext();return err
 }
+func (playdateContext) WithStencil(stencil sdkPlaydate.Bitmap,tiled bool,callback func()error)error{
+	if callback==nil{return sdkPlaydate.ErrGraphicsStencilCallback};handle,err:=sdkRuntime.ValidateStencil(stencil,tiled);if err!=nil{return err};tile:=int32(0);if tiled{tile=1};bridgeSetStencil(handle,tile);err=callback();bridgeClearStencil();return err
+}
 
 func (playdateContext) DrawText(text string, x, y int) {
 	bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y))
@@ -1198,6 +1207,9 @@ func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, sca
 	if err := sdkRuntime.ValidateBitmapScale(scaleX, scaleY); err != nil { return err }
 	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
 	bridgeDrawScaledBitmapBits(handle, int32(x), int32(y), *(*uint32)(unsafe.Pointer(&scaleX)), *(*uint32)(unsafe.Pointer(&scaleY))); return nil
+}
+func (playdateContext) DrawRotatedBitmap(bitmap sdkPlaydate.Bitmap,x,y int,degrees,centerX,centerY,scaleX,scaleY float32)error{
+	if err:=sdkRuntime.ValidateBitmapTransform(degrees,centerX,centerY,scaleX,scaleY);err!=nil{return err};handle,err:=sdkRuntime.BitmapHandle(bitmap);if err!=nil{return err};bridgeDrawRotatedBitmapBits(handle,int32(x),int32(y),float32Bits(degrees),float32Bits(centerX),float32Bits(centerY),float32Bits(scaleX),float32Bits(scaleY));return nil
 }
 func drawPrimitive(kind, x1, y1, x2, y2, x3, y3, lineWidth int, startAngle, endAngle float32, paint sdkPlaydate.Paint) { solid, pattern, patterned := paint.Components(); flag := int32(0); if patterned { flag = 1 }; bridgeDrawPrimitive(int32(kind),int32(x1),int32(y1),int32(x2),int32(y2),int32(x3),int32(y3),int32(lineWidth),int32(solid),float32Bits(startAngle),float32Bits(endAngle),uintptr(unsafe.Pointer(&pattern[0])),flag) }
 func (playdateContext) DrawLine(x1,y1,x2,y2,width int, paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,1,1,0,0); err!=nil{return err}; drawPrimitive(0,x1,y1,x2,y2,0,0,width,0,0,paint); return nil }
@@ -1522,6 +1534,7 @@ static LCDColor bridgeBitmapColor(int32_t color) { return color == 1 ? kColorWhi
 void bridgeFillBitmap(uintptr_t bitmap, int32_t color) { activePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
 void bridgeDrawBitmap(uintptr_t bitmap, int32_t x, int32_t y) { activePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmapBits(uintptr_t bitmap, int32_t x, int32_t y, uint32_t scaleX, uint32_t scaleY) { union { uint32_t bits; float value; } sx = { .bits = scaleX }, sy = { .bits = scaleY }; activePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, sx.value, sy.value); }
+void bridgeDrawRotatedBitmapBits(uintptr_t bitmap,int32_t x,int32_t y,uint32_t degrees,uint32_t centerX,uint32_t centerY,uint32_t scaleX,uint32_t scaleY){union{uint32_t bits;float value;}d={.bits=degrees},cx={.bits=centerX},cy={.bits=centerY},sx={.bits=scaleX},sy={.bits=scaleY};activePlaydate->graphics->drawRotatedBitmap((LCDBitmap*)bitmap,x,y,d.value,cx.value,cy.value,sx.value,sy.value);}
 static LCDColor bridgePrimitivePaint(int32_t solid, uintptr_t pattern, int32_t patterned) { if(patterned) return (LCDColor)pattern; return solid==1?kColorWhite:solid==2?kColorBlack:solid==3?kColorXOR:kColorClear; }
 void bridgeDrawPrimitive(int32_t kind,int32_t x1,int32_t y1,int32_t x2,int32_t y2,int32_t x3,int32_t y3,int32_t lineWidth,int32_t solid,uint32_t startAngle,uint32_t endAngle,uintptr_t pattern,int32_t patterned) { union{uint32_t bits;float value;} start={.bits=startAngle},end={.bits=endAngle}; LCDColor color=bridgePrimitivePaint(solid,pattern,patterned); switch(kind){case 0:activePlaydate->graphics->drawLine(x1,y1,x2,y2,lineWidth,color);break;case 1:activePlaydate->graphics->drawRect(x1,y1,x2,y2,color);break;case 2:activePlaydate->graphics->fillRect(x1,y1,x2,y2,color);break;case 3:activePlaydate->graphics->drawEllipse(x1,y1,x2,y2,lineWidth,start.value,end.value,color);break;case 4:activePlaydate->graphics->fillEllipse(x1,y1,x2,y2,start.value,end.value,color);break;case 5:activePlaydate->graphics->fillTriangle(x1,y1,x2,y2,x3,y3,color);break;case 6:activePlaydate->graphics->drawLine(x1,y1,x2,y2,lineWidth,color);activePlaydate->graphics->drawLine(x2,y2,x3,y3,lineWidth,color);activePlaydate->graphics->drawLine(x3,y3,x1,y1,lineWidth,color);break;} }
 void bridgeSetClipRect(int32_t x,int32_t y,int32_t width,int32_t height){activePlaydate->graphics->setClipRect(x,y,width,height);}
@@ -1530,6 +1543,8 @@ void bridgeSetDrawOffset(int32_t dx,int32_t dy){activePlaydate->graphics->setDra
 void bridgeSetDrawMode(int32_t mode){activePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode);}
 void bridgePushContext(uintptr_t bitmap){activePlaydate->graphics->pushContext((LCDBitmap*)bitmap);}
 void bridgePopContext(void){activePlaydate->graphics->popContext();}
+void bridgeSetStencil(uintptr_t bitmap,int32_t tiled){activePlaydate->graphics->setStencilImage((LCDBitmap*)bitmap,tiled);}
+void bridgeClearStencil(void){activePlaydate->graphics->setStencil(NULL);}
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
 void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
@@ -1769,6 +1784,7 @@ static LCDColor bridgeBitmapColor(int32_t color) { return color == 1 ? kColorWhi
 void bridgeFillBitmap(uintptr_t bitmap, int32_t color) { activePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
 void bridgeDrawBitmap(uintptr_t bitmap, int32_t x, int32_t y) { activePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmapBits(uintptr_t bitmap, int32_t x, int32_t y, uint32_t scaleX, uint32_t scaleY) { union { uint32_t bits; float value; } sx = { .bits = scaleX }, sy = { .bits = scaleY }; activePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, sx.value, sy.value); }
+void bridgeDrawRotatedBitmapBits(uintptr_t bitmap,int32_t x,int32_t y,uint32_t degrees,uint32_t centerX,uint32_t centerY,uint32_t scaleX,uint32_t scaleY){union{uint32_t bits;float value;}d={.bits=degrees},cx={.bits=centerX},cy={.bits=centerY},sx={.bits=scaleX},sy={.bits=scaleY};activePlaydate->graphics->drawRotatedBitmap((LCDBitmap*)bitmap,x,y,d.value,cx.value,cy.value,sx.value,sy.value);}
 static LCDColor bridgePrimitivePaint(int32_t solid, uintptr_t pattern, int32_t patterned) { if(patterned) return (LCDColor)pattern; return solid==1?kColorWhite:solid==2?kColorBlack:solid==3?kColorXOR:kColorClear; }
 void bridgeDrawPrimitive(int32_t kind,int32_t x1,int32_t y1,int32_t x2,int32_t y2,int32_t x3,int32_t y3,int32_t lineWidth,int32_t solid,uint32_t startAngle,uint32_t endAngle,uintptr_t pattern,int32_t patterned) { union{uint32_t bits;float value;} start={.bits=startAngle},end={.bits=endAngle}; LCDColor color=bridgePrimitivePaint(solid,pattern,patterned); switch(kind){case 0:activePlaydate->graphics->drawLine(x1,y1,x2,y2,lineWidth,color);break;case 1:activePlaydate->graphics->drawRect(x1,y1,x2,y2,color);break;case 2:activePlaydate->graphics->fillRect(x1,y1,x2,y2,color);break;case 3:activePlaydate->graphics->drawEllipse(x1,y1,x2,y2,lineWidth,start.value,end.value,color);break;case 4:activePlaydate->graphics->fillEllipse(x1,y1,x2,y2,start.value,end.value,color);break;case 5:activePlaydate->graphics->fillTriangle(x1,y1,x2,y2,x3,y3,color);break;case 6:activePlaydate->graphics->drawLine(x1,y1,x2,y2,lineWidth,color);activePlaydate->graphics->drawLine(x2,y2,x3,y3,lineWidth,color);activePlaydate->graphics->drawLine(x3,y3,x1,y1,lineWidth,color);break;} }
 void bridgeSetClipRect(int32_t x,int32_t y,int32_t width,int32_t height){activePlaydate->graphics->setClipRect(x,y,width,height);}
@@ -1777,6 +1793,8 @@ void bridgeSetDrawOffset(int32_t dx,int32_t dy){activePlaydate->graphics->setDra
 void bridgeSetDrawMode(int32_t mode){activePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode);}
 void bridgePushContext(uintptr_t bitmap){activePlaydate->graphics->pushContext((LCDBitmap*)bitmap);}
 void bridgePopContext(void){activePlaydate->graphics->popContext();}
+void bridgeSetStencil(uintptr_t bitmap,int32_t tiled){activePlaydate->graphics->setStencilImage((LCDBitmap*)bitmap,tiled);}
+void bridgeClearStencil(void){activePlaydate->graphics->setStencil(NULL);}
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
 void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }

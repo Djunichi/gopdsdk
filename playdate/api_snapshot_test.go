@@ -233,6 +233,7 @@ type AudioLoadError string
 type AudioSource interface{SetVolume(left float32, right float32) error; State() (PlaybackState, error); Volume() (left float32, right float32, err error)}
 type BitCrusher interface{SetDepth(float32) error; SetDepthModulator(Signal) error; SetDownsampling(float32) error; SetDownsamplingModulator(Signal) error; SetExponential(bool) error; AudioEffect}
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
+type BitmapCompositor interface{DrawRotatedBitmap(bitmap Bitmap, x int, y int, degrees float32, centerX float32, centerY float32, scaleX float32, scaleY float32) error; WithStencil(stencil Bitmap, tiled bool, callback func() error) error}
 type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Board struct{ID string; Name string}
@@ -365,6 +366,9 @@ var ErrFramebufferExpired error
 var ErrGraphicsColor error
 var ErrGraphicsDrawMode error
 var ErrGraphicsGeometry error
+var ErrGraphicsStencilActive error
+var ErrGraphicsStencilCallback error
+var ErrGraphicsStencilWidth error
 var ErrGraphicsUnavailable error
 var ErrMenuItemCreate error
 var ErrMenuOptions error

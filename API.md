@@ -81,6 +81,16 @@ context is restored before `DrawInto` returns, including callback errors.
 Borrowed table frames are rejected with `ErrBitmapBorrowed`; callbacks and
 bitmap cleanup remain explicitly owned by the game.
 
+Games that rotate or stencil bitmaps assert `BitmapCompositor`.
+`DrawRotatedBitmap` accepts a finite angle and center proportions plus positive,
+finite scales. `WithStencil` borrows a live bitmap only for its synchronous
+callback and clears the native stencil before returning, including callback
+errors. Stencil callbacks cannot be nested. A tiled stencil must have a width
+that is a multiple of 32 pixels, matching the official SDK constraint.
+Playdate SDK 3.1.1 does not reliably combine an active screen stencil with a
+direct rotated-bitmap draw at non-cardinal angles. Render the transform into a
+transparent offscreen bitmap first, then draw that bitmap through the stencil.
+
 `SolidPaint`, `XORPaint`, and `PatternPaint` create primitive paint values.
 Patterns contain eight image rows followed by eight mask rows and are copied by
 value; neither runtime adapter retains a pointer after the drawing call.
