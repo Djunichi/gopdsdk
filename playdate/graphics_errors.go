@@ -15,6 +15,10 @@ var (
 	ErrGraphicsGeometry error = graphicsError("invalid graphics geometry")
 	// ErrGraphicsDrawMode indicates a draw mode outside the public values.
 	ErrGraphicsDrawMode error = graphicsError("invalid graphics draw mode")
+	// ErrGraphicsLineCap indicates a line-cap style outside the public values.
+	ErrGraphicsLineCap error = graphicsError("invalid graphics line cap style")
+	// ErrGraphicsPolygon indicates fewer than three vertices or an invalid fill rule.
+	ErrGraphicsPolygon error = graphicsError("invalid graphics polygon")
 	// ErrGraphicsStencilCallback indicates a nil scoped stencil callback.
 	ErrGraphicsStencilCallback error = graphicsError("stencil callback is required")
 	// ErrGraphicsStencilActive indicates a nested scoped stencil operation.

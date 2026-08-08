@@ -82,10 +82,16 @@ void bridgeDrawEllipse(int x, int y, int width, int height, int lineWidth, float
 void bridgeFillEllipse(int x, int y, int width, int height, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned);
 void bridgeFillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int solid, const uint8_t* pattern, int patterned);
 void bridgeDrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int width, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillPolygon(int count,int* points,int rule,int solid,const uint8_t* pattern,int patterned);
+void bridgeDrawRoundedRect(int x,int y,int width,int height,int radius,int lineWidth,int solid,const uint8_t* pattern,int patterned);
+void bridgeFillRoundedRect(int x,int y,int width,int height,int radius,int solid,const uint8_t* pattern,int patterned);
 void bridgeSetClipRect(int x, int y, int width, int height);
 void bridgeClearClipRect(void);
 void bridgeSetDrawOffset(int dx, int dy);
 void bridgeSetDrawMode(int mode);
+void bridgeSetLineCapStyle(int style);
+void bridgeSetBackgroundColor(int color);
+void bridgeSetScreenClipRect(int x,int y,int width,int height);
 void bridgePushContext(uintptr_t bitmap);
 void bridgePopContext(void);
 void bridgeSetStencil(uintptr_t bitmap, int tiled);
@@ -474,10 +480,16 @@ func (playdateContext) DrawEllipse(x, y, width, height, lineWidth int, startAngl
 func (playdateContext) FillEllipse(x, y, width, height int, startAngle, endAngle float32, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, startAngle, endAngle); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillEllipse(C.int(x), C.int(y), C.int(width), C.int(height), C.float(startAngle), C.float(endAngle), solid, pattern, flag); return nil }
 func (playdateContext) FillTriangle(x1, y1, x2, y2, x3, y3 int, paint sdkPlaydate.Paint) error { solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillTriangle(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(x3), C.int(y3), solid, pattern, flag); return nil }
 func (playdateContext) DrawTriangle(x1, y1, x2, y2, x3, y3, width int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, 1, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawTriangle(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(x3), C.int(y3), C.int(width), solid, pattern, flag); return nil }
+func (playdateContext) FillPolygon(points []sdkPlaydate.GraphicsPoint,rule sdkPlaydate.PolygonFillRule,paint sdkPlaydate.Paint) error {if err:=sdkRuntime.ValidatePolygon(points,rule);err!=nil{return err};coords:=make([]C.int,len(points)*2);for i,p:=range points{coords[i*2]=C.int(p.X);coords[i*2+1]=C.int(p.Y)};solid,pattern,flag,keep:=paintArgs(paint);_=keep;C.bridgeFillPolygon(C.int(len(points)),&coords[0],C.int(rule),solid,pattern,flag);return nil}
+func (playdateContext) DrawRoundedRect(x,y,width,height,radius,lineWidth int,paint sdkPlaydate.Paint) error {if radius<0{return sdkPlaydate.ErrGraphicsGeometry};if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,lineWidth,0,0);err!=nil{return err};solid,pattern,flag,keep:=paintArgs(paint);_=keep;C.bridgeDrawRoundedRect(C.int(x),C.int(y),C.int(width),C.int(height),C.int(radius),C.int(lineWidth),solid,pattern,flag);return nil}
+func (playdateContext) FillRoundedRect(x,y,width,height,radius int,paint sdkPlaydate.Paint) error {if radius<0{return sdkPlaydate.ErrGraphicsGeometry};if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0);err!=nil{return err};solid,pattern,flag,keep:=paintArgs(paint);_=keep;C.bridgeFillRoundedRect(C.int(x),C.int(y),C.int(width),C.int(height),C.int(radius),solid,pattern,flag);return nil}
 func (playdateContext) SetClipRect(x, y, width, height int) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; C.bridgeSetClipRect(C.int(x), C.int(y), C.int(width), C.int(height)); return nil }
 func (playdateContext) ClearClipRect() { C.bridgeClearClipRect() }
 func (playdateContext) SetDrawOffset(dx, dy int) { C.bridgeSetDrawOffset(C.int(dx), C.int(dy)) }
 func (playdateContext) SetDrawMode(mode sdkPlaydate.DrawMode) error { if err := sdkRuntime.ValidateDrawMode(mode); err != nil { return err }; C.bridgeSetDrawMode(C.int(mode)); return nil }
+func (playdateContext) SetLineCapStyle(style sdkPlaydate.LineCapStyle) error {if err:=sdkRuntime.ValidateLineCapStyle(style);err!=nil{return err};C.bridgeSetLineCapStyle(C.int(style));return nil}
+func (playdateContext) SetBackgroundColor(color sdkPlaydate.Color) error {if color>sdkPlaydate.ColorBlack{return sdkPlaydate.ErrGraphicsColor};C.bridgeSetBackgroundColor(C.int(color));return nil}
+func (playdateContext) SetScreenClipRect(x,y,width,height int) error {if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0);err!=nil{return err};C.bridgeSetScreenClipRect(C.int(x),C.int(y),C.int(width),C.int(height));return nil}
 
 var display = sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{
 	SetRefreshRate: func(value float32) { C.bridgeDisplaySetRefreshRate(C.float(value)) },

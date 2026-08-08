@@ -150,10 +150,16 @@ void bridgeDrawEllipse(int x, int y, int width, int height, int lineWidth, float
 void bridgeFillEllipse(int x, int y, int width, int height, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillEllipse(x, y, width, height, startAngle, endAngle, bridgePaint(solid, pattern, patterned)); }
 void bridgeFillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillTriangle(x1, y1, x2, y2, x3, y3, bridgePaint(solid, pattern, patterned)); }
 void bridgeDrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int width, int solid, const uint8_t* pattern, int patterned) { LCDColor color=bridgePaint(solid,pattern,patterned); bridgePlaydate->graphics->drawLine(x1,y1,x2,y2,width,color); bridgePlaydate->graphics->drawLine(x2,y2,x3,y3,width,color); bridgePlaydate->graphics->drawLine(x3,y3,x1,y1,width,color); }
+void bridgeFillPolygon(int count,int* points,int rule,int solid,const uint8_t* pattern,int patterned){bridgePlaydate->graphics->fillPolygon(count,points,bridgePaint(solid,pattern,patterned),(LCDPolygonFillRule)rule);}
+void bridgeDrawRoundedRect(int x,int y,int width,int height,int radius,int lineWidth,int solid,const uint8_t* pattern,int patterned){bridgePlaydate->graphics->drawRoundRect(x,y,width,height,radius,lineWidth,bridgePaint(solid,pattern,patterned));}
+void bridgeFillRoundedRect(int x,int y,int width,int height,int radius,int solid,const uint8_t* pattern,int patterned){bridgePlaydate->graphics->fillRoundRect(x,y,width,height,radius,bridgePaint(solid,pattern,patterned));}
 void bridgeSetClipRect(int x, int y, int width, int height) { bridgePlaydate->graphics->setClipRect(x, y, width, height); }
 void bridgeClearClipRect(void) { bridgePlaydate->graphics->clearClipRect(); }
 void bridgeSetDrawOffset(int dx, int dy) { bridgePlaydate->graphics->setDrawOffset(dx, dy); }
 void bridgeSetDrawMode(int mode) { bridgePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode); }
+void bridgeSetLineCapStyle(int style){bridgePlaydate->graphics->setLineCapStyle((LCDLineCapStyle)style);}
+void bridgeSetBackgroundColor(int color){bridgePlaydate->graphics->setBackgroundColor(color==1?kColorWhite:color==2?kColorBlack:kColorClear);}
+void bridgeSetScreenClipRect(int x,int y,int width,int height){bridgePlaydate->graphics->setScreenClipRect(x,y,width,height);}
 void bridgePushContext(uintptr_t bitmap) { bridgePlaydate->graphics->pushContext((LCDBitmap*)bitmap); }
 void bridgePopContext(void) { bridgePlaydate->graphics->popContext(); }
 void bridgeSetStencil(uintptr_t bitmap, int tiled) { bridgePlaydate->graphics->setStencilImage((LCDBitmap*)bitmap, tiled); }

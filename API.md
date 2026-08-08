@@ -89,6 +89,14 @@ native call. The runtime's per-frame context forwards both optional slices to
 the platform adapter; an adapter without the requested slice returns
 `ErrGraphicsUnavailable`.
 
+`PrimitiveGraphics` includes filled polygons expressed as `[]GraphicsPoint`
+with non-zero or even-odd fill rules, plus stroked and filled rounded
+rectangles. A polygon requires at least three vertices and rounded-rectangle
+radii cannot be negative. `GraphicsState` also controls butt, square, or round
+line caps, the solid display background color, and clipping in absolute screen
+coordinates. `SetClipRect` remains drawing-coordinate-relative;
+`SetScreenClipRect` is unaffected by the current drawing offset.
+
 Games that need direct 1-bit pixels assert `FramebufferGraphics` and use
 `WithFramebuffer`. The callback receives a zero-copy view of the 400×240
 working framebuffer with a 52-byte row stride. `Pixel` and `SetPixel` use

@@ -6,6 +6,16 @@ that out.
 
 ## Unreleased
 
+- Added the P7.1 drawing and graphics-state surface: value-typed filled
+  polygons, rounded rectangles, line-cap style, background color, and
+  screen-coordinate clipping on both native adapters.
+- Passed official Windows SDK 3.1.1 Simulator execution and conservative-GC
+  physical-device build, COM3 installation, launch, and execution for the P7.1
+  acceptance scene. The device artifact uses 274,720 bytes of static RAM and
+  produces an 813,972-byte ELF and a 38,355-byte PDX; extended soak, memory
+  growth, post-run logs, and isolated visual assertions for every new operation
+  remain pending.
+
 ## v0.6.0 (2026-08-08)
 
 - Released the accepted P6.1–P6.4 graphics, media, diagnostics, and performance

@@ -172,6 +172,9 @@ const LifecyclePause LifecycleEvent
 const LifecycleResume LifecycleEvent
 const LifecycleTerminate LifecycleEvent
 const LifecycleUnlock LifecycleEvent
+const LineCapButt LineCapStyle
+const LineCapRound LineCapStyle
+const LineCapSquare LineCapStyle
 const MicrophonePermissionDenied MicrophonePermission
 const MicrophonePermissionGranted MicrophonePermission
 const MicrophonePermissionPending MicrophonePermission
@@ -181,6 +184,8 @@ const MicrophoneSourceInternal MicrophoneSource
 const PlaybackPaused PlaybackState
 const PlaybackPlaying PlaybackState
 const PlaybackStopped PlaybackState
+const PolygonFillEvenOdd PolygonFillRule
+const PolygonFillNonZero PolygonFillRule
 const PowerCharging PowerStatus
 const PowerScrews PowerStatus
 const PowerUSB PowerStatus
@@ -269,7 +274,8 @@ type Framebuffer interface{Bytes() ([]byte, error); Height() int; MarkDirtyRows(
 type FramebufferGraphics interface{WithFramebuffer(callback func(Framebuffer) error) error}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
-type GraphicsState interface{ClearClipRect(); SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int)}
+type GraphicsPoint struct{X int; Y int}
+type GraphicsState interface{ClearClipRect(); SetBackgroundColor(color Color) error; SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int); SetLineCapStyle(style LineCapStyle) error; SetScreenClipRect(x int, y int, width int, height int) error}
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
 type Instrument interface{ActiveVoiceCount() (int, error); AddVoice(synth Synth, rangeStart uint8, rangeEnd uint8, transpose float32) error; AllNotesOff(when uint32) error; Close() error; NoteOff(note uint8, when uint32) error; SetPitchBend(float32) error; SetPitchBendRange(float32) error; SetTranspose(float32) error; SetVolume(left float32, right float32) error; Volume() (left float32, right float32, err error); AudioSource}
@@ -279,6 +285,7 @@ type Language int
 type Launcher interface{ExitToLauncher()}
 type LifecycleEvent uint8
 type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
+type LineCapStyle uint8
 type ListScore struct{Rank uint32; Value uint32; Player string}
 type Localization interface{Language() Language; LocalizedText(key string, language Language) (string, bool)}
 type MenuItem interface{Remove(); SetTitle(string) error; Title() string}
@@ -295,9 +302,10 @@ type PCMPlayers interface{NewPCMPlayer(samples []int16, sampleRate uint32) (Samp
 type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
+type PolygonFillRule uint8
 type PowerMonitor interface{BatteryPercentage() float32; BatteryVoltage() float32; PowerStatus() PowerStatus}
 type PowerStatus uint8
-type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
+type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawRoundedRect(x int, y int, width int, height int, radius int, lineWidth int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillPolygon(points []GraphicsPoint, rule PolygonFillRule, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillRoundedRect(x int, y int, width int, height int, radius int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
 type RingModulator interface{SetFrequency(float32) error; SetFrequencyModulator(Signal) error; AudioEffect}
 type SamplePlayer interface{Length() (float32, error); Offset() (float32, error); PlayRepeated(repeat int, rate float32) error; Rate() (float32, error); SetOffset(seconds float32) error; SetRate(rate float32) error; SoundEffect}
@@ -377,6 +385,8 @@ var ErrFramebufferExpired error
 var ErrGraphicsColor error
 var ErrGraphicsDrawMode error
 var ErrGraphicsGeometry error
+var ErrGraphicsLineCap error
+var ErrGraphicsPolygon error
 var ErrGraphicsStencilActive error
 var ErrGraphicsStencilCallback error
 var ErrGraphicsStencilWidth error
