@@ -27,6 +27,7 @@ type game struct {
 	closed            bool
 	frame             int
 	tileValue         uint16
+	callbackUpdates   int
 }
 
 // New creates the P8 sprite-presentation acceptance scene.
@@ -144,6 +145,34 @@ func (g *game) Init(context playdate.Context) error {
 		if configureErr := configure(sprite); configureErr != nil {
 			return errors.Join(configureErr, g.close())
 		}
+	}
+	procedural, err := context.NewSprite()
+	if err != nil {
+		return errors.Join(err, g.close())
+	}
+	g.sprites = append(g.sprites, procedural)
+	if err := procedural.SetBounds(playdate.Rect{X: 188, Y: 36, Width: 24, Height: 24}); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err := procedural.SetPosition(200, 48); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err := procedural.SetCollideRect(playdate.Rect{Width: 24, Height: 24}); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err := procedural.SetDrawCallback(func(_ playdate.Sprite, bounds, _ playdate.Rect) {
+		_ = primitives.FillEllipse(int(bounds.X), int(bounds.Y), int(bounds.Width), int(bounds.Height), 0, 360, black)
+	}); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err := procedural.SetUpdateCallback(func(playdate.Sprite) { g.callbackUpdates++ }); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err := procedural.SetCollisionResponseCallback(func(_, _ playdate.Sprite) playdate.CollisionResponse { return playdate.CollisionBounce }); err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err := procedural.Add(); err != nil {
+		return errors.Join(err, g.close())
 	}
 	table, err := context.LoadBitmapTable("images/characters")
 	if err != nil {
@@ -313,6 +342,11 @@ func (g *game) verifyP82() error {
 			return err
 		}
 	}
+	callbackSprite := g.sprites[len(g.sprites)-2]
+	result, err := callbackSprite.CheckCollisions(55, 72)
+	if err != nil || len(result.Collisions) == 0 || result.Collisions[0].ResponseType != playdate.CollisionBounce {
+		return errors.Join(errors.New("P8.3 collision callback mismatch"), err)
+	}
 	return nil
 }
 
@@ -411,7 +445,7 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 	context.Clear()
 	context.UpdateAndDrawSprites()
-	context.DrawText("P8 SPRITES  P8.2 PASS", 6, 4)
+	context.DrawText("P8 SPRITES  P8.3 PASS "+strconv.Itoa(g.callbackUpdates), 6, 4)
 	context.DrawText("FLIP: NONE        X          Y          XY", 6, 26)
 	context.DrawText("PATTERN       IMAGE MASK      CLIP HALF      INVERT+OPAQUE", 6, 98)
 	context.DrawText("OFFSET MOVES     TILEMAP "+strconv.Itoa(int(g.tileValue))+"       OFFSET IGNORED", 6, 164)

@@ -408,7 +408,9 @@ update/collision enable state. It also attaches an explicitly owned native
 tilemap to a sprite and alternates one tile while reporting its native getter.
 At startup it additionally self-checks the P8.2 line and detailed-hit queries,
 non-mutating collision checks, sprite count, bulk add/remove, remove-all state,
-and collision-world reset before displaying `P8.2 PASS`.
+and collision-world reset. It also renders a procedural sprite through a draw
+callback, counts ordered update callbacks, and verifies a pair-specific bounce
+response before displaying `P8.3 PASS`.
 Press A or B to toggle the enable states, Up to
 clear or restore both stencils, Down to clear or restore clipping, and Left or
 Right to demonstrate the difference between offset-following and
@@ -427,9 +429,19 @@ static RAM and produces a 1,398,940-byte ELF and 69,893-byte PDX. Long-running
 conservative-GC soak, memory-growth measurement, and post-run device-log
 inspection remain unverified.
 
+On 2026-08-09 the P8.3 build displayed `P8.3 PASS` in the official Windows SDK
+3.1.1 Simulator. Its startup pair-specific collision-response check succeeded,
+and the visible update-callback counter increased continuously. The conservative
+hard-float device build uses 283,104 bytes of static RAM and produces a
+1,479,780-byte ELF and a 73,656-byte PDX. USB installation through COM3 and
+launch passed; user-confirmed physical execution showed matching `P8.3 PASS`, a
+continuously increasing update counter, and the procedural draw. Conservative-GC
+soak, memory-growth measurement, and post-run device-log inspection remain
+unverified.
+
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/spritepresentation
-go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/spritepresentation
+go run ./cmd/gopdsdk run device --memory conservative --install --sdk /path/to/PlaydateSDK ./examples/spritepresentation
 ```
 
 ## Collisions

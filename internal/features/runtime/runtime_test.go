@@ -997,6 +997,75 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 	}
 }
 
+func TestSpriteCallbacksDispatchAndCleanup(t *testing.T) {
+	state := NewSpriteDisplayListState()
+	var draw, update int
+	driver := SpriteDriver{DisplayList: state, SetDrawCallback: func(uintptr, bool) {}, SetUpdateCallback: func(uintptr, bool) {}, SetCollisionCallback: func(uintptr, bool) {}, Free: func(uintptr) {}}
+	sprite := NewOwnedSprite(9, driver)
+	if err := sprite.SetDrawCallback(func(got playdate.Sprite, bounds, dirty playdate.Rect) {
+		draw++
+		if got != sprite || bounds.Width != 4 || dirty.Height != 2 {
+			t.Fatal("draw callback arguments")
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.SetUpdateCallback(func(got playdate.Sprite) {
+		update++
+		if got != sprite {
+			t.Fatal("update sprite")
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.SetCollisionResponseCallback(func(got, other playdate.Sprite) playdate.CollisionResponse {
+		if got != sprite {
+			t.Fatal("collision sprite")
+		}
+		if h, _ := SpriteHandle(other); h != 10 {
+			t.Fatal("collision other")
+		}
+		return playdate.CollisionBounce
+	}); err != nil {
+		t.Fatal(err)
+	}
+	state.InvokeSpriteDraw(9, playdate.Rect{Width: 4}, playdate.Rect{Height: 2})
+	state.InvokeSpriteUpdate(9)
+	if got := state.InvokeSpriteCollision(9, 10); got != playdate.CollisionBounce {
+		t.Fatalf("response = %v", got)
+	}
+	if draw != 1 || update != 1 {
+		t.Fatalf("callbacks = %d/%d", draw, update)
+	}
+	state.TerminateSpriteCallbacks()
+	state.InvokeSpriteDraw(9, playdate.Rect{}, playdate.Rect{})
+	state.InvokeSpriteUpdate(9)
+	if draw != 1 || update != 1 {
+		t.Fatal("callback delivered after termination")
+	}
+	if err := sprite.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if state.callbacks != 0 || len(state.byHandle) != 0 {
+		t.Fatalf("callback cleanup = %d/%d", state.callbacks, len(state.byHandle))
+	}
+}
+
+func TestSpriteCallbackRegistryBound(t *testing.T) {
+	state := NewSpriteDisplayListState()
+	driver := SpriteDriver{DisplayList: state, SetUpdateCallback: func(uintptr, bool) {}, Free: func(uintptr) {}}
+	for i := 0; i < spriteCallbackLimit; i++ {
+		s := NewOwnedSprite(uintptr(i+1), driver)
+		if err := s.SetUpdateCallback(func(playdate.Sprite) {}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	extra := NewOwnedSprite(100, driver)
+	if err := extra.SetUpdateCallback(func(playdate.Sprite) {}); !errors.Is(err, playdate.ErrSpriteCallbackLimit) {
+		t.Fatalf("limit error = %v", err)
+	}
+}
+
 func TestSpriteGeometryPresentationAndEnableState(t *testing.T) {
 	driver := SpriteDriver{
 		SetCenter: func(uintptr, float32, float32) {}, Center: func(uintptr) (float32, float32) { return .25, .75 },

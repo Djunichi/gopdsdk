@@ -120,6 +120,7 @@ void bridgeDisplaySetMosaic(unsigned int x, unsigned int y);
 void bridgeDisplaySetFlipped(int x, int y);
 void bridgeDisplaySetOffset(int x, int y);
 uintptr_t bridgeNewSprite(void);
+void bridgeSpriteSetDrawCallback(uintptr_t,int); void bridgeSpriteSetUpdateCallback(uintptr_t,int); void bridgeSpriteSetCollisionCallback(uintptr_t,int);
 void bridgeFreeSprite(uintptr_t sprite);
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap);
 void bridgeSpriteSetCenter(uintptr_t,float,float); void bridgeSpriteGetCenter(uintptr_t,float*,float*); void bridgeSpriteSetBounds(uintptr_t,float,float,float,float); void bridgeSpriteGetRect(uintptr_t,int,float*);
@@ -261,6 +262,13 @@ var debugMessages = sdkRuntime.NewDebugMessageQueue(8, 256)
 func goSerialMessage(message *C.char) { if message != nil { debugMessages.Push(C.GoString(message)) } }
 //export goAudioCallback
 func goAudioCallback(callback C.uint32_t,oneShot C.int){sdkRuntime.InvokeAudioCallback(uint32(callback),oneShot!=0)}
+
+//export goSpriteDraw
+func goSpriteDraw(s C.uintptr_t,bx,by,bw,bh,dx,dy,dw,dh C.float){spriteDisplayList.InvokeSpriteDraw(uintptr(s),sdkPlaydate.Rect{X:float32(bx),Y:float32(by),Width:float32(bw),Height:float32(bh)},sdkPlaydate.Rect{X:float32(dx),Y:float32(dy),Width:float32(dw),Height:float32(dh)})}
+//export goSpriteUpdate
+func goSpriteUpdate(s C.uintptr_t){spriteDisplayList.InvokeSpriteUpdate(uintptr(s))}
+//export goSpriteCollision
+func goSpriteCollision(s,o C.uintptr_t)C.int{return C.int(spriteDisplayList.InvokeSpriteCollision(uintptr(s),uintptr(o)))}
 var microphonePermissionCallback func(bool)
 var microphoneRecordingCallback func([]int16)bool
 //export goMicrophonePermission
@@ -282,6 +290,7 @@ func mustApplication() *sdkRuntime.Application {
 
 //export eventHandler
 func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t) C.int {
+	if sdkRuntime.Event(event) == sdkRuntime.EventTerminate { spriteDisplayList.TerminateSpriteCallbacks() }
 	if sdkRuntime.Event(event) == sdkRuntime.EventInit {
 		activePlaydate = playdate
 	} else if activePlaydate == nil {
@@ -590,6 +599,9 @@ var spriteDriver = sdkRuntime.SpriteDriver{
 	MarkDirtyRect: func(sprite uintptr, rect sdkPlaydate.Rect) { C.bridgeSpriteMarkDirtyRect(C.uintptr_t(sprite), C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height)) },
 	MoveWithCollisions: moveWithCollisions,
 	CheckCollisions: checkCollisions,
+	SetDrawCallback: func(s uintptr,v bool){C.bridgeSpriteSetDrawCallback(C.uintptr_t(s),boolInt(v))},
+	SetUpdateCallback: func(s uintptr,v bool){C.bridgeSpriteSetUpdateCallback(C.uintptr_t(s),boolInt(v))},
+	SetCollisionCallback: func(s uintptr,v bool){C.bridgeSpriteSetCollisionCallback(C.uintptr_t(s),boolInt(v))},
 	Add: func(sprite uintptr) { C.bridgeSpriteAdd(C.uintptr_t(sprite)) },
 	Remove: func(sprite uintptr) { C.bridgeSpriteRemove(C.uintptr_t(sprite)) },
 	Free: func(sprite uintptr) { C.bridgeFreeSprite(C.uintptr_t(sprite)) },

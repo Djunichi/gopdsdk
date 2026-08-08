@@ -1402,6 +1402,9 @@ type SpriteDriver struct {
 	MarkDirtyRect        func(uintptr, playdate.Rect)
 	MoveWithCollisions   func(uintptr, float32, float32) (float32, float32, []NativeCollision)
 	CheckCollisions      func(uintptr, float32, float32) (float32, float32, []NativeCollision)
+	SetDrawCallback      func(uintptr, bool)
+	SetUpdateCallback    func(uintptr, bool)
+	SetCollisionCallback func(uintptr, bool)
 	Add                  func(uintptr)
 	Remove               func(uintptr)
 	Free                 func(uintptr)
@@ -1419,21 +1422,31 @@ type NativeCollision struct {
 
 // Sprite owns a native Playdate sprite.
 type Sprite struct {
-	handle  uintptr
-	driver  SpriteDriver
-	added   bool
-	closed  bool
-	owned   bool
-	tileMap *SpriteTileMap
+	handle            uintptr
+	driver            SpriteDriver
+	added             bool
+	closed            bool
+	owned             bool
+	tileMap           *SpriteTileMap
+	drawCallback      playdate.SpriteDrawCallback
+	updateCallback    playdate.SpriteUpdateCallback
+	collisionCallback playdate.SpriteCollisionResponseCallback
 }
 
 // SpriteDisplayListState tracks owned wrappers so a native remove-all can keep
 // their deterministic Add/Remove/Close state synchronized.
-type SpriteDisplayListState struct{ sprites map[*Sprite]struct{} }
+type SpriteDisplayListState struct {
+	sprites   map[*Sprite]struct{}
+	byHandle  map[uintptr]*Sprite
+	callbacks int
+	active    bool
+}
+
+const spriteCallbackLimit = 64
 
 // NewSpriteDisplayListState creates state shared by one native context.
 func NewSpriteDisplayListState() *SpriteDisplayListState {
-	return &SpriteDisplayListState{sprites: make(map[*Sprite]struct{})}
+	return &SpriteDisplayListState{sprites: make(map[*Sprite]struct{}), byHandle: make(map[uintptr]*Sprite), active: true}
 }
 
 // RemoveAll marks every live owned wrapper as detached.
@@ -1451,8 +1464,105 @@ func NewOwnedSprite(handle uintptr, driver SpriteDriver) *Sprite {
 	sprite := &Sprite{handle: handle, driver: driver, owned: true}
 	if driver.DisplayList != nil {
 		driver.DisplayList.sprites[sprite] = struct{}{}
+		driver.DisplayList.byHandle[handle] = sprite
 	}
 	return sprite
+}
+
+func (s *Sprite) setCallback(previous, next bool) error {
+	state := s.driver.DisplayList
+	if state == nil || previous == next {
+		return nil
+	}
+	if next && state.callbacks >= spriteCallbackLimit {
+		return playdate.ErrSpriteCallbackLimit
+	}
+	if next {
+		state.callbacks++
+	} else {
+		state.callbacks--
+	}
+	return nil
+}
+
+func (s *Sprite) SetDrawCallback(callback playdate.SpriteDrawCallback) error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if err = s.setCallback(s.drawCallback != nil, callback != nil); err != nil {
+		return err
+	}
+	s.drawCallback = callback
+	s.driver.SetDrawCallback(h, callback != nil)
+	return nil
+}
+func (s *Sprite) SetUpdateCallback(callback playdate.SpriteUpdateCallback) error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if err = s.setCallback(s.updateCallback != nil, callback != nil); err != nil {
+		return err
+	}
+	s.updateCallback = callback
+	s.driver.SetUpdateCallback(h, callback != nil)
+	return nil
+}
+func (s *Sprite) SetCollisionResponseCallback(callback playdate.SpriteCollisionResponseCallback) error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if err = s.setCallback(s.collisionCallback != nil, callback != nil); err != nil {
+		return err
+	}
+	s.collisionCallback = callback
+	s.driver.SetCollisionCallback(h, callback != nil)
+	return nil
+}
+
+// InvokeSpriteDraw is called synchronously by a native sprite draw function.
+func (state *SpriteDisplayListState) InvokeSpriteDraw(handle uintptr, bounds, drawRect playdate.Rect) {
+	if state == nil || !state.active {
+		return
+	}
+	if s := state.byHandle[handle]; s != nil && s.drawCallback != nil {
+		s.drawCallback(s, bounds, drawRect)
+	}
+}
+
+// InvokeSpriteUpdate is called synchronously by a native sprite update function.
+func (state *SpriteDisplayListState) InvokeSpriteUpdate(handle uintptr) {
+	if state == nil || !state.active {
+		return
+	}
+	if s := state.byHandle[handle]; s != nil && s.updateCallback != nil {
+		s.updateCallback(s)
+	}
+}
+
+// InvokeSpriteCollision returns the pair-specific native collision response.
+func (state *SpriteDisplayListState) InvokeSpriteCollision(handle, other uintptr) playdate.CollisionResponse {
+	if state == nil || !state.active {
+		return playdate.CollisionSlide
+	}
+	s := state.byHandle[handle]
+	if s == nil || s.collisionCallback == nil {
+		return playdate.CollisionSlide
+	}
+	response := s.collisionCallback(s, NewBorrowedSprite(other, s.driver))
+	if response > playdate.CollisionBounce {
+		return playdate.CollisionSlide
+	}
+	return response
+}
+
+// TerminateSpriteCallbacks suppresses callbacks after lifecycle termination.
+func (state *SpriteDisplayListState) TerminateSpriteCallbacks() {
+	if state != nil {
+		state.active = false
+	}
 }
 
 // NewBorrowedSprite wraps a query result owned by the Playdate display list.
@@ -1850,9 +1960,19 @@ func (s *Sprite) Close() error {
 		s.tileMap.attachments--
 		s.tileMap = nil
 	}
+	if s.drawCallback != nil {
+		_ = s.setCallback(true, false)
+	}
+	if s.updateCallback != nil {
+		_ = s.setCallback(true, false)
+	}
+	if s.collisionCallback != nil {
+		_ = s.setCallback(true, false)
+	}
 	s.driver.Free(handle)
 	if s.driver.DisplayList != nil {
 		delete(s.driver.DisplayList.sprites, s)
+		delete(s.driver.DisplayList.byHandle, handle)
 	}
 	s.closed = true
 	s.handle = 0

@@ -13,6 +13,9 @@ var (
 	ErrSpriteBorrowed error = spriteError("borrowed sprite cannot be closed")
 	// ErrSpriteCreate indicates that Playdate could not allocate a sprite.
 	ErrSpriteCreate error = spriteError("create sprite failed")
+	// ErrSpriteCallbackLimit indicates that the bounded per-context callback
+	// registry is full. Clear or close another callback sprite before retrying.
+	ErrSpriteCallbackLimit error = spriteError("sprite callback limit reached")
 	// ErrSpriteDisplayListUnavailable indicates a context without P8.2 global controls.
 	ErrSpriteDisplayListUnavailable error = spriteError("sprite display-list controls are unavailable")
 	// ErrSpriteDirtyRect indicates a dirty rectangle with invalid dimensions or coordinates.

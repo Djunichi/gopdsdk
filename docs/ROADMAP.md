@@ -123,6 +123,18 @@ Windows SDK 3.1.1 Simulator and physical Playdate acceptance on 2026-08-09.
 
 ### P8.3 — bounded callbacks
 
+Status: complete. Per-sprite draw, update,
+and collision-response callbacks, the 64-slot per-context bound, deterministic
+cleanup and termination suppression, both native adapters, deterministic
+tests, Simulator integration build, and conservative hard-float device build
+are complete. On 2026-08-09 the official Windows SDK 3.1.1 Simulator displayed
+`P8.3 PASS`; the startup collision-response self-check succeeded and the visible
+update-callback counter increased continuously. USB installation through COM3,
+launch, matching `P8.3 PASS`, continuous update callbacks, and the procedural
+draw passed on a physical Playdate the same day. Conservative-GC soak,
+memory-growth measurement, and post-run device-log inspection remain
+unverified.
+
 - Add per-sprite draw, update, and collision-response callbacks.
 - Define callback ordering, frame lifetime, panic/error policy, mutation rules,
   cleanup, queue bounds, and behavior after termination on both ABIs.
