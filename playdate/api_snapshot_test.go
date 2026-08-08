@@ -333,8 +333,10 @@ type SequenceTrack interface{AddControlEvent(controller int, step int, value flo
 type Sequencers interface{NewInstrument() (Instrument, error); NewSequence() (Sequence, error); NewSequenceTrack() (SequenceTrack, error)}
 type Signal interface{Close() error; SetOffset(offset float32) error; SetScale(scale float32) error; Value() (float32, error)}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; Stop() error; AudioSource}
-type Sprite interface{Add() error; ClearCollideRect() error; Close() error; MarkDirty() error; MarkDirtyRect(Rect) error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Remove() error; SetBitmap(Bitmap) error; SetCollideRect(Rect) error; SetPosition(x float32, y float32) error; SetTag(uint8) error; SetVisible(bool) error; SetZIndex(int) error}
+type Sprite interface{Add() error; Bounds() (Rect, error); Center() (x float32, y float32, err error); ClearClipRect() error; ClearCollideRect() error; ClearStencil() error; ClearTileMap() error; Close() error; CollideRect() (Rect, error); CollisionsEnabled() (bool, error); ImageFlip() (BitmapFlip, error); MarkDirty() error; MarkDirtyRect(Rect) error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Position() (x float32, y float32, err error); Remove() error; SetBitmap(Bitmap) error; SetBounds(Rect) error; SetCenter(x float32, y float32) error; SetClipRect(x int, y int, width int, height int) error; SetCollideRect(Rect) error; SetCollisionsEnabled(bool) error; SetDrawMode(DrawMode) error; SetIgnoresDrawOffset(bool) error; SetImageFlip(BitmapFlip) error; SetOpaque(bool) error; SetPosition(x float32, y float32) error; SetStencilImage(Bitmap, bool) error; SetStencilPattern([8]byte) error; SetTag(uint8) error; SetTileMap(SpriteTileMap) error; SetUpdatesEnabled(bool) error; SetVisible(bool) error; SetZIndex(int) error; Tag() (uint8, error); TileMap() (SpriteTileMap, bool, error); UpdatesEnabled() (bool, error); Visible() (bool, error); ZIndex() (int, error)}
 type SpriteRedraw interface{AddDirtyRect(x int, y int, width int, height int) error; SetAlwaysRedraw(bool)}
+type SpriteTileMap interface{Close() error; PixelSize() (width int, height int, err error); SetTile(column int, row int, index uint16) error; Size() (columns int, rows int, err error); Tile(column int, row int) (uint16, error)}
+type SpriteTileMaps interface{NewSpriteTileMap(BitmapTable, int, int, []uint16) (SpriteTileMap, error)}
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(note float32, velocity float32, length float32, when uint32) error; SetAmplitudeModulator(signal Signal) error; SetEnvelope(attack float32, decay float32, sustain float32, release float32) error; SetFrequencyModulator(signal Signal) error; SetTranspose(semitones float32) error; SetWaveform(waveform Waveform) error; Stop() error; AudioSource}
 type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelope(attack float32, decay float32, sustain float32, release float32) (Envelope, error); NewLFO(lfoType LFOType) (LFO, error); NewSynth(waveform Waveform) (Synth, error)}
@@ -389,6 +391,7 @@ var ErrBitmapScale error
 var ErrBitmapSize error
 var ErrBitmapTableBorrowed error
 var ErrBitmapTableClosed error
+var ErrBitmapTableInUse error
 var ErrBitmapTableSize error
 var ErrDisplayMosaic error
 var ErrDisplayRefreshRate error
@@ -439,6 +442,13 @@ var ErrSpriteClosed error
 var ErrSpriteCreate error
 var ErrSpriteDirtyRect error
 var ErrSpriteRedrawUnavailable error
+var ErrSpriteTileMapBorrowed error
+var ErrSpriteTileMapBounds error
+var ErrSpriteTileMapClosed error
+var ErrSpriteTileMapConfig error
+var ErrSpriteTileMapCreate error
+var ErrSpriteTileMapInUse error
+var ErrSpriteTileMapUnavailable error
 var ErrTileMapBitmap error
 var ErrTileMapConfig error
 var ErrTileMapDraw error

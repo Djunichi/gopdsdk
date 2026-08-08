@@ -997,6 +997,148 @@ func TestSpriteDisplayListOwnershipLifecycle(t *testing.T) {
 	}
 }
 
+func TestSpriteGeometryPresentationAndEnableState(t *testing.T) {
+	driver := SpriteDriver{
+		SetCenter: func(uintptr, float32, float32) {}, Center: func(uintptr) (float32, float32) { return .25, .75 },
+		SetBounds: func(uintptr, playdate.Rect) {}, Bounds: func(uintptr) playdate.Rect { return playdate.Rect{X: 1, Y: 2, Width: 3, Height: 4} },
+		Position: func(uintptr) (float32, float32) { return 5, 6 }, Visible: func(uintptr) bool { return true }, ZIndex: func(uintptr) int { return -2 },
+		SetImageFlip: func(uintptr, playdate.BitmapFlip) {}, ImageFlip: func(uintptr) playdate.BitmapFlip { return playdate.BitmapFlippedX },
+		SetDrawMode: func(uintptr, playdate.DrawMode) {}, SetOpaque: func(uintptr, bool) {}, SetStencilImage: func(uintptr, uintptr, bool) {}, SetStencilPattern: func(uintptr, [8]byte) {}, ClearStencil: func(uintptr) {},
+		SetClipRect: func(uintptr, int, int, int, int) {}, ClearClipRect: func(uintptr) {}, SetIgnoresDrawOffset: func(uintptr, bool) {},
+		SetUpdatesEnabled: func(uintptr, bool) {}, UpdatesEnabled: func(uintptr) bool { return false }, SetCollisionsEnabled: func(uintptr, bool) {}, CollisionsEnabled: func(uintptr) bool { return true },
+		CollideRect: func(uintptr) playdate.Rect { return playdate.Rect{Width: 7, Height: 8} }, Tag: func(uintptr) uint8 { return 9 },
+		Free: func(uintptr) {},
+	}
+	s := NewOwnedSprite(1, driver)
+	b := NewOwnedBitmap(2, BitmapDriver{})
+	if err := s.SetCenter(.25, .75); err != nil {
+		t.Fatal(err)
+	}
+	if x, y, err := s.Center(); err != nil || x != .25 || y != .75 {
+		t.Fatalf("center = %v,%v,%v", x, y, err)
+	}
+	if err := s.SetBounds(playdate.Rect{Width: 3, Height: 4}); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := s.Bounds(); err != nil || r.Width != 3 || r.Height != 4 {
+		t.Fatalf("bounds = %#v,%v", r, err)
+	}
+	if err := s.SetImageFlip(playdate.BitmapFlippedX); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetDrawMode(playdate.DrawModeXOR); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetOpaque(true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetStencilImage(b, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetStencilPattern([8]byte{0xaa}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ClearStencil(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetClipRect(1, 2, 3, 4); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetIgnoresDrawOffset(true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetUpdatesEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if enabled, err := s.UpdatesEnabled(); err != nil || enabled {
+		t.Fatalf("updates = %v,%v", enabled, err)
+	}
+	if err := s.SetCollisionsEnabled(true); err != nil {
+		t.Fatal(err)
+	}
+	if enabled, err := s.CollisionsEnabled(); err != nil || !enabled {
+		t.Fatalf("collisions = %v,%v", enabled, err)
+	}
+	if err := s.SetClipRect(0, 0, 0, 1); !errors.Is(err, playdate.ErrSpriteDirtyRect) {
+		t.Fatalf("clip error = %v", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Center(); !errors.Is(err, playdate.ErrSpriteClosed) {
+		t.Fatalf("closed getter = %v", err)
+	}
+}
+
+func TestSpriteTileMapOwnershipAttachmentAndTiles(t *testing.T) {
+	var nativeTile uint16 = 2
+	var attached uintptr
+	var freed bool
+	tileDriver := SpriteTileMapDriver{
+		SetImageTable: func(uintptr, uintptr) {}, SetSize: func(uintptr, int, int) {},
+		Size: func(uintptr) (int, int) { return 2, 2 }, PixelSize: func(uintptr) (int, int) { return 32, 32 },
+		SetTiles: func(_ uintptr, tiles []uint16, row int) {
+			if len(tiles) != 4 || row != 2 {
+				t.Fatalf("tiles = %v row %d", tiles, row)
+			}
+		},
+		SetTile: func(_ uintptr, _, _ int, value uint16) { nativeTile = value }, Tile: func(uintptr, int, int) uint16 { return nativeTile },
+		Free: func(uintptr) { freed = true },
+	}
+	table := NewOwnedBitmapTable(4, BitmapTableDriver{Free: func(uintptr) {}}, BitmapDriver{})
+	tileMap, err := NewOwnedSpriteTileMap(7, table, 2, 2, []uint16{1, 2, 2, 1}, tileDriver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := table.Close(); !errors.Is(err, playdate.ErrBitmapTableInUse) {
+		t.Fatalf("table Close = %v", err)
+	}
+	if w, h, err := tileMap.Size(); err != nil || w != 2 || h != 2 {
+		t.Fatalf("size = %d,%d,%v", w, h, err)
+	}
+	if w, h, err := tileMap.PixelSize(); err != nil || w != 32 || h != 32 {
+		t.Fatalf("pixels = %d,%d,%v", w, h, err)
+	}
+	if err := tileMap.SetTile(1, 1, 5); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := tileMap.Tile(1, 1); err != nil || value != 5 {
+		t.Fatalf("tile = %d,%v", value, err)
+	}
+	if _, err := tileMap.Tile(2, 0); !errors.Is(err, playdate.ErrSpriteTileMapBounds) {
+		t.Fatalf("bounds = %v", err)
+	}
+	spriteDriver := SpriteDriver{SetTileMap: func(_ uintptr, m uintptr) { attached = m }, TileMap: func(uintptr) uintptr { return attached }, TileMaps: tileDriver, Free: func(uintptr) {}}
+	sprite := NewOwnedSprite(9, spriteDriver)
+	if err := sprite.SetTileMap(tileMap); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok, err := sprite.TileMap(); err != nil || !ok || got != tileMap {
+		t.Fatalf("TileMap = %v,%v,%v", got, ok, err)
+	}
+	if err := tileMap.Close(); !errors.Is(err, playdate.ErrSpriteTileMapInUse) {
+		t.Fatalf("attached Close = %v", err)
+	}
+	if err := sprite.ClearTileMap(); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok, err := sprite.TileMap(); err != nil || ok || got != nil {
+		t.Fatalf("cleared TileMap = %v,%v,%v", got, ok, err)
+	}
+	if err := tileMap.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !freed {
+		t.Fatal("native tilemap was not freed")
+	}
+	if err := table.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := sprite.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDisplayAndDirtyRegionValidation(t *testing.T) {
 	var displayCalls int
 	display := NewDisplay(DisplayDriver{

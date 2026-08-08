@@ -28,16 +28,42 @@ func (s *testSprite) record(value string) error {
 	*s.operations = append(*s.operations, s.name+"."+value)
 	return nil
 }
-func (s *testSprite) SetBitmap(playdate.Bitmap) error    { return s.record("bitmap") }
-func (s *testSprite) SetPosition(float32, float32) error { return s.record("position") }
-func (s *testSprite) MoveBy(float32, float32) error      { return s.record("move") }
-func (s *testSprite) SetVisible(bool) error              { return s.record("visible") }
-func (s *testSprite) SetZIndex(int) error                { return s.record("z") }
-func (s *testSprite) SetCollideRect(playdate.Rect) error { return s.record("collideRect") }
-func (s *testSprite) ClearCollideRect() error            { return s.record("clearCollideRect") }
-func (s *testSprite) SetTag(uint8) error                 { return s.record("tag") }
-func (s *testSprite) MarkDirty() error                   { return s.record("dirty") }
-func (s *testSprite) MarkDirtyRect(playdate.Rect) error  { return s.record("dirtyRect") }
+func (s *testSprite) SetBitmap(playdate.Bitmap) error              { return s.record("bitmap") }
+func (s *testSprite) SetCenter(float32, float32) error             { return s.record("center") }
+func (*testSprite) Center() (float32, float32, error)              { return 0, 0, nil }
+func (s *testSprite) SetBounds(playdate.Rect) error                { return s.record("bounds") }
+func (*testSprite) Bounds() (playdate.Rect, error)                 { return playdate.Rect{}, nil }
+func (s *testSprite) SetPosition(float32, float32) error           { return s.record("position") }
+func (*testSprite) Position() (float32, float32, error)            { return 0, 0, nil }
+func (s *testSprite) MoveBy(float32, float32) error                { return s.record("move") }
+func (s *testSprite) SetVisible(bool) error                        { return s.record("visible") }
+func (*testSprite) Visible() (bool, error)                         { return true, nil }
+func (s *testSprite) SetZIndex(int) error                          { return s.record("z") }
+func (*testSprite) ZIndex() (int, error)                           { return 0, nil }
+func (s *testSprite) SetImageFlip(playdate.BitmapFlip) error       { return s.record("flip") }
+func (*testSprite) ImageFlip() (playdate.BitmapFlip, error)        { return playdate.BitmapUnflipped, nil }
+func (s *testSprite) SetDrawMode(playdate.DrawMode) error          { return s.record("drawMode") }
+func (s *testSprite) SetOpaque(bool) error                         { return s.record("opaque") }
+func (s *testSprite) SetStencilImage(playdate.Bitmap, bool) error  { return s.record("stencilImage") }
+func (s *testSprite) SetStencilPattern([8]byte) error              { return s.record("stencilPattern") }
+func (s *testSprite) ClearStencil() error                          { return s.record("clearStencil") }
+func (s *testSprite) SetClipRect(int, int, int, int) error         { return s.record("clip") }
+func (s *testSprite) ClearClipRect() error                         { return s.record("clearClip") }
+func (s *testSprite) SetIgnoresDrawOffset(bool) error              { return s.record("drawOffset") }
+func (s *testSprite) SetTileMap(playdate.SpriteTileMap) error      { return s.record("tilemap") }
+func (s *testSprite) ClearTileMap() error                          { return s.record("clearTilemap") }
+func (*testSprite) TileMap() (playdate.SpriteTileMap, bool, error) { return nil, false, nil }
+func (s *testSprite) SetUpdatesEnabled(bool) error                 { return s.record("updates") }
+func (*testSprite) UpdatesEnabled() (bool, error)                  { return true, nil }
+func (s *testSprite) SetCollisionsEnabled(bool) error              { return s.record("collisions") }
+func (*testSprite) CollisionsEnabled() (bool, error)               { return true, nil }
+func (s *testSprite) SetCollideRect(playdate.Rect) error           { return s.record("collideRect") }
+func (*testSprite) CollideRect() (playdate.Rect, error)            { return playdate.Rect{}, nil }
+func (s *testSprite) ClearCollideRect() error                      { return s.record("clearCollideRect") }
+func (s *testSprite) SetTag(uint8) error                           { return s.record("tag") }
+func (*testSprite) Tag() (uint8, error)                            { return 0, nil }
+func (s *testSprite) MarkDirty() error                             { return s.record("dirty") }
+func (s *testSprite) MarkDirtyRect(playdate.Rect) error            { return s.record("dirtyRect") }
 func (s *testSprite) MoveWithCollisions(float32, float32) (playdate.MoveResult, error) {
 	return playdate.MoveResult{}, s.record("collideMove")
 }

@@ -46,4 +46,6 @@ var (
 	ErrBitmapFlip error = bitmapError("invalid bitmap flip")
 	// ErrBitmapTableSize indicates invalid table dimensions or frame count.
 	ErrBitmapTableSize error = bitmapError("bitmap table dimensions and count must be positive")
+	// ErrBitmapTableInUse indicates a table retained by a native tilemap.
+	ErrBitmapTableInUse error = bitmapError("bitmap table is still used by a tilemap")
 )

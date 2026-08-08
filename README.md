@@ -400,6 +400,27 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/sprites
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/sprites
 ```
 
+`examples/spritepresentation` is the P8.1 visual acceptance scene for sprite
+center, bounds, position and state getters, all image flips, draw mode, opacity,
+stencil patterns and images, clipping, draw-offset policy, and independent
+update/collision enable state. It also attaches an explicitly owned native
+tilemap to a sprite and alternates one tile while reporting its native getter.
+Press A or B to toggle the enable states, Up to
+clear or restore both stencils, Down to clear or restore clipping, and Left or
+Right to demonstrate the difference between offset-following and
+offset-ignoring sprites.
+
+On 2026-08-08 this scene passed visual acceptance in the official Windows SDK
+3.1.1 Simulator and on a physical Playdate. The conservative-GC hard-float
+device artifact uses 281,880 bytes of static RAM and produces a 1,304,340-byte
+ELF and 61,792-byte PDX. Long-running conservative-GC soak, memory-growth
+measurement, and post-run device-log inspection remain unverified.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/spritepresentation
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/spritepresentation
+```
+
 ## Collisions
 
 `examples/collision` is a deterministic collision scene using collide

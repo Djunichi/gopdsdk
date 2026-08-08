@@ -6,6 +6,28 @@ that out.
 
 ## Unreleased
 
+- Added sprite geometry and presentation controls for center, bounds,
+  position getters, image flip, draw mode, opacity, stencil images and patterns,
+  clip rectangles, draw-offset policy, and deterministic update/collision
+  enable state across Simulator and device native adapters.
+- Added `examples/spritepresentation`, a visual acceptance scene for the new
+  P8.1 geometry, presentation, getter, and enable-state facilities. On
+  2026-08-08 it passed the official Windows SDK 3.1.1 Simulator and physical
+  Playdate checks for all image flips, stencil pattern/image enable and clear,
+  clipping enable and clear, draw mode, opacity, draw-offset policy, and state
+  transitions, native tilemap attachment, and live tile mutation. The final
+  conservative-GC hard-float device artifact uses 281,880 bytes of static RAM
+  and produces a 1,304,340-byte ELF and 61,792-byte PDX.
+  Conservative-GC soak, memory-growth measurement, and post-run device-log
+  inspection remain unverified.
+- Worked around the SDK 3.1.1 sprite-stencil clear path rejecting its own null
+  image by installing a fully open pattern with equivalent drawing behavior.
+- Completed P8.1 with explicitly owned native sprite tilemaps, bitmap-table
+  retention, validated size/tile access, sprite attach/detach/getter behavior,
+  in-use close protection, and C-owned tile-index storage across Simulator and
+  device adapters. The existing portable `TileMap` remains a separate
+  immediate-mode layer rather than masquerading as an `LCDTileMap` handle.
+
 ## v0.7.0 (2026-08-08)
 
 - Added P7.4 logical display width/height, nominal refresh-rate, and measured
