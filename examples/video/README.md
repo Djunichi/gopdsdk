@@ -1,4 +1,4 @@
-# P6.3 video acceptance
+# Video acceptance
 
 This example owns a four-second deterministic PDV fixture and matching WAV
 generated from original frames and tones. PDV has no embedded audio, so the

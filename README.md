@@ -2,11 +2,10 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1 through P6 scopes are implemented**. `v0.5.0` is the
-latest published release, and `v0.6.0` is in release-candidate preparation.
-P6.1 bitmap composition, P6.2 display and sprite redraw, optional P6.3 video,
-and P6.4 bounded external-game diagnostics are accepted on the verified Windows
-Simulator and physical-device profile. The P6 regression run covered
+The latest published release is **`v0.6.0`**. Bitmap composition, display and
+sprite redraw, optional video, and bounded external-game diagnostics are
+accepted on the verified Windows Simulator and physical-device profile. The
+`v0.6.0` regression run covered
 comparative redraw behavior, bounded memory, physical soak, and post-run device
 logs. Specialized media remains intentionally non-gating.
 The public API is snapshot-tested and documented,
@@ -23,7 +22,7 @@ external-consumer CLI suite natively on all three hosts. Windows is additionally
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
 
-The exact P1.0 verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+The exact `v0.6.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
 TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
 solely by version number: `doctor` reports them as `UNVERIFIED` until the
 relevant probe succeeds.
@@ -45,7 +44,7 @@ deployment works on that host.
 - Go 1.26.x for development, CLI use, tests, and Simulator compilation.
 - The official Playdate SDK for packaging, Simulator runs, and device tools.
 - A native C compiler supported by `doctor` for Simulator builds.
-- TinyGo 0.41.1 and GNU Arm Embedded 15.3.1 for the verified P1.0 device build.
+- TinyGo 0.41.1 and GNU Arm Embedded 15.3.1 for the verified device build.
 
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
@@ -55,8 +54,8 @@ TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 Run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.5.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.5.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.6.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.6.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -65,8 +64,8 @@ The tagged CLI creates a project requiring the same module version without a
 local `replace`. A development CLI built from a checkout intentionally writes a
 local replacement instead; use the checkout workflow below when developing
 from source. See [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md),
-[MIGRATING.md](MIGRATING.md), and [RELEASING.md](RELEASING.md). The accepted path from P3 to `v1.0.0`, including
-post-release multiplayer research, is recorded in
+[MIGRATING.md](MIGRATING.md), and [RELEASING.md](RELEASING.md). The remaining
+path to `v1.0.0`, including post-release multiplayer research, is recorded in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Environment diagnostics
@@ -128,7 +127,7 @@ Playdate `setup.c` and `link_map.ld` link, an ELF32/ARM executable with
 and conversion of `pdex.elf` into a packaged `pdex.bin` with the official `pdc`.
 Device builds default to TinyGo conservative GC with a checked 256 KiB heap,
 bounded-memory validation, and deterministic fail-stop OOM behavior.
-Deployment and physical-device execution are proven on the Windows P1.0 setup.
+Deployment and physical-device execution are proven on the verified Windows setup.
 The marker was rendered after the Go event handler returned.
 
 Build an importable application package for a physical Playdate with:
@@ -216,7 +215,7 @@ Simulator and physical-device measurements separately.
 
 ## Build a Simulator application
 
-Create an independent starter project during P0 with:
+Create an independent starter project with the CLI using:
 
 ```sh
 go run ./cmd/gopdsdk init --module example.com/my-game --author "Your Name" --bundle-id com.example.my-game ./my-game
@@ -238,7 +237,7 @@ go run ./cmd/gopdsdk build --sdk /path/to/PlaydateSDK ./examples/hello
 
 The default output is `build/hello.pdx`. Use `--output` to select another path.
 The build command does not overwrite an existing artifact. Simulator execution
-on macOS and Linux remains unverified; device builds use the accepted P1.0
+on macOS and Linux remains unverified; device builds use the verified
 TinyGo conservative runtime.
 
 Inspect either build without running compilers or SDK tools:
@@ -267,9 +266,9 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/hello
 The command leaves the Simulator process running. `Process.Kill` is used only by
 the automated probe command.
 
-## P1.1 lifecycle and input parity
+## Lifecycle and input parity
 
-P1.1 is complete on the verified Windows profile. The same game code received
+Lifecycle and input parity are complete on the verified Windows profile. The same game code received
 matching button transitions, crank state, dock state, frame delta, and ordered
 pause/resume and lock/unlock callbacks in Simulator and on a physical Playdate.
 The device reported an approximately 33.40 ms frame delta and completed the
@@ -291,9 +290,9 @@ released, held, and latched edge button masks; crank angle and change; dock
 transitions; frame delta; and the soak marker. Pure-Go tests supply fixed input
 and lifecycle sequences to this same game implementation.
 
-## P1.2 bitmap acceptance
+## Bitmap acceptance
 
-P1.2 is complete on the verified Windows profile. The same public bitmap API
+Bitmap acceptance is complete on the verified Windows profile. The same public bitmap API
 loaded, created, filled, measured, drew, scaled, and explicitly closed native
 resources in Simulator and on a physical Playdate. Owned and borrowed handles,
 double-close, use-after-close, invalid arguments, and platform-independent
@@ -352,17 +351,7 @@ domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, `audio`, and
 `errors`). `playdate.Context` composes narrower capabilities so application
 helpers can depend on only the API surface they use.
 
-## P1.4 release candidate
-
-P1.4 prepares `v0.1.0`: a version-aware `init` workflow, reviewed public API
-contract, compatibility/evidence matrix, and reproducible release gates. It
-does not add sprites, audio, collision, animation, fonts, framebuffer access,
-or a resource manager. The version becomes consumable without `replace` only
-after the reviewed commit is tagged and the tag is published. The candidate
-passed Windows Simulator/device-build probes and a repeated 65-second physical
-device soak without changing either device log.
-
-## P2.1 sprites
+## Sprites
 
 `examples/sprites` exercises explicitly owned sprites, bitmap assignment,
 position and relative movement, visibility, z-index, idempotent display-list
@@ -374,7 +363,7 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/sprites
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/sprites
 ```
 
-## P2.2 collisions
+## Collisions
 
 `examples/collision` is a deterministic collision scene using collide
 rectangles, slide/freeze/overlap/bounce responses, resolved movement, and
@@ -386,7 +375,7 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/collision
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/collision
 ```
 
-## P2.3 bitmap-table animation
+## Bitmap-table animation
 
 `examples/animation` loads a packaged bitmap table and selects borrowed frames
 with the allocation-free `Animation` helper. It supports delta-time looping,
@@ -397,12 +386,12 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/animation
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/animation
 ```
 
-## P2.4 audio
+## Base audio
 
-P2.4 established two deliberately narrow vertical APIs: a memory-backed short
+The base audio implementation established two deliberately narrow vertical APIs: a memory-backed short
 sound effect and one streaming file/music player. Both expose stereo volume,
 stopped/playing/paused status, lifecycle pause/resume, and explicit close.
-`examples/audio` now retains those paths while also serving as the P5.1
+`examples/audio` now retains those paths while also serving as the advanced sample
 advanced-audio acceptance game described below.
 
 Run the same package on both targets:
@@ -412,11 +401,11 @@ go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/audio
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/audio
 ```
 
-The original P2 implementation and generated ABI remain regression-tested.
+The original implementation and generated ABI remain regression-tested.
 Advanced synthesis and microphone input remain optional capabilities outside
 that base slice.
 
-## P2.5 fonts and game UI
+## Fonts and game UI
 
 `examples/fontsui` loads `resources/fonts/gopdsdk-ui.fnt` as `fonts/gopdsdk-ui`, draws
 all UI text with that selected font, and centers overlays from native text
@@ -436,7 +425,7 @@ The API and adapters are unit-tested. Windows Simulator and physical-device
 visual acceptance passed with matching custom-font HUD, score, pause,
 game-over, and restart screens. A longer device memory soak remains unverified.
 
-## P3.1 drawing primitives and state
+## Drawing primitives and state
 
 `examples/primitives` is the consumer-driven acceptance scene for immediate
 mode lines, outlined and filled rectangles, ellipses, outlined and filled
@@ -458,7 +447,7 @@ Playdate execution passed on 2026-08-02. The accepted device artifact used
 266,556 bytes of static RAM and produced a 29,160-byte PDX. Conservative-GC
 soak and memory-growth measurement remain unverified.
 
-## P3.2 framebuffer and offscreen drawing
+## Framebuffer and offscreen drawing
 
 Native contexts now expose narrow `playdate.FramebufferGraphics` and
 `playdate.OffscreenGraphics` capabilities. Framebuffer access is callback
@@ -470,9 +459,9 @@ the previous drawing context before returning.
 The portable pixel layout, validation, dirty-range aggregation, generated
 Simulator bridge, and both device memory profiles are unit-tested. SDK
 integration, Simulator visual execution, device build, USB deployment, and
-physical-device execution for P3.2 remain unverified.
+physical-device execution for this capability remain unverified.
 
-## P3.3 tile map and camera
+## Tile map and camera
 
 `playdate.TileMap` renders only cells intersecting an integer-pixel
 `playdate.Camera`; `TileDrawStats` makes that per-frame bound observable.
@@ -493,23 +482,23 @@ memory-growth measurement remain unverified.
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/tilemap
 ```
 
-## P3.4 repeated resource ownership
+## Repeated resource ownership
 
 Resources remain explicitly owned by the scene that loads or creates them.
 Initialization closes already acquired resources when a later step fails, and
 termination closes each owned resource once in dependency-safe order. Borrowed
 handles, such as bitmap-table frames, are never independently closed.
 
-The P3.4 audit found no two real consumers with matching cache and transition
+The resource-ownership audit found no two real consumers with matching cache and transition
 semantics, so the SDK does not yet expose a resource manager or reference
-counting API. The integrated P3.5 scene is the next consumer evidence; an
+counting API. The integrated acceptance scene is the next consumer evidence; an
 abstraction will be added only after another real scene repeats its complete
 loading, caching, rollback, transition, and shutdown policy.
 
-## P3 integrated acceptance game
+## Integrated acceptance game
 
 The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame) game
-completes the P3 consumer slice. Its repository is currently private, but the
+completes the integrated consumer slice. Its repository is currently private, but the
 link is retained as the canonical acceptance-game reference. It uses only the
 public `gopdsdk` API and integrates lifecycle and input, crank control, owned
 bitmaps, sprites and collision queries, bitmap-table animation, sound effect
@@ -538,14 +527,15 @@ Windows SDK 3.1.1 Simulator and physical-device acceptance passed on
 and the packaged card, icon, and launch image all behaved as intended. The
 device path used a conservative-GC hard-float build and USB deployment on COM3.
 Crank Caverns deterministically tests its gameplay state and render plans and
-owns every native resource explicitly. The complete game establishes the P3
-product boundary. P6.4 later recorded frame-time distributions, live-heap
-growth, and stable native-resource counts over bounded 1,800-frame Simulator
-and physical-device runs. The P6 regression run subsequently covered extended
+owns every native resource explicitly. The complete game establishes the
+integrated product boundary. Later diagnostics recorded frame-time
+distributions, live-heap growth, and stable native-resource counts over bounded
+1,800-frame Simulator
+and physical-device runs. The `v0.6.0` regression run subsequently covered extended
 soak, termination cleanup observation, and post-run device-log comparison; that
 later evidence is not implied by the v0.3.0 release.
 
-## P4.1 owned filesystem
+## Owned filesystem
 
 Games can optionally assert `playdate.FileSystem` from their callback context.
 It exposes owned files with Go `Read`, `Write`, `Seek`, `Flush`, and `Close`
@@ -573,12 +563,12 @@ Paths are game-relative. Native diagnostics are copied into
 `playdate.FileOperationError`; callers can use `errors.Is(err,
 playdate.ErrFileIO)` without parsing diagnostic text. `rename` follows the
 official overwrite behavior and is the atomic replacement primitive used by
-P4.2. The focused `examples/filesystem` flow passed Windows SDK 3.1.1 Simulator
+the versioned store. The focused `examples/filesystem` flow passed Windows SDK 3.1.1 Simulator
 and physical Playdate execution on 2026-08-02, including write, flush, close,
 rename, Data read, stat, list, and recursive remove. Multi-session durability,
 interrupted replacement, soak, and memory-growth evidence remain unverified.
 
-## P4.2 versioned store
+## Versioned store
 
 `playdate/store` adds bounded, versioned persistence above `FileSystem`. It
 writes a binary envelope with a payload checksum to a sibling temporary file,
@@ -610,7 +600,7 @@ size bounds, interrupted rename, short writes, and preservation of the last
 valid value.
 
 The `examples/persistence` flow passed Windows SDK 3.1.1 Simulator and physical
-Playdate execution on 2026-08-02, displaying `P4.2 STORE OK` after save,
+Playdate execution on 2026-08-02, displaying `STORE OK` after save,
 migration, replacement, and reload. The first hardware run exposed that device
 `rename` rejected an existing destination despite the documented overwrite
 contract; it preserved both the valid final file and completed temporary file.
@@ -619,7 +609,7 @@ at 267,116 bytes of static RAM and a 30,269-byte PDX, and passed repeated USB
 deployment and physical execution. Cross-launch durability, power-loss injection,
 soak, and memory-growth evidence remain unverified.
 
-## P4.3 system menu and localization
+## System menu and localization
 
 Games can optionally assert `playdate.SystemMenu` to add owned action,
 checkmark, and options items. Items expose their SDK title and value, support
@@ -628,7 +618,7 @@ removed after `LifecycleTerminate`. `playdate.Localization` exposes only the
 system language and `.strings` lookup; a missing key is reported explicitly so
 fallback text stays in game code.
 
-The `examples/systemmenu` consumer combines these capabilities with the P4.2
+The `examples/systemmenu` consumer combines these capabilities with the versioned store
 store, persisting its checkmark and option values while localizing the visible
 labels. On 2026-08-02 it passed Windows SDK 3.1.1 Simulator execution, the
 conservative device gate at 268,932 bytes of static RAM and a 35,674-byte PDX,
@@ -637,7 +627,7 @@ both settings and their values survived a game restart. Extended
 conservative-GC soak, memory-growth measurement, and post-run device-log
 inspection remain unverified.
 
-## P4.4 device and system status
+## Device and system status
 
 Games can optionally assert `playdate.Accelerometer`, `playdate.PowerMonitor`,
 and `playdate.SystemPreferences`. Accelerometer sampling requires explicit
@@ -657,7 +647,7 @@ volume; passing their IEEE-754 bits across the TinyGo/C boundary corrected it.
 `CHARGE` and `SCREWS` power states, extended conservative-GC soak, memory-growth
 measurement, and post-run device-log inspection remain unverified.
 
-## P4.5 optional online and debug facilities
+## Optional online and debug facilities
 
 `playdate.Scoreboards` provides bounded asynchronous board discovery, score
 submission, and personal-best retrieval without implying general networking or
@@ -670,9 +660,9 @@ conservative device packaging. Serial `msg` delivery was confirmed on physical
 hardware; configured-board and live online-scoreboard behavior remain
 unverified.
 
-## P4 integrated acceptance game
+## Integrated persistence acceptance
 
-The external Crank Caverns consumer now uses only public API to combine P1-P4.
+The external Crank Caverns consumer now uses only public API to combine the released gameplay and persistence capabilities.
 Its versioned checkpoint stores progress, score, best time, sound, and
 difficulty; migrations cover four schema generations. The title and pause menus
 exercise explicit new/save/load/continue flows, System Menu settings use
@@ -687,10 +677,10 @@ RAM and produced a 948,032-byte PDX. Physical multi-session restart/update,
 injected power loss, corrupt-save recovery, soak, memory-growth measurement,
 and post-run device-log inspection remain unverified.
 
-## P5.1 advanced sample playback
+## Advanced sample playback
 
 Games can capability-assert `playdate.SamplePlayers` from their context and
-load an explicitly owned `SamplePlayer`. It preserves the P2 sound-effect
+load an explicitly owned `SamplePlayer`. It preserves the base sound-effect
 controls and adds bounded repeats, forward or reverse rates, sample duration,
 and playback-position control. Streaming `FilePlayer` values optionally expose
 `VariableRatePlayer` for positive pitch/speed changes. Negative file-player
@@ -710,7 +700,7 @@ COM3, and launch. The device artifact used 268,940 bytes of static RAM and
 produced a 125,340-byte PDX. Extended soak, memory-growth measurement, lifecycle
 stress, and post-run device-log inspection remain unverified.
 
-## P5.2 timed fades and completion
+## Timed fades and completion
 
 Owned sample and file players optionally expose `CompletionPlayer`; replacing
 or clearing its callback releases the previous registration, and `Close`
@@ -733,7 +723,7 @@ Windows Simulator and on a physical Playdate. Installation through COM3 and
 device launch succeeded. Extended soak, memory-growth measurement, lifecycle
 stress, and post-run device-log inspection remain unverified.
 
-## P5.3 routing, synthesizers, and signals
+## Routing, synthesizers, and signals
 
 Games can capability-assert `AudioChannels` and `Synthesizers` without widening
 the base `Context`. Explicitly owned channels route sample, file, and synth
@@ -747,7 +737,7 @@ channel detaches its sources without closing them. Unit tests cover duplicate
 attachments, close ordering, invalid parameters, graph forwarding through
 `NewApplication`, and generated Simulator/device bridge symbols.
 
-`examples/audio` exercises the complete P5.3 graph. A starts an indefinite
+`examples/audio` exercises the complete audio graph. A starts an indefinite
 scheduled synth note and release schedules `NoteOff`; B plays the routed sample
 and A+B controls routed file music. Left/Right cycles all eight synth waveforms,
 Up/Down cycles no modulation, amplitude/frequency LFO, envelope, and control
@@ -761,7 +751,7 @@ installation through COM3 and launch succeeded. macOS/Linux SDK integration,
 extended soak, memory-growth measurement, lifecycle stress, and post-run
 device-log inspection remain unverified.
 
-## P5.4 instruments, sequences, and effects
+## Instruments, sequences, and effects
 
 Games can capability-assert `Sequencers` and `AudioEffects`. Instruments retain
 voice-range attachments without taking ownership of synths; tracks likewise do
@@ -792,7 +782,7 @@ and are delivered to Go on the next update frame. Extended soak, memory-growth
 measurement, lifecycle stress, post-run device-log inspection, and macOS/Linux SDK
 integration remain unverified.
 
-## P5.5 microphone input
+## Microphone input
 
 Games capability-assert `Microphones` without widening `Context`. Permission is
 explicitly pending, denied, or granted; recording selects automatic, internal,
@@ -818,7 +808,7 @@ bytes of static RAM and produces a 50,601-byte PDX. Denial/revocation,
 long-run overflow/memory measurement, lifecycle stress, post-run device-log
 inspection, and macOS/Linux SDK integration remain unverified.
 
-## P6.1 bitmap composition
+## Bitmap composition
 
 Games capability-assert `BitmapCompositor` for rotated/scaled bitmap drawing
 and callback-scoped stencils. Transforms reject non-finite values and
@@ -847,7 +837,7 @@ accepted device build used 275,312 bytes of static RAM and produced a
 36,970-byte PDX. Performance, bounded-memory, soak, and post-run device-log
 regression checks pass on the verified Windows profile.
 
-## P6.3 video
+## Video
 
 `examples/video` owns a generated four-second, 48-frame PDV fixture and matching
 audio track. It exercises metadata, validated frame playback, explicit video
@@ -883,7 +873,7 @@ standalone module in a path containing spaces, compiles it through its local
 consumer module. GitHub Actions repeats this suite on Windows, macOS, and Linux;
 Linux additionally runs the race detector.
 
-Docker is not part of the P0 matrix. It would provide another Linux environment,
+Docker is not part of the supported-host matrix. It would provide another Linux environment,
 not Windows or macOS semantics. A pinned Linux image becomes useful when it can
 legally receive the official SDK and exercise the real Simulator/device build
 toolchain without pretending to verify GUI or USB behavior.
@@ -898,7 +888,7 @@ toolchain without pretending to verify GUI or USB behavior.
 - macOS and Linux official SDK integration remains unverified.
 - Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
   callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
-  covers P2.4 sound effects/file players, P5.1 advanced sample controls, P5.2
-  timed fades/completion callbacks, P5.3 owned routing, waveform synths and
-  modulation signals, P5.4 instruments/sequencing/effects, and P5.5 bounded
+  covers sound effects/file players, advanced sample controls,
+  timed fades/completion callbacks, owned routing, waveform synths and
+  modulation signals, instruments/sequencing/effects, and bounded
   microphone input with Simulator and physical-device acceptance.

@@ -6,7 +6,10 @@ that out.
 
 ## Unreleased
 
-- Prepared the accepted P6.1–P6.4 scope for the `v0.6.0` release candidate.
+## v0.6.0 (2026-08-08)
+
+- Released the accepted P6.1–P6.4 graphics, media, diagnostics, and performance
+  scope.
 - Accepted P6.2 display presentation and sprite redraw behavior in the official
   Windows Simulator and on physical Playdate hardware, including comparative
   full-redraw and dirty-region measurements.
