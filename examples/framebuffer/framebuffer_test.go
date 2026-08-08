@@ -80,6 +80,13 @@ func (c *context) DrawTriangle(int, int, int, int, int, int, int, playdate.Paint
 	return c.draw()
 }
 func (c *context) FillTriangle(int, int, int, int, int, int, playdate.Paint) error { return c.draw() }
+func (c *context) FillPolygon([]playdate.GraphicsPoint, playdate.PolygonFillRule, playdate.Paint) error {
+	return c.draw()
+}
+func (c *context) DrawRoundedRect(int, int, int, int, int, int, playdate.Paint) error {
+	return c.draw()
+}
+func (c *context) FillRoundedRect(int, int, int, int, int, playdate.Paint) error { return c.draw() }
 
 func TestAcceptanceScene(t *testing.T) {
 	ctx := &context{}

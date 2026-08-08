@@ -429,7 +429,8 @@ game-over, and restart screens. A longer device memory soak remains unverified.
 
 `examples/primitives` is the consumer-driven acceptance scene for immediate
 mode lines, outlined and filled rectangles, ellipses, outlined and filled
-triangles, solid/XOR/8x8 pattern paint, clipping, draw offset, and bitmap draw
+triangles and polygons, rounded rectangles, solid/XOR/8x8 pattern paint, line
+caps, background color, local and screen clipping, draw offset, and bitmap draw
 modes. Games opt into the narrow `playdate.PrimitiveGraphics` and
 `playdate.GraphicsState` capabilities instead of expanding every `Graphics`
 fake.

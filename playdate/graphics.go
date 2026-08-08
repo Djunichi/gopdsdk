@@ -23,6 +23,26 @@ const (
 	DrawModeInverted
 )
 
+// GraphicsPoint is an integer primitive-drawing coordinate.
+type GraphicsPoint struct{ X, Y int }
+
+// PolygonFillRule controls how overlapping polygon contours are filled.
+type PolygonFillRule uint8
+
+const (
+	PolygonFillNonZero PolygonFillRule = iota
+	PolygonFillEvenOdd
+)
+
+// LineCapStyle controls the shape drawn at line endpoints.
+type LineCapStyle uint8
+
+const (
+	LineCapButt LineCapStyle = iota
+	LineCapSquare
+	LineCapRound
+)
+
 // Paint is either a solid drawing color, XOR, or an 8x8 image-and-mask pattern.
 type Paint struct {
 	pattern [16]byte
@@ -70,6 +90,9 @@ type PrimitiveGraphics interface {
 	FillEllipse(x, y, width, height int, startAngle, endAngle float32, paint Paint) error
 	DrawTriangle(x1, y1, x2, y2, x3, y3, width int, paint Paint) error
 	FillTriangle(x1, y1, x2, y2, x3, y3 int, paint Paint) error
+	FillPolygon(points []GraphicsPoint, rule PolygonFillRule, paint Paint) error
+	DrawRoundedRect(x, y, width, height, radius, lineWidth int, paint Paint) error
+	FillRoundedRect(x, y, width, height, radius int, paint Paint) error
 }
 
 // GraphicsState is the optional clipping, offset, and draw-mode slice.
@@ -78,6 +101,9 @@ type GraphicsState interface {
 	ClearClipRect()
 	SetDrawOffset(dx, dy int)
 	SetDrawMode(mode DrawMode) error
+	SetLineCapStyle(style LineCapStyle) error
+	SetBackgroundColor(color Color) error
+	SetScreenClipRect(x, y, width, height int) error
 }
 
 // Framebuffer is a callback-scoped view of Playdate's 1-bit working display.

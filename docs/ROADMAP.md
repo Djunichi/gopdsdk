@@ -96,7 +96,7 @@ re-entry into Go, termination suppression, and overflow behavior.
 
 P7 completes offline drawing, bitmap, font, text, and presentation behavior.
 
-### P7.1 — drawing and graphics state
+### P7.1 — drawing and graphics state — Implemented
 
 - Add filled polygons, rounded rectangles, line-cap style, background color,
   screen clipping, and the remaining drawing-state operations.

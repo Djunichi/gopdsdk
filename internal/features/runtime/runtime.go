@@ -255,6 +255,22 @@ func ValidateDrawMode(mode playdate.DrawMode) error {
 	return nil
 }
 
+// ValidateLineCapStyle applies the shared line-cap contract.
+func ValidateLineCapStyle(style playdate.LineCapStyle) error {
+	if style > playdate.LineCapRound {
+		return playdate.ErrGraphicsLineCap
+	}
+	return nil
+}
+
+// ValidatePolygon applies the shared polygon contract.
+func ValidatePolygon(points []playdate.GraphicsPoint, rule playdate.PolygonFillRule) error {
+	if len(points) < 3 || rule > playdate.PolygonFillEvenOdd {
+		return playdate.ErrGraphicsPolygon
+	}
+	return nil
+}
+
 // Event identifies an event delivered by the Playdate runtime.
 type Event int32
 
@@ -2009,6 +2025,27 @@ func (context *applicationContext) FillTriangle(x1, y1, x2, y2, x3, y3 int, pain
 	}
 	return graphics.FillTriangle(x1, y1, x2, y2, x3, y3, paint)
 }
+func (context *applicationContext) FillPolygon(points []playdate.GraphicsPoint, rule playdate.PolygonFillRule, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.FillPolygon(points, rule, paint)
+}
+func (context *applicationContext) DrawRoundedRect(x, y, width, height, radius, lineWidth int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.DrawRoundedRect(x, y, width, height, radius, lineWidth, paint)
+}
+func (context *applicationContext) FillRoundedRect(x, y, width, height, radius int, paint playdate.Paint) error {
+	graphics, err := context.primitiveGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.FillRoundedRect(x, y, width, height, radius, paint)
+}
 
 func (context *applicationContext) graphicsState() (playdate.GraphicsState, error) {
 	graphics, ok := context.Context.(playdate.GraphicsState)
@@ -2040,6 +2077,27 @@ func (context *applicationContext) SetDrawMode(mode playdate.DrawMode) error {
 		return err
 	}
 	return graphics.SetDrawMode(mode)
+}
+func (context *applicationContext) SetLineCapStyle(style playdate.LineCapStyle) error {
+	graphics, err := context.graphicsState()
+	if err != nil {
+		return err
+	}
+	return graphics.SetLineCapStyle(style)
+}
+func (context *applicationContext) SetBackgroundColor(color playdate.Color) error {
+	graphics, err := context.graphicsState()
+	if err != nil {
+		return err
+	}
+	return graphics.SetBackgroundColor(color)
+}
+func (context *applicationContext) SetScreenClipRect(x, y, width, height int) error {
+	graphics, err := context.graphicsState()
+	if err != nil {
+		return err
+	}
+	return graphics.SetScreenClipRect(x, y, width, height)
 }
 
 func (context *applicationContext) WithFramebuffer(callback func(playdate.Framebuffer) error) error {

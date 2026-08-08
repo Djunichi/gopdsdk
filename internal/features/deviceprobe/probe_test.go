@@ -141,7 +141,7 @@ func TestConservativeBootstrapInitializesRuntimeBoundary(t *testing.T) {
 
 func TestBothDeviceBootstrapsContainFramebufferAndOffscreenBridges(t *testing.T) {
 	for name, source := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
-		for _, want := range []string{"graphics->getFrame", "graphics->markUpdatedRows", "graphics->pushContext", "graphics->popContext", "graphics->drawRotatedBitmap", "graphics->setStencilImage", "graphics->setStencil(NULL)"} {
+		for _, want := range []string{"graphics->getFrame", "graphics->markUpdatedRows", "graphics->pushContext", "graphics->popContext", "graphics->drawRotatedBitmap", "graphics->setStencilImage", "graphics->setStencil(NULL)", "graphics->fillPolygon", "graphics->drawRoundRect", "graphics->fillRoundRect", "graphics->setLineCapStyle", "graphics->setBackgroundColor", "graphics->setScreenClipRect"} {
 			if !strings.Contains(source, want) {
 				t.Errorf("%s bootstrap does not contain %q", name, want)
 			}

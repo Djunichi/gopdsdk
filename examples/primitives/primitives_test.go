@@ -38,10 +38,20 @@ func (c *context) DrawTriangle(int, int, int, int, int, int, int, playdate.Paint
 	return c.draw()
 }
 func (c *context) FillTriangle(int, int, int, int, int, int, playdate.Paint) error { return c.draw() }
-func (c *context) SetClipRect(int, int, int, int) error                            { c.stateChanges++; return nil }
-func (c *context) ClearClipRect()                                                  { c.stateChanges++ }
-func (c *context) SetDrawOffset(int, int)                                          { c.stateChanges++ }
-func (c *context) SetDrawMode(playdate.DrawMode) error                             { c.stateChanges++; return nil }
+func (c *context) FillPolygon([]playdate.GraphicsPoint, playdate.PolygonFillRule, playdate.Paint) error {
+	return c.draw()
+}
+func (c *context) DrawRoundedRect(int, int, int, int, int, int, playdate.Paint) error {
+	return c.draw()
+}
+func (c *context) FillRoundedRect(int, int, int, int, int, playdate.Paint) error { return c.draw() }
+func (c *context) SetClipRect(int, int, int, int) error                          { c.stateChanges++; return nil }
+func (c *context) ClearClipRect()                                                { c.stateChanges++ }
+func (c *context) SetDrawOffset(int, int)                                        { c.stateChanges++ }
+func (c *context) SetDrawMode(playdate.DrawMode) error                           { c.stateChanges++; return nil }
+func (c *context) SetLineCapStyle(playdate.LineCapStyle) error                   { c.stateChanges++; return nil }
+func (c *context) SetBackgroundColor(playdate.Color) error                       { c.stateChanges++; return nil }
+func (c *context) SetScreenClipRect(int, int, int, int) error                    { c.stateChanges++; return nil }
 
 func TestAcceptanceScene(t *testing.T) {
 	context := &context{}
@@ -53,10 +63,10 @@ func TestAcceptanceScene(t *testing.T) {
 	if err != nil || !refresh {
 		t.Fatalf("Update() = %v, %v", refresh, err)
 	}
-	if context.draws != 12 {
-		t.Fatalf("draws = %d, want 12", context.draws)
+	if context.draws != 15 {
+		t.Fatalf("draws = %d, want 15", context.draws)
 	}
-	if context.stateChanges != 6 {
-		t.Fatalf("state changes = %d, want 6", context.stateChanges)
+	if context.stateChanges != 9 {
+		t.Fatalf("state changes = %d, want 9", context.stateChanges)
 	}
 }

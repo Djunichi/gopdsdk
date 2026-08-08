@@ -56,6 +56,18 @@ func (c *context) FillTriangle(int, int, int, int, int, int, playdate.Paint) err
 	c.primitives++
 	return nil
 }
+func (c *context) FillPolygon([]playdate.GraphicsPoint, playdate.PolygonFillRule, playdate.Paint) error {
+	c.primitives++
+	return nil
+}
+func (c *context) DrawRoundedRect(int, int, int, int, int, int, playdate.Paint) error {
+	c.primitives++
+	return nil
+}
+func (c *context) FillRoundedRect(int, int, int, int, int, playdate.Paint) error {
+	c.primitives++
+	return nil
+}
 func (c *context) FillEllipse(int, int, int, int, float32, float32, playdate.Paint) error {
 	c.primitives++
 	return nil

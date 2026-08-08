@@ -97,10 +97,22 @@ func (*graphicsCapabilityContext) DrawTriangle(int, int, int, int, int, int, int
 func (*graphicsCapabilityContext) FillTriangle(int, int, int, int, int, int, playdate.Paint) error {
 	return nil
 }
-func (*graphicsCapabilityContext) SetClipRect(int, int, int, int) error { return nil }
-func (*graphicsCapabilityContext) ClearClipRect()                       {}
-func (*graphicsCapabilityContext) SetDrawOffset(int, int)               {}
-func (*graphicsCapabilityContext) SetDrawMode(playdate.DrawMode) error  { return nil }
+func (*graphicsCapabilityContext) FillPolygon([]playdate.GraphicsPoint, playdate.PolygonFillRule, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) DrawRoundedRect(int, int, int, int, int, int, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) FillRoundedRect(int, int, int, int, int, playdate.Paint) error {
+	return nil
+}
+func (*graphicsCapabilityContext) SetClipRect(int, int, int, int) error        { return nil }
+func (*graphicsCapabilityContext) ClearClipRect()                              {}
+func (*graphicsCapabilityContext) SetDrawOffset(int, int)                      {}
+func (*graphicsCapabilityContext) SetDrawMode(playdate.DrawMode) error         { return nil }
+func (*graphicsCapabilityContext) SetLineCapStyle(playdate.LineCapStyle) error { return nil }
+func (*graphicsCapabilityContext) SetBackgroundColor(playdate.Color) error     { return nil }
+func (*graphicsCapabilityContext) SetScreenClipRect(int, int, int, int) error  { return nil }
 func (c *graphicsCapabilityContext) WithFramebuffer(callback func(playdate.Framebuffer) error) error {
 	c.framebuffers++
 	return callback(nil)
@@ -816,6 +828,15 @@ func TestPrimitiveAndDrawModeValidation(t *testing.T) {
 	}
 	if err := ValidateDrawMode(playdate.DrawMode(99)); !errors.Is(err, playdate.ErrGraphicsDrawMode) {
 		t.Fatalf("draw mode error = %v", err)
+	}
+	if err := ValidateLineCapStyle(playdate.LineCapStyle(99)); !errors.Is(err, playdate.ErrGraphicsLineCap) {
+		t.Fatalf("line cap error = %v", err)
+	}
+	if err := ValidatePolygon([]playdate.GraphicsPoint{{X: 0, Y: 0}, {X: 1, Y: 1}}, playdate.PolygonFillNonZero); !errors.Is(err, playdate.ErrGraphicsPolygon) {
+		t.Fatalf("short polygon error = %v", err)
+	}
+	if err := ValidatePolygon([]playdate.GraphicsPoint{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 1}}, playdate.PolygonFillRule(99)); !errors.Is(err, playdate.ErrGraphicsPolygon) {
+		t.Fatalf("fill rule error = %v", err)
 	}
 }
 

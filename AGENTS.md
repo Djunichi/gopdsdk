@@ -44,3 +44,14 @@ integration, or physical device. CI, cross-compilation, dry-runs, and Docker do
 not prove SDK, Simulator, USB, or hardware readiness. Physical-device acceptance
 requires a connected Playdate; inspect post-run `crashlog.txt` or `errorlog.txt`
 only when requested.
+
+## Documentation
+
+- Keep `README.md` product- and example-oriented. Update an existing example
+  description or add a new example section when capabilities change; do not use
+  the README as a P-scope implementation or evidence log.
+- Keep `COMPATIBILITY.md` focused on the released toolchain and host/target
+  compatibility matrix. Do not add per-P-scope feature status or acceptance
+  notes during unreleased development.
+- Record unreleased feature changes and acceptance evidence in `CHANGELOG.md`;
+  record scope status in `docs/ROADMAP.md` and public contracts in `API.md`.

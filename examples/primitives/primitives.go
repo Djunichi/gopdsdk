@@ -1,4 +1,4 @@
-// Package primitives exercises the P3.1 drawing-primitives and graphics-state API.
+// Package primitives exercises the P7.1 drawing-primitives and graphics-state API.
 package primitives
 
 import (
@@ -7,7 +7,7 @@ import (
 	"github.com/Djunichi/gopdsdk/playdate"
 )
 
-var errCapabilities = errors.New("P3.1 graphics capabilities are unavailable")
+var errCapabilities = errors.New("P7.1 graphics capabilities are unavailable")
 
 type game struct {
 	primitives playdate.PrimitiveGraphics
@@ -17,7 +17,7 @@ type game struct {
 	pattern    playdate.Paint
 }
 
-// New creates the P3.1 primitive-rendering acceptance scene.
+// New creates the P7.1 primitive-rendering acceptance scene.
 func New() playdate.Game { return &game{} }
 
 func (g *game) Init(context playdate.Context) error {
@@ -44,7 +44,16 @@ func (g *game) Init(context playdate.Context) error {
 
 func (g *game) Update(context playdate.Context) (bool, error) {
 	context.Clear()
-	context.DrawText("P3.1 primitives + state", 12, 8)
+	context.DrawText("P7.1 primitives + state", 12, 8)
+	if err := g.state.SetBackgroundColor(playdate.ColorWhite); err != nil {
+		return false, err
+	}
+	if err := g.state.SetLineCapStyle(playdate.LineCapRound); err != nil {
+		return false, err
+	}
+	if err := g.state.SetScreenClipRect(0, 0, 400, 240); err != nil {
+		return false, err
+	}
 
 	if err := g.primitives.DrawLine(16, 42, 112, 42, 3, g.black); err != nil {
 		return false, err
@@ -65,6 +74,15 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 		return false, err
 	}
 	if err := g.primitives.FillTriangle(146, 160, 198, 112, 246, 160, g.pattern); err != nil {
+		return false, err
+	}
+	if err := g.primitives.FillPolygon([]playdate.GraphicsPoint{{X: 274, Y: 112}, {X: 346, Y: 112}, {X: 334, Y: 160}, {X: 286, Y: 160}}, playdate.PolygonFillEvenOdd, g.pattern); err != nil {
+		return false, err
+	}
+	if err := g.primitives.DrawRoundedRect(270, 176, 54, 42, 8, 3, g.black); err != nil {
+		return false, err
+	}
+	if err := g.primitives.FillRoundedRect(332, 176, 54, 42, 8, g.pattern); err != nil {
 		return false, err
 	}
 
