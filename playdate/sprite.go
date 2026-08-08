@@ -11,6 +11,8 @@ type Sprite interface {
 	SetCollideRect(Rect) error
 	ClearCollideRect() error
 	SetTag(uint8) error
+	MarkDirty() error
+	MarkDirtyRect(Rect) error
 	MoveWithCollisions(goalX, goalY float32) (MoveResult, error)
 	Add() error
 	Remove() error
@@ -24,6 +26,12 @@ type Sprites interface {
 	QuerySpritesInRect(Rect) []Sprite
 	QueryOverlappingSprites(Sprite) ([]Sprite, error)
 	UpdateAndDrawSprites()
+}
+
+// SpriteRedraw is the optional global dirty-region policy capability.
+type SpriteRedraw interface {
+	SetAlwaysRedraw(bool)
+	AddDirtyRect(x, y, width, height int) error
 }
 
 // Point is a position or direction in Playdate screen coordinates.

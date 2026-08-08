@@ -1,7 +1,7 @@
 # Public API
 
 This document describes the current public contract after released `v0.5.0`,
-including implemented P6.1 additions intended for `v0.6.0`. The module is still
+including implemented P6.1 and initial P6.2 additions intended for `v0.6.0`. The module is still
 pre-v1: minor releases may make intentional breaking changes, which must be
 called out in release notes. Patch releases preserve the documented API and
 behavior.

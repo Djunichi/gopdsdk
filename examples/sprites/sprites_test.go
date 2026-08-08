@@ -36,6 +36,8 @@ func (s *testSprite) SetZIndex(int) error                { return s.record("z") 
 func (s *testSprite) SetCollideRect(playdate.Rect) error { return s.record("collideRect") }
 func (s *testSprite) ClearCollideRect() error            { return s.record("clearCollideRect") }
 func (s *testSprite) SetTag(uint8) error                 { return s.record("tag") }
+func (s *testSprite) MarkDirty() error                   { return s.record("dirty") }
+func (s *testSprite) MarkDirtyRect(playdate.Rect) error  { return s.record("dirtyRect") }
 func (s *testSprite) MoveWithCollisions(float32, float32) (playdate.MoveResult, error) {
 	return playdate.MoveResult{}, s.record("collideMove")
 }
@@ -61,6 +63,14 @@ func (c *testContext) NewBitmap(int, int) (playdate.Bitmap, error) {
 }
 func (*testContext) DrawBitmap(playdate.Bitmap, int, int) error                         { return nil }
 func (*testContext) DrawScaledBitmap(playdate.Bitmap, int, int, float32, float32) error { return nil }
+func (c *testContext) DrawInto(_ playdate.Bitmap, callback func() error) error {
+	c.operations = append(c.operations, "drawInto")
+	return callback()
+}
+func (c *testContext) FillRect(int, int, int, int, playdate.Paint) error {
+	c.operations = append(c.operations, "fillRect")
+	return nil
+}
 func (c *testContext) NewSprite() (playdate.Sprite, error) {
 	c.create++
 	if c.create == c.failAt {
@@ -74,6 +84,25 @@ func (*testContext) QueryOverlappingSprites(playdate.Sprite) ([]playdate.Sprite,
 	return nil, nil
 }
 func (c *testContext) UpdateAndDrawSprites() { c.operations = append(c.operations, "draw") }
+func (c *testContext) SetAlwaysRedraw(value bool) {
+	c.operations = append(c.operations, "redraw."+map[bool]string{false: "dirty", true: "full"}[value])
+}
+func (c *testContext) AddDirtyRect(int, int, int, int) error {
+	c.operations = append(c.operations, "screenDirty")
+	return nil
+}
+func (c *testContext) SetRefreshRate(float32) error {
+	c.operations = append(c.operations, "refresh")
+	return nil
+}
+func (c *testContext) SetInverted(bool)    { c.operations = append(c.operations, "inverted") }
+func (c *testContext) SetScale(uint) error { c.operations = append(c.operations, "scale"); return nil }
+func (c *testContext) SetMosaic(uint, uint) error {
+	c.operations = append(c.operations, "mosaic")
+	return nil
+}
+func (c *testContext) SetFlipped(bool, bool) { c.operations = append(c.operations, "flipped") }
+func (c *testContext) SetOffset(int, int)    { c.operations = append(c.operations, "offset") }
 
 func TestAcceptanceMovesCrankSpriteAndDrawsDisplayList(t *testing.T) {
 	context := &testContext{input: playdate.Input{CrankDelta: 4}}
@@ -85,7 +114,43 @@ func TestAcceptanceMovesCrankSpriteAndDrawsDisplayList(t *testing.T) {
 	if refresh, err := game.Update(context); err != nil || !refresh {
 		t.Fatalf("Update() = %t, %v", refresh, err)
 	}
-	want := []string{"1.position", "2.move", "3.move", "draw"}
+	want := []string{"1.position", "2.move", "draw"}
+	if !reflect.DeepEqual(context.operations, want) {
+		t.Fatalf("operations = %v, want %v", context.operations, want)
+	}
+}
+
+func TestAcceptanceTogglesFullRedrawAndDisplayPresentation(t *testing.T) {
+	context := &testContext{input: playdate.Input{Pressed: playdate.ButtonA | playdate.ButtonB}}
+	game := New().(*game)
+	if err := game.Init(context); err != nil {
+		t.Fatal(err)
+	}
+	context.operations = nil
+	if _, err := game.Update(context); err != nil {
+		t.Fatal(err)
+	}
+	wantPrefix := []string{"redraw.full", "inverted", "flipped", "offset", "scale", "mosaic", "inverted"}
+	if len(context.operations) < len(wantPrefix) || !reflect.DeepEqual(context.operations[:len(wantPrefix)], wantPrefix) {
+		t.Fatalf("operations = %v, want prefix %v", context.operations, wantPrefix)
+	}
+	if !game.fullRedraw || game.presentation != 1 {
+		t.Fatalf("state = full:%t presentation:%d", game.fullRedraw, game.presentation)
+	}
+}
+
+func TestAcceptanceMarksAlternatingPartialSpriteRegions(t *testing.T) {
+	context := &testContext{}
+	game := New().(*game)
+	if err := game.Init(context); err != nil {
+		t.Fatal(err)
+	}
+	context.operations = nil
+	game.frame = pulseFrames - 1
+	if _, err := game.Update(context); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"1.position", "2.move", "drawInto", "fillRect", "3.dirtyRect", "screenDirty", "draw"}
 	if !reflect.DeepEqual(context.operations, want) {
 		t.Fatalf("operations = %v, want %v", context.operations, want)
 	}

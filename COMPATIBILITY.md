@@ -193,6 +193,14 @@ for this candidate and remains physical-device unverified.
   The artifact used 275,312 bytes of static RAM and produced a 36,970-byte PDX.
   Performance, memory-growth, soak, and post-run device-log evidence remain
   unverified.
+- P6.2 API slice implemented at unit and generated-ABI level: optional display
+  presentation controls, global full-redraw/dirty-region policy, and per-sprite
+  dirty marking validate documented ranges and forward through both native
+  contexts. The interactive `examples/sprites` scene exercises those controls.
+  On 2026-08-08 its dirty/full switching, partial bar updates, display effects,
+  scale behavior, and reset path passed Windows Simulator visual acceptance.
+  Comparative full-redraw versus dirty-region performance and physical-device
+  acceptance remain unverified, so P6.2 is not yet accepted.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

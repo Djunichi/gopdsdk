@@ -1,6 +1,6 @@
-name=Sprites P2.1
+name=P6.2 Display and Redraw
 author=gopdsdk
-description=Sprite display-list acceptance
+description=Display controls and sprite dirty-region acceptance
 bundleID=com.gopdsdk.sprites
 version=1.0.0
 buildNumber=1

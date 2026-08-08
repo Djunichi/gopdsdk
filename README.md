@@ -5,7 +5,9 @@ An independent Go SDK and toolchain for building Playdate applications.
 The **P0 foundation and P1 through P5 scopes are implemented**. `v0.5.0` is the
 latest published release. P6 is underway: P6.1 transformed bitmap and scoped
 stencil composition is implemented and accepted on the verified Windows
-profile, while later P6 work remains planned. The public
+profile. The initial P6.2 display and sprite-redraw API is implemented at unit
+and generated-ABI level; comparative Simulator and hardware performance
+acceptance remains pending. The public
 API is snapshot-tested and documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
