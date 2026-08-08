@@ -1,9 +1,9 @@
 # Release procedure
 
-The latest published release is `v0.5.0`, covering P5. The next planned release
-is `v0.6.0` for P6, but it does not become a candidate until its scoped
-implementation and evidence gates are complete. Go module versions come from
-Git tags; no separate VERSION file is maintained.
+The latest published release is `v0.5.0`, covering P5. `v0.6.0` for P6 is in
+release-candidate preparation after completion of its scoped implementation,
+acceptance, and regression gates. Go module versions come from Git tags; no
+separate VERSION file is maintained.
 
 ## Candidate gates
 
@@ -34,8 +34,8 @@ without a `replace`. For the current release that check is:
 
 ```sh
 go mod init example.com/release-check
-go get github.com/Djunichi/gopdsdk@v0.5.0
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.5.0 doctor
+go get github.com/Djunichi/gopdsdk@v0.6.0
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.6.0 doctor
 ```
 
 Then compile and dry-run a standalone application against both targets. This

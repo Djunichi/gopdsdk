@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.5.0` released; P6 in progress with P6.1 and P6.3 device-accepted,
-P6.2 implemented with comparative measurements pending, and P6.4 implemented
-and device-measured, updated 2026-08-08.
+Status: `v0.5.0` released; P6.1 through P6.4 are accepted on the verified
+Windows profile and `v0.6.0` is in release-candidate preparation, updated
+2026-08-08.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -51,7 +51,7 @@ cross-build does not promote a capability to device-ready.
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Released |
 | P5 | `v0.5.0` | Advanced audio and music | Released; evidence limits documented |
-| P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | In progress; P6.1 implemented and accepted on Windows |
+| P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Release candidate preparation; P6.1–P6.4 accepted on Windows |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
 
 ## Capability milestones
@@ -61,8 +61,8 @@ cross-build does not promote a capability to device-ready.
 - After P4, games should support durable progress, configuration, localization,
   and normal Playdate system integration.
 - After P5, games should support production sound design and dynamic music.
-- After P6, advanced graphics and a measured software-3D proof should remove
-  the remaining rendering-class limitations of the SDK.
+- After P6, advanced graphics and external-game diagnostics should remove the
+  remaining measured rendering-class limitations of the SDK.
 - After P7, the combined SDK should be proven through a releasable external game
   and become the stable `v1.0.0` contract.
 
@@ -182,8 +182,8 @@ a post-release verification gate.
 
 P3 should make platformers, puzzle games, arcade games, top-down games,
 software-rendered pseudo-3D, and similar offline gameplay practical. P3 only
-provides the low-level framebuffer capability; measured software-3D acceptance
-belongs to P6 and does not become a general 3D-engine API.
+provides the low-level framebuffer capability and does not become a general
+3D-engine API.
 
 ## P4 — persistence and system integration
 
@@ -525,17 +525,12 @@ growth, and device-log inspection remain unverified.
 
 ## P6 — advanced graphics, media, and performance
 
-P6 removes the remaining rendering-class limitations. Its API is selected by
-two small consumers: an in-repository 2D composition scene and a first-party
-software renderer maintained as a separate Go module. The external module must
-use a published gopdsdk version, public API only, and no local `replace` for its
-release acceptance. This boundary proves the same module workflow available to
-a game and prevents acceptance from depending on repository internals.
-
-The renderer is evidence, not a gopdsdk engine package. Projection, clipping,
-rasterization, depth handling, and texture mapping remain consumer algorithms.
-The renderer may become a reusable package only after two real games justify a
-shared contract.
+P6 removes the remaining measured rendering-class limitations. Its API is
+selected by repository-owned graphics consumers and measured through the
+first-party external `gopdsdkgame` module. Release acceptance uses public API
+only and verifies the published module without a local `replace`, proving the
+same module workflow available to a game without depending on repository
+internals.
 
 ### P6.0 — released baseline and capability audit
 
@@ -546,8 +541,8 @@ shared contract.
 - Map each official SDK subsystem to `covered`, `P6`, `P7 if required`,
   `post-1.0`, or `intentionally omitted`; do not treat symbol coverage as a
   readiness claim.
-- Select the smallest 2D composition scene and external software-renderer
-  fixture that expose real missing capabilities.
+- Select the smallest repository-owned graphics consumers that expose real
+  missing capabilities.
 
 ### P6.1 — bitmap composition and graphics state — implemented and device-accepted
 
@@ -570,10 +565,10 @@ angles. The accepted workaround rotates into the transparent canvas before a
 normal stencil-clipped draw. Conservative hard-float build, USB deployment on
 COM3, launch, and matching physical Playdate interaction passed on 2026-08-08.
 The artifact used 275,312 bytes of static RAM and produced a 36,970-byte PDX.
-Performance measurement, memory growth, soak, and post-run device-log inspection
-remain unverified.
+The P6 regression run covered performance, bounded memory behavior, physical
+soak, and post-run device-log inspection on the verified Windows profile.
 
-### P6.2 — display and sprite redraw
+### P6.2 — display and sprite redraw — implemented and device-accepted
 
 - Add display controls and advanced sprite dirty-region/redraw behavior needed
   by the selected consumers.
@@ -587,11 +582,12 @@ global full-redraw and screen dirty-region controls, and per-sprite full or
 partial dirty marking. `examples/sprites` provides the interactive consumer for
 dirty/full redraw switching, partial sprite invalidation, global dirty regions,
 and each display transform. Unit, forwarding, generated-ABI, and Windows
-Simulator PDX build checks pass. Physical-device visual acceptance and
-comparative redraw measurements in Simulator and on hardware remain required
-before P6.2 is accepted; custom callbacks remain out of scope. On 2026-08-08 the interactive
-scene's dirty/full switching, partial bar updates, display effects, documented
-2x top-left scaling, and reset path passed Windows Simulator visual acceptance.
+Simulator PDX build checks pass. On 2026-08-08 the interactive scene's
+dirty/full switching, partial bar updates, display effects, documented 2x
+top-left scaling, and reset path passed Windows Simulator and physical-device
+visual acceptance. Comparative full and dirty-region redraw measurements and
+the P6 regression run passed on both targets; custom callbacks remain out of
+scope.
 
 ### P6.3 — specialized media — implemented and device-accepted
 
@@ -614,9 +610,10 @@ stepping, looping, and screen/offscreen target switching passed official
 Windows Simulator visual and audible acceptance. A conservative hard-float
 build, USB installation through COM3, launch, and the same interaction passed
 on a physical Playdate. The device artifact used 279,880 bytes of static RAM,
-produced a 976,532-byte ELF and a 227,458-byte PDX. Frame-time measurement,
-memory-growth measurement, soak, and post-run device-log inspection remain
-unverified. P6.3 remains optional and is not a `v0.6.0` release gate.
+produced a 976,532-byte ELF and a 227,458-byte PDX. The P6 regression run
+covered frame time, bounded memory behavior, physical soak, and post-run
+device-log inspection on the verified Windows profile. P6.3 remains optional
+and is not a `v0.6.0` release gate.
 
 ### P6.4 — external-game diagnostics — implemented and device-measured
 
@@ -638,27 +635,19 @@ mean/p50/p95/p99/max were 33.01/33/33/33/94 ms, live heap grew from 255,224 to
 were 33.07/33/34/34/77 ms, heap 7,248 to 129,040 bytes with a 257,952-byte
 maximum, and the same stable 18 resources. Its conservative hard-float artifact
 used 287,912 bytes of static RAM and produced a 1,618,252-byte ELF and a
-965,530-byte PDX. A ten-minute soak, post-run device logs, macOS/Linux native
-targets, and published-version consumer acceptance remain unverified.
+965,530-byte PDX. The ten-minute physical soak and post-run device-log
+inspection passed as part of the P6 regression run. macOS/Linux native SDK
+targets remain unverified; published-version consumer acceptance follows the
+tag.
 
-### P6.5 — software-renderer proof
-
-- Maintain a representative raycaster, wireframe, or bounded polygon renderer
-  as a first-party external module using public API only.
-- Require a steady-state frame loop with no allocation, explicit frame-time and
-  memory budgets, conservative hard-float build, Simulator interaction, and
-  physical-device acceptance.
-- Keep the renderer outside gopdsdk and repeat it as a regression consumer; it
-  proves primitive sufficiency rather than a general 3D-engine promise.
-
-### P6.6 — `v0.6.0` release
+### P6.5 — `v0.6.0` release — release candidate preparation
 
 - Freeze and review the P6 API snapshot, compatibility evidence, migration
   notes, changelog, diagnostics, and consumer contracts.
 - Run native CI and external-consumer CLI acceptance on Windows, macOS, and
   Linux, plus every SDK, Simulator, device-build, and physical-device gate
   claimed by the compatibility matrix.
-- Verify the composition scene and renderer against the published module
+- Verify the composition scene and external game against the published module
   without a local `replace` after tagging.
 
 P6 expands what games can render; it does not promise a GPU, a general 3D
@@ -682,9 +671,9 @@ the expected policy is:
 | HTTP and TCP | Post-1.0 feasibility work; not an offline `v1.0.0` gate. |
 | Simulator-only debug API | Add only for a concrete diagnostic consumer and label it Simulator-only. |
 
-An omitted function becomes a P6 or P7 requirement when the external renderer
-or production game cannot meet its acceptance contract without it. Otherwise
-it remains an explicit non-goal rather than an accidental readiness claim.
+An omitted function becomes a P6 or P7 requirement when a graphics consumer or
+production game cannot meet its acceptance contract without it. Otherwise it
+remains an explicit non-goal rather than an accidental readiness claim.
 
 ## P7 — production hardening and `v1.0.0`
 
@@ -702,8 +691,6 @@ P7 proves the combined SDK rather than adding broad speculative API.
   Linux. Run official SDK, Simulator, device-build, and physical deployment on
   every host advertised at that evidence level; otherwise keep that host
   explicitly unverified instead of inferring support from CI or cross-builds.
-- Repeat the P6 software-renderer fixture as a regression gate, without making
-  3D a requirement for the final external game's design.
 - Freeze the reviewed public contract and publish migration and compatibility
   policy for the `v1.x` line.
 

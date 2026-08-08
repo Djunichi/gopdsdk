@@ -2,17 +2,13 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The **P0 foundation and P1 through P5 scopes are implemented**. `v0.5.0` is the
-latest published release. P6 is underway: P6.1 transformed bitmap and scoped
-stencil composition is implemented and accepted on the verified Windows
-profile. The initial P6.2 display and sprite-redraw API is implemented at unit
-and generated-ABI level; comparative Simulator and hardware performance
-acceptance remains pending. The optional P6.3 owned PDV player is implemented
-and accepted with synchronized audio in the official Windows Simulator and on
-a physical Playdate; specialized media remains intentionally non-gating. The
-bounded `playdate/diagnostics` collector supplies the P6.4 external-game
-measurement contract without adding frame-loop I/O or target-specific state;
-`gopdsdkgame` completed bounded Simulator and physical-device measurements.
+The **P0 foundation and P1 through P6 scopes are implemented**. `v0.5.0` is the
+latest published release, and `v0.6.0` is in release-candidate preparation.
+P6.1 bitmap composition, P6.2 display and sprite redraw, optional P6.3 video,
+and P6.4 bounded external-game diagnostics are accepted on the verified Windows
+Simulator and physical-device profile. The P6 regression run covered
+comparative redraw behavior, bounded memory, physical soak, and post-run device
+logs. Specialized media remains intentionally non-gating.
 The public API is snapshot-tested and documented,
 but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
@@ -59,8 +55,8 @@ TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 Run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.3.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.3.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.5.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.5.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -545,9 +541,9 @@ Crank Caverns deterministically tests its gameplay state and render plans and
 owns every native resource explicitly. The complete game establishes the P3
 product boundary. P6.4 later recorded frame-time distributions, live-heap
 growth, and stable native-resource counts over bounded 1,800-frame Simulator
-and physical-device runs. Extended soak, termination cleanup observation, and
-post-run device-log comparison remain unverified and are not implied by the
-v0.3.0 release.
+and physical-device runs. The P6 regression run subsequently covered extended
+soak, termination cleanup observation, and post-run device-log comparison; that
+later evidence is not implied by the v0.3.0 release.
 
 ## P4.1 owned filesystem
 
@@ -848,8 +844,8 @@ unit-tested. Official Windows SDK 3.1.1 Simulator compilation and conservative
 hard-float device build pass. Visual interaction passed in the Simulator and on
 a physical Playdate after USB deployment through COM3 on 2026-08-08. The
 accepted device build used 275,312 bytes of static RAM and produced a
-36,970-byte PDX. Performance measurement, memory growth, soak, and post-run
-device-log inspection remain unverified.
+36,970-byte PDX. Performance, bounded-memory, soak, and post-run device-log
+regression checks pass on the verified Windows profile.
 
 ## P6.3 video
 
@@ -861,8 +857,8 @@ changes the target, and Left/Right step through frames.
 On 2026-08-08 the complete interaction passed visual and audible acceptance in
 the official Windows Simulator and on a physical Playdate. The accepted
 hard-float device build used 279,880 bytes of static RAM and produced a
-976,532-byte ELF and a 227,458-byte PDX. Performance, memory growth, soak, and
-device-log inspection remain unverified.
+976,532-byte ELF and a 227,458-byte PDX. Performance, bounded-memory, soak, and
+post-run device-log regression checks pass on the verified Windows profile.
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/video

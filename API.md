@@ -1,11 +1,11 @@
 # Public API
 
-This document describes the current public contract after released `v0.5.0`,
-including implemented P6.1 and P6.2 graphics additions, optional P6.3 video,
-and the P6.4 bounded diagnostics package intended for `v0.6.0`. The module is
-still pre-v1: minor releases may make intentional breaking changes, which must
-be called out in release notes. Patch releases preserve the documented API and
-behavior.
+This document describes the `v0.6.0` release-candidate public contract,
+including P6.1 and P6.2 graphics additions, optional P6.3 video, and the P6.4
+bounded diagnostics package. The latest published release remains `v0.5.0`
+until the candidate is tagged. The module is still pre-v1: minor releases may
+make intentional breaking changes, which must be called out in release notes.
+Patch releases preserve the documented API and behavior.
 
 Applications import the native contract from
 `github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional
@@ -131,8 +131,9 @@ ownership; keep it open until selecting the screen or another bitmap.
 The four-second `examples/video` consumer passed visual and audible acceptance
 in the official Windows Simulator and on a physical Playdate on 2026-08-08.
 This evidence covers synchronized companion audio, pause/resume, looping,
-stepping, and screen/offscreen targets; it does not cover long-run performance,
-memory growth, soak, or post-run device logs.
+stepping, screen/offscreen targets, and the later P6 performance,
+bounded-memory, soak, and post-run device-log regression checks on the verified
+Windows profile.
 
 ## Input
 
@@ -157,6 +158,18 @@ Callers should use `errors.Is` for sentinels and `errors.As` for the typed load
 error rather than matching error text.
 
 ## Sprites and display list
+
+Games that need physical-display presentation controls assert the optional
+`Display` capability. Refresh rates must be finite and between 0 and 50 FPS;
+scale is limited to 1, 2, 4, or 8; mosaic components are limited to 0 through
+3. Inversion, flipping, and display offset remain explicit presentation state.
+
+Games that control global redraw policy assert `SpriteRedraw` and use
+`SetAlwaysRedraw` or `AddDirtyRect`. Individual sprites use `MarkDirty` or
+`MarkDirtyRect`; invalid rectangles are rejected before native calls. The P6.2
+acceptance scene passed dirty/full redraw switching, partial invalidation,
+display effects, comparative measurements, and reset behavior in the official
+Windows Simulator and on physical Playdate hardware.
 
 `NewSprite` returns an owned sprite. Configure its bitmap, position, visibility,
 and z-index, then call `Add`. `Add` and `Remove` are idempotent. Each frame,

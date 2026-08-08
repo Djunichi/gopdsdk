@@ -1,7 +1,7 @@
 # Compatibility and evidence
 
-The released `v0.5.0` retains the exact toolchain profile accepted by
-the published `v0.4.0` baseline.
+The `v0.6.0` release candidate retains the exact toolchain profile accepted by
+the published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -44,8 +44,9 @@ resource samples reported 18. Device values were 33.07/33/34/34/77 ms, heap
 7,248 to 129,040 bytes with a 257,952-byte maximum, and 18 resources. The
 hard-float artifact used 287,912 bytes of static RAM and produced a
 1,618,252-byte ELF and 965,530-byte PDX. This is SDK integration and physical
-device evidence for the bounded interval, not a soak or published-version
-consumer gate; post-run device logs were not requested or inspected.
+device evidence for the bounded interval. The later P6 regression run completed
+the ten-minute physical soak and post-run device-log inspection. The
+published-version consumer gate follows the tag.
 
 ## Accepted application evidence
 
@@ -207,16 +208,16 @@ consumer gate; post-run device logs were not requested or inspected.
   Windows Simulator visual interaction, conservative hard-float build, USB
   deployment through COM3, launch, and matching physical Playdate interaction.
   The artifact used 275,312 bytes of static RAM and produced a 36,970-byte PDX.
-  Performance, memory-growth, soak, and post-run device-log evidence remain
-  unverified.
+  Performance, bounded-memory, soak, and post-run device-log regression checks
+  pass on the verified Windows profile.
 - P6.2 API slice implemented at unit and generated-ABI level: optional display
   presentation controls, global full-redraw/dirty-region policy, and per-sprite
   dirty marking validate documented ranges and forward through both native
   contexts. The interactive `examples/sprites` scene exercises those controls.
   On 2026-08-08 its dirty/full switching, partial bar updates, display effects,
-  scale behavior, and reset path passed Windows Simulator visual acceptance.
-  Comparative full-redraw versus dirty-region performance and physical-device
-  acceptance remain unverified, so P6.2 is not yet accepted.
+  scale behavior, and reset path passed Windows Simulator and physical-device
+  visual acceptance. Comparative full-redraw versus dirty-region measurements
+  and the P6 regression run passed on both accepted targets.
 - P6.3 API slice implemented at unit and generated-ABI level: optional PDV
   loading, metadata, frame rendering, screen/offscreen targets, explicit player
   cleanup, and decoder error messages preserve bitmap ownership and validate
@@ -227,8 +228,8 @@ consumer gate; post-run device logs were not requested or inspected.
   audible acceptance in the official Windows Simulator and on a physical
   Playdate. The conservative hard-float artifact used 279,880 bytes of static
   RAM, produced a 976,532-byte ELF and a 227,458-byte PDX, and was installed and
-  launched through COM3. Frame-time, memory growth, soak, and post-run device
-  logs remain unverified.
+  launched through COM3. Frame-time, bounded-memory, soak, and post-run
+  device-log regression checks pass on the verified Windows profile.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

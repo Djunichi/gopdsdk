@@ -6,6 +6,13 @@ that out.
 
 ## Unreleased
 
+- Prepared the accepted P6.1–P6.4 scope for the `v0.6.0` release candidate.
+- Accepted P6.2 display presentation and sprite redraw behavior in the official
+  Windows Simulator and on physical Playdate hardware, including comparative
+  full-redraw and dirty-region measurements.
+- Completed the P6 physical regression run, including bounded-memory checks,
+  soak, and post-run device-log inspection.
+
 - Added the allocation-free `playdate/diagnostics` P6.4 collector for bounded
   frame-time distributions, live-heap growth, and owned native-resource counts
   in external games.
@@ -60,8 +67,9 @@ that out.
   before the stencil-clipped draw. Official Windows Simulator visual interaction
   and conservative hard-float build, USB deployment, launch, and physical
   Playdate interaction pass. The device artifact uses 275,312 bytes of static
-  RAM and produces a 36,970-byte PDX; performance, memory-growth, soak, and
-  device-log evidence remain unverified.
+  RAM and produces a 36,970-byte PDX. P6 regression performance,
+  bounded-memory, soak, and post-run device-log checks pass on the verified
+  Windows profile.
 
 ## v0.5.0 (2026-08-03)
 
