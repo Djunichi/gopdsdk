@@ -98,6 +98,10 @@ configuration or collision query.
 
 ### P8.1 — sprite geometry and presentation
 
+Status: complete. Geometry, presentation, useful getters, update/collision
+enable state, native tilemap ownership and attachment, both native adapters,
+deterministic tests, and Simulator/device visual acceptance are complete.
+
 - Add center, bounds, image flip, draw mode, opacity, stencil image/pattern,
   clip rectangle, draw-offset policy, tilemap attachment when it is not
   equivalent to the portable tile layer, and the corresponding useful getters.

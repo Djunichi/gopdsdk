@@ -11,6 +11,25 @@ import (
 	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
 )
 
+func TestSpritePresentationBridgesExistInBothDeviceProfiles(t *testing.T) {
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, symbol := range []string{
+			"bridgeSpriteSetCenterBits", "bridgeSpriteGetPointBits", "bridgeSpriteSetBoundsBits", "bridgeSpriteRectBits",
+			"bridgeSpriteVisible", "bridgeSpriteZIndex", "bridgeSpriteSetImageFlip", "bridgeSpriteImageFlip",
+			"bridgeSpriteSetDrawMode", "bridgeSpriteSetOpaque", "bridgeSpriteSetStencilImage", "bridgeSpriteSetStencilPattern",
+			"bridgeSpriteClearStencil", "bridgeSpriteSetClipRect", "bridgeSpriteClearClipRect", "bridgeSpriteSetIgnoresDrawOffset",
+			"bridgeSpriteSetUpdatesEnabled", "bridgeSpriteUpdatesEnabled", "bridgeSpriteSetCollisionsEnabled", "bridgeSpriteCollisionsEnabled", "bridgeSpriteTag",
+			"bridgeNewSpriteTileMap", "bridgeFreeSpriteTileMap", "bridgeSpriteTileMapSetImageTable", "bridgeSpriteTileMapSetSize",
+			"bridgeSpriteTileMapSize", "bridgeSpriteTileMapPixelSize", "bridgeSpriteTileMapSetTiles", "bridgeSpriteTileMapSetTile",
+			"bridgeSpriteTileMapTile", "bridgeSpriteSetTileMap", "bridgeSpriteTileMap",
+		} {
+			if !strings.Contains(bootstrap, symbol) {
+				t.Errorf("%s bootstrap does not contain %q", name, symbol)
+			}
+		}
+	}
+}
+
 func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 	gameDir := filepath.Join(t.TempDir(), "game")
 	app := applicationInfo{ImportPath: "example.com/game/pkg", Name: "pkg", Dir: filepath.Join(gameDir, "pkg")}

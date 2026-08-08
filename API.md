@@ -206,10 +206,29 @@ partial invalidation, display effects, logical-size changes, nominal and
 measured frame-rate reporting, comparative measurements, and reset behavior
 in the official Windows Simulator and on physical Playdate hardware.
 
-`NewSprite` returns an owned sprite. Configure its bitmap, position, visibility,
-and z-index, then call `Add`. `Add` and `Remove` are idempotent. Each frame,
+`NewSprite` returns an owned sprite. Configure its bitmap, center, bounds,
+position, visibility, z-index, image flip, draw mode, opacity, stencil, clip
+rectangle, and draw-offset policy, then call `Add`. Update and collision passes
+can be enabled independently and queried together with the useful geometry and
+presentation state. `Add` and `Remove` are idempotent. Each frame,
 move game objects and call `UpdateAndDrawSprites` once to update and render the
 global Playdate display list.
+
+`ClearStencil` uses a fully open stencil pattern on SDK 3.1.1. This preserves
+the documented drawing result while avoiding the SDK Simulator's rejection of
+the null bitmap used by its native sprite-clear path. Sprite stencil images use
+framebuffer coordinates rather than moving with the sprite.
+
+Games that need official sprite tilemap attachment assert `SpriteTileMaps` and
+create an owned `SpriteTileMap` from an owned `BitmapTable`, positive map
+dimensions, and a complete row-major `[]uint16` of zero-based image-table
+indices. The native adapter retains a C-owned copy of the index data because
+the official tilemap retains that array after `setTiles` returns. `Size`,
+`PixelSize`, `Tile`, and `SetTile` expose bounded native state. A sprite can
+attach, clear, and query its tilemap. Close sprites or clear their tilemaps
+before closing the tilemap, then close the tilemap before its bitmap table;
+in-use closes return explicit errors. The portable `TileMap` remains a separate
+immediate-mode layer and is never treated as an `LCDTileMap` handle.
 
 `Close` removes an added sprite before freeing it and is always explicit; close
 sprites before closing bitmaps referenced by them. If initialization fails,

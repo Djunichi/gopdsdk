@@ -263,20 +263,84 @@ func bridgeNewSprite() uintptr
 func bridgeFreeSprite(sprite uintptr)
 //go:linkname bridgeSpriteSetBitmap bridgeSpriteSetBitmap
 func bridgeSpriteSetBitmap(sprite, bitmap uintptr)
+//go:linkname bridgeSpriteSetCenterBits bridgeSpriteSetCenterBits
+func bridgeSpriteSetCenterBits(sprite uintptr,x,y uint32)
+//go:linkname bridgeSpriteGetPointBits bridgeSpriteGetPointBits
+func bridgeSpriteGetPointBits(sprite uintptr,center int32,x,y *uint32)
+//go:linkname bridgeSpriteSetBoundsBits bridgeSpriteSetBoundsBits
+func bridgeSpriteSetBoundsBits(sprite uintptr,x,y,w,h uint32)
+//go:linkname bridgeSpriteRectBits bridgeSpriteRectBits
+func bridgeSpriteRectBits(sprite uintptr,collide,field int32) uint32
 //go:linkname bridgeSpriteMoveToBits bridgeSpriteMoveToBits
 func bridgeSpriteMoveToBits(sprite uintptr, x, y uint32)
 //go:linkname bridgeSpriteMoveByBits bridgeSpriteMoveByBits
 func bridgeSpriteMoveByBits(sprite uintptr, dx, dy uint32)
 //go:linkname bridgeSpriteSetVisible bridgeSpriteSetVisible
 func bridgeSpriteSetVisible(sprite uintptr, visible int32)
+//go:linkname bridgeSpriteVisible bridgeSpriteVisible
+func bridgeSpriteVisible(sprite uintptr) int32
 //go:linkname bridgeSpriteSetZIndex bridgeSpriteSetZIndex
 func bridgeSpriteSetZIndex(sprite uintptr, z int32)
+//go:linkname bridgeSpriteZIndex bridgeSpriteZIndex
+func bridgeSpriteZIndex(sprite uintptr) int32
+//go:linkname bridgeSpriteSetImageFlip bridgeSpriteSetImageFlip
+func bridgeSpriteSetImageFlip(sprite uintptr,value int32)
+//go:linkname bridgeSpriteImageFlip bridgeSpriteImageFlip
+func bridgeSpriteImageFlip(sprite uintptr) int32
+//go:linkname bridgeSpriteSetDrawMode bridgeSpriteSetDrawMode
+func bridgeSpriteSetDrawMode(sprite uintptr,value int32)
+//go:linkname bridgeSpriteSetOpaque bridgeSpriteSetOpaque
+func bridgeSpriteSetOpaque(sprite uintptr,value int32)
+//go:linkname bridgeSpriteSetStencilImage bridgeSpriteSetStencilImage
+func bridgeSpriteSetStencilImage(sprite,bitmap uintptr,tiled int32)
+//go:linkname bridgeSpriteSetStencilPattern bridgeSpriteSetStencilPattern
+func bridgeSpriteSetStencilPattern(sprite uintptr,pattern *byte)
+//go:linkname bridgeSpriteClearStencil bridgeSpriteClearStencil
+func bridgeSpriteClearStencil(sprite uintptr)
+//go:linkname bridgeSpriteSetClipRect bridgeSpriteSetClipRect
+func bridgeSpriteSetClipRect(sprite uintptr,x,y,w,h int32)
+//go:linkname bridgeSpriteClearClipRect bridgeSpriteClearClipRect
+func bridgeSpriteClearClipRect(sprite uintptr)
+//go:linkname bridgeSpriteSetIgnoresDrawOffset bridgeSpriteSetIgnoresDrawOffset
+func bridgeSpriteSetIgnoresDrawOffset(sprite uintptr,value int32)
+//go:linkname bridgeSpriteSetUpdatesEnabled bridgeSpriteSetUpdatesEnabled
+func bridgeSpriteSetUpdatesEnabled(sprite uintptr,value int32)
+//go:linkname bridgeSpriteUpdatesEnabled bridgeSpriteUpdatesEnabled
+func bridgeSpriteUpdatesEnabled(sprite uintptr) int32
+//go:linkname bridgeSpriteSetCollisionsEnabled bridgeSpriteSetCollisionsEnabled
+func bridgeSpriteSetCollisionsEnabled(sprite uintptr,value int32)
+//go:linkname bridgeSpriteCollisionsEnabled bridgeSpriteCollisionsEnabled
+func bridgeSpriteCollisionsEnabled(sprite uintptr) int32
+//go:linkname bridgeNewSpriteTileMap bridgeNewSpriteTileMap
+func bridgeNewSpriteTileMap()uintptr
+//go:linkname bridgeFreeSpriteTileMap bridgeFreeSpriteTileMap
+func bridgeFreeSpriteTileMap(uintptr)
+//go:linkname bridgeSpriteTileMapSetImageTable bridgeSpriteTileMapSetImageTable
+func bridgeSpriteTileMapSetImageTable(uintptr,uintptr)
+//go:linkname bridgeSpriteTileMapSetSize bridgeSpriteTileMapSetSize
+func bridgeSpriteTileMapSetSize(uintptr,int32,int32)
+//go:linkname bridgeSpriteTileMapSize bridgeSpriteTileMapSize
+func bridgeSpriteTileMapSize(uintptr,*int32,*int32)
+//go:linkname bridgeSpriteTileMapPixelSize bridgeSpriteTileMapPixelSize
+func bridgeSpriteTileMapPixelSize(uintptr,*uint32,*uint32)
+//go:linkname bridgeSpriteTileMapSetTiles bridgeSpriteTileMapSetTiles
+func bridgeSpriteTileMapSetTiles(uintptr,*uint16,int32,int32)
+//go:linkname bridgeSpriteTileMapSetTile bridgeSpriteTileMapSetTile
+func bridgeSpriteTileMapSetTile(uintptr,int32,int32,uint16)
+//go:linkname bridgeSpriteTileMapTile bridgeSpriteTileMapTile
+func bridgeSpriteTileMapTile(uintptr,int32,int32)int32
+//go:linkname bridgeSpriteSetTileMap bridgeSpriteSetTileMap
+func bridgeSpriteSetTileMap(uintptr,uintptr)
+//go:linkname bridgeSpriteTileMap bridgeSpriteTileMap
+func bridgeSpriteTileMap(uintptr)uintptr
 //go:linkname bridgeSpriteSetCollideRectBits bridgeSpriteSetCollideRectBits
 func bridgeSpriteSetCollideRectBits(sprite uintptr, x, y, width, height uint32)
 //go:linkname bridgeSpriteClearCollideRect bridgeSpriteClearCollideRect
 func bridgeSpriteClearCollideRect(sprite uintptr)
 //go:linkname bridgeSpriteSetTag bridgeSpriteSetTag
 func bridgeSpriteSetTag(sprite uintptr, tag uint8)
+//go:linkname bridgeSpriteTag bridgeSpriteTag
+func bridgeSpriteTag(sprite uintptr) uint8
 //go:linkname bridgeSpriteMarkDirty bridgeSpriteMarkDirty
 func bridgeSpriteMarkDirty(sprite uintptr)
 //go:linkname bridgeSpriteMarkDirtyRectBits bridgeSpriteMarkDirtyRectBits
@@ -770,18 +834,33 @@ func(playdateContext)SetOffset(x,y int){display.SetOffset(x,y)}
 func float32Bits(value float32) uint32 { return *(*uint32)(unsafe.Pointer(&value)) }
 var spriteDriver = sdkRuntime.SpriteDriver{
 	SetBitmap: bridgeSpriteSetBitmap,
+	SetCenter: func(s uintptr,x,y float32){bridgeSpriteSetCenterBits(s,float32Bits(x),float32Bits(y))}, Center: func(s uintptr)(float32,float32){return spritePoint(s,true)},
+	SetBounds: func(s uintptr,r sdkPlaydate.Rect){bridgeSpriteSetBoundsBits(s,float32Bits(r.X),float32Bits(r.Y),float32Bits(r.Width),float32Bits(r.Height))}, Bounds: func(s uintptr)sdkPlaydate.Rect{return spriteRect(s,false)},
 	MoveTo: func(sprite uintptr, x, y float32) { bridgeSpriteMoveToBits(sprite, float32Bits(x), float32Bits(y)) },
+	Position: func(s uintptr)(float32,float32){return spritePoint(s,false)},
 	MoveBy: func(sprite uintptr, dx, dy float32) { bridgeSpriteMoveByBits(sprite, float32Bits(dx), float32Bits(dy)) },
 	SetVisible: func(sprite uintptr, visible bool) { value := int32(0); if visible { value = 1 }; bridgeSpriteSetVisible(sprite, value) },
+	Visible: func(s uintptr)bool{return bridgeSpriteVisible(s)!=0},
 	SetZIndex: func(sprite uintptr, z int) { bridgeSpriteSetZIndex(sprite, int32(z)) },
+	ZIndex: func(s uintptr)int{return int(bridgeSpriteZIndex(s))}, SetImageFlip: func(s uintptr,v sdkPlaydate.BitmapFlip){bridgeSpriteSetImageFlip(s,int32(v))}, ImageFlip: func(s uintptr)sdkPlaydate.BitmapFlip{return sdkPlaydate.BitmapFlip(bridgeSpriteImageFlip(s))}, SetDrawMode: func(s uintptr,v sdkPlaydate.DrawMode){bridgeSpriteSetDrawMode(s,int32(v))}, SetOpaque: func(s uintptr,v bool){bridgeSpriteSetOpaque(s,boolInt32(v))},
+	SetStencilImage: func(s,b uintptr,t bool){bridgeSpriteSetStencilImage(s,b,boolInt32(t))}, SetStencilPattern: func(s uintptr,p [8]byte){bridgeSpriteSetStencilPattern(s,&p[0])}, ClearStencil: bridgeSpriteClearStencil, SetClipRect: func(s uintptr,x,y,w,h int){bridgeSpriteSetClipRect(s,int32(x),int32(y),int32(w),int32(h))}, ClearClipRect: bridgeSpriteClearClipRect,
+	SetIgnoresDrawOffset: func(s uintptr,v bool){bridgeSpriteSetIgnoresDrawOffset(s,boolInt32(v))}, SetUpdatesEnabled: func(s uintptr,v bool){bridgeSpriteSetUpdatesEnabled(s,boolInt32(v))}, UpdatesEnabled: func(s uintptr)bool{return bridgeSpriteUpdatesEnabled(s)!=0}, SetCollisionsEnabled: func(s uintptr,v bool){bridgeSpriteSetCollisionsEnabled(s,boolInt32(v))}, CollisionsEnabled: func(s uintptr)bool{return bridgeSpriteCollisionsEnabled(s)!=0},
+	SetTileMap: bridgeSpriteSetTileMap, TileMap: bridgeSpriteTileMap, TileMaps: spriteTileMapDriver,
 	SetCollideRect: func(sprite uintptr, rect sdkPlaydate.Rect) { bridgeSpriteSetCollideRectBits(sprite, float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height)) },
+	CollideRect: func(s uintptr)sdkPlaydate.Rect{return spriteRect(s,true)},
 	ClearCollideRect: bridgeSpriteClearCollideRect,
 	SetTag: bridgeSpriteSetTag,
+	Tag: bridgeSpriteTag,
 	MarkDirty: bridgeSpriteMarkDirty,
 	MarkDirtyRect: func(sprite uintptr,rect sdkPlaydate.Rect){bridgeSpriteMarkDirtyRectBits(sprite,float32Bits(rect.X),float32Bits(rect.Y),float32Bits(rect.Width),float32Bits(rect.Height))},
 	MoveWithCollisions: moveWithCollisions,
 	Add: bridgeSpriteAdd, Remove: bridgeSpriteRemove, Free: bridgeFreeSprite,
 }
+var spriteTileMapDriver=sdkRuntime.SpriteTileMapDriver{SetImageTable:bridgeSpriteTileMapSetImageTable,SetSize:func(m uintptr,w,h int){bridgeSpriteTileMapSetSize(m,int32(w),int32(h))},Size:func(m uintptr)(int,int){var w,h int32;bridgeSpriteTileMapSize(m,&w,&h);return int(w),int(h)},PixelSize:func(m uintptr)(int,int){var w,h uint32;bridgeSpriteTileMapPixelSize(m,&w,&h);return int(w),int(h)},SetTiles:func(m uintptr,v []uint16,row int){bridgeSpriteTileMapSetTiles(m,&v[0],int32(len(v)),int32(row))},SetTile:func(m uintptr,x,y int,v uint16){bridgeSpriteTileMapSetTile(m,int32(x),int32(y),v)},Tile:func(m uintptr,x,y int)uint16{return uint16(bridgeSpriteTileMapTile(m,int32(x),int32(y)))},Free:bridgeFreeSpriteTileMap}
+func(playdateContext)NewSpriteTileMap(table sdkPlaydate.BitmapTable,columns,rows int,tiles []uint16)(sdkPlaydate.SpriteTileMap,error){return sdkRuntime.NewOwnedSpriteTileMap(bridgeNewSpriteTileMap(),table,columns,rows,tiles,spriteTileMapDriver)}
+func boolInt32(v bool)int32{if v{return 1};return 0}
+func spritePoint(s uintptr,center bool)(float32,float32){var x,y uint32;bridgeSpriteGetPointBits(s,boolInt32(center),&x,&y);return float32FromBits(x),float32FromBits(y)}
+func spriteRect(s uintptr,collide bool)sdkPlaydate.Rect{return sdkPlaydate.Rect{X:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),0)),Y:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),1)),Width:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),2)),Height:float32FromBits(bridgeSpriteRectBits(s,boolInt32(collide),3))}}
 func moveWithCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
 	var actualX, actualY uint32; var count int32; list := bridgeSpriteMoveWithCollisionsBits(sprite, float32Bits(x), float32Bits(y), &actualX, &actualY, &count)
 	result := make([]sdkRuntime.NativeCollision, int(count)); for index := range result { value := func(field int32) float32 { return float32FromBits(bridgeCollisionValueBits(list, int32(index), field)) }; result[index] = sdkRuntime.NativeCollision{Other: bridgeCollisionOther(list, int32(index)), ResponseType: sdkPlaydate.CollisionResponse(bridgeCollisionValueBits(list, int32(index), 14)), Overlaps: bridgeCollisionValueBits(list, int32(index), 15) != 0, Time: value(0), Move: sdkPlaydate.Point{X:value(1),Y:value(2)}, Normal:sdkPlaydate.Point{X:value(3),Y:value(4)}, Touch:sdkPlaydate.Point{X:value(5),Y:value(6)}, SpriteRect:sdkPlaydate.Rect{X:value(7),Y:value(8),Width:value(9),Height:value(10)}, OtherRect:sdkPlaydate.Rect{X:value(11),Y:value(12),Width:value(13),Height:value(16)}} }; bridgeFreeList(list); return float32FromBits(actualX), float32FromBits(actualY), result

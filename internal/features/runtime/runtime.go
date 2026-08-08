@@ -990,6 +990,7 @@ type BitmapTable struct {
 	handle        uintptr
 	driver        BitmapTableDriver
 	bitmapDriver  BitmapDriver
+	tileMapUsers  int
 	owned, closed bool
 }
 
@@ -1023,6 +1024,9 @@ func (t *BitmapTable) Close() error {
 	}
 	if !t.owned {
 		return playdate.ErrBitmapTableBorrowed
+	}
+	if t.tileMapUsers != 0 {
+		return playdate.ErrBitmapTableInUse
 	}
 	t.driver.Free(t.handle)
 	t.closed = true
@@ -1359,20 +1363,46 @@ func (d *Display) SetOffset(x, y int)   { d.driver.SetOffset(x, y) }
 
 // SpriteDriver contains platform operations for one native sprite handle.
 type SpriteDriver struct {
-	SetBitmap          func(sprite, bitmap uintptr)
-	MoveTo             func(uintptr, float32, float32)
-	MoveBy             func(uintptr, float32, float32)
-	SetVisible         func(uintptr, bool)
-	SetZIndex          func(uintptr, int)
-	SetCollideRect     func(uintptr, playdate.Rect)
-	ClearCollideRect   func(uintptr)
-	SetTag             func(uintptr, uint8)
-	MarkDirty          func(uintptr)
-	MarkDirtyRect      func(uintptr, playdate.Rect)
-	MoveWithCollisions func(uintptr, float32, float32) (float32, float32, []NativeCollision)
-	Add                func(uintptr)
-	Remove             func(uintptr)
-	Free               func(uintptr)
+	SetBitmap            func(sprite, bitmap uintptr)
+	SetCenter            func(uintptr, float32, float32)
+	Center               func(uintptr) (float32, float32)
+	SetBounds            func(uintptr, playdate.Rect)
+	Bounds               func(uintptr) playdate.Rect
+	MoveTo               func(uintptr, float32, float32)
+	Position             func(uintptr) (float32, float32)
+	MoveBy               func(uintptr, float32, float32)
+	SetVisible           func(uintptr, bool)
+	Visible              func(uintptr) bool
+	SetZIndex            func(uintptr, int)
+	ZIndex               func(uintptr) int
+	SetImageFlip         func(uintptr, playdate.BitmapFlip)
+	ImageFlip            func(uintptr) playdate.BitmapFlip
+	SetDrawMode          func(uintptr, playdate.DrawMode)
+	SetOpaque            func(uintptr, bool)
+	SetStencilImage      func(uintptr, uintptr, bool)
+	SetStencilPattern    func(uintptr, [8]byte)
+	ClearStencil         func(uintptr)
+	SetClipRect          func(uintptr, int, int, int, int)
+	ClearClipRect        func(uintptr)
+	SetIgnoresDrawOffset func(uintptr, bool)
+	SetTileMap           func(uintptr, uintptr)
+	TileMap              func(uintptr) uintptr
+	TileMaps             SpriteTileMapDriver
+	SetUpdatesEnabled    func(uintptr, bool)
+	UpdatesEnabled       func(uintptr) bool
+	SetCollisionsEnabled func(uintptr, bool)
+	CollisionsEnabled    func(uintptr) bool
+	SetCollideRect       func(uintptr, playdate.Rect)
+	CollideRect          func(uintptr) playdate.Rect
+	ClearCollideRect     func(uintptr)
+	SetTag               func(uintptr, uint8)
+	Tag                  func(uintptr) uint8
+	MarkDirty            func(uintptr)
+	MarkDirtyRect        func(uintptr, playdate.Rect)
+	MoveWithCollisions   func(uintptr, float32, float32) (float32, float32, []NativeCollision)
+	Add                  func(uintptr)
+	Remove               func(uintptr)
+	Free                 func(uintptr)
 }
 
 // NativeCollision is the adapter-facing representation of SpriteCollisionInfo.
@@ -1387,11 +1417,12 @@ type NativeCollision struct {
 
 // Sprite owns a native Playdate sprite.
 type Sprite struct {
-	handle uintptr
-	driver SpriteDriver
-	added  bool
-	closed bool
-	owned  bool
+	handle  uintptr
+	driver  SpriteDriver
+	added   bool
+	closed  bool
+	owned   bool
+	tileMap *SpriteTileMap
 }
 
 // NewOwnedSprite wraps a sprite that must be explicitly closed.
@@ -1432,6 +1463,35 @@ func (s *Sprite) SetBitmap(bitmap playdate.Bitmap) error {
 	s.driver.SetBitmap(handle, bitmapHandle)
 	return nil
 }
+func (s *Sprite) SetCenter(x, y float32) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetCenter(h, x, y)
+	}
+	return e
+}
+func (s *Sprite) Center() (float32, float32, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, 0, e
+	}
+	x, y := s.driver.Center(h)
+	return x, y, nil
+}
+func (s *Sprite) SetBounds(r playdate.Rect) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetBounds(h, r)
+	}
+	return e
+}
+func (s *Sprite) Bounds() (playdate.Rect, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return playdate.Rect{}, e
+	}
+	return s.driver.Bounds(h), nil
+}
 func (s *Sprite) SetPosition(x, y float32) error {
 	handle, err := s.nativeHandle()
 	if err != nil {
@@ -1439,6 +1499,14 @@ func (s *Sprite) SetPosition(x, y float32) error {
 	}
 	s.driver.MoveTo(handle, x, y)
 	return nil
+}
+func (s *Sprite) Position() (float32, float32, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, 0, e
+	}
+	x, y := s.driver.Position(h)
+	return x, y, nil
 }
 func (s *Sprite) MoveBy(dx, dy float32) error {
 	handle, err := s.nativeHandle()
@@ -1456,6 +1524,13 @@ func (s *Sprite) SetVisible(visible bool) error {
 	s.driver.SetVisible(handle, visible)
 	return nil
 }
+func (s *Sprite) Visible() (bool, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return false, e
+	}
+	return s.driver.Visible(h), nil
+}
 func (s *Sprite) SetZIndex(z int) error {
 	handle, err := s.nativeHandle()
 	if err != nil {
@@ -1464,6 +1539,174 @@ func (s *Sprite) SetZIndex(z int) error {
 	s.driver.SetZIndex(handle, z)
 	return nil
 }
+func (s *Sprite) ZIndex() (int, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return s.driver.ZIndex(h), nil
+}
+func (s *Sprite) SetImageFlip(v playdate.BitmapFlip) error {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return e
+	}
+	if e = ValidateBitmapFlip(v); e != nil {
+		return e
+	}
+	s.driver.SetImageFlip(h, v)
+	return nil
+}
+func (s *Sprite) ImageFlip() (playdate.BitmapFlip, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return s.driver.ImageFlip(h), nil
+}
+func (s *Sprite) SetDrawMode(v playdate.DrawMode) error {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return e
+	}
+	if e = ValidateDrawMode(v); e != nil {
+		return e
+	}
+	s.driver.SetDrawMode(h, v)
+	return nil
+}
+func (s *Sprite) SetOpaque(v bool) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetOpaque(h, v)
+	}
+	return e
+}
+func (s *Sprite) SetStencilImage(bitmap playdate.Bitmap, tiled bool) error {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return e
+	}
+	b, e := BitmapHandle(bitmap)
+	if e != nil {
+		return e
+	}
+	s.driver.SetStencilImage(h, b, tiled)
+	return nil
+}
+func (s *Sprite) SetStencilPattern(pattern [8]byte) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetStencilPattern(h, pattern)
+	}
+	return e
+}
+func (s *Sprite) ClearStencil() error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.ClearStencil(h)
+	}
+	return e
+}
+func (s *Sprite) SetClipRect(x, y, w, h int) error {
+	handle, e := s.nativeHandle()
+	if e != nil {
+		return e
+	}
+	if w <= 0 || h <= 0 {
+		return playdate.ErrSpriteDirtyRect
+	}
+	s.driver.SetClipRect(handle, x, y, w, h)
+	return nil
+}
+func (s *Sprite) ClearClipRect() error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.ClearClipRect(h)
+	}
+	return e
+}
+func (s *Sprite) SetIgnoresDrawOffset(v bool) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetIgnoresDrawOffset(h, v)
+	}
+	return e
+}
+func (s *Sprite) SetTileMap(tileMap playdate.SpriteTileMap) error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	value, err := spriteTileMapValue(tileMap)
+	if err != nil {
+		return err
+	}
+	if s.tileMap == value {
+		return nil
+	}
+	if s.tileMap != nil {
+		s.tileMap.attachments--
+	}
+	s.driver.SetTileMap(h, value.handle)
+	s.tileMap = value
+	value.attachments++
+	return nil
+}
+func (s *Sprite) ClearTileMap() error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if s.tileMap != nil {
+		s.tileMap.attachments--
+		s.tileMap = nil
+	}
+	s.driver.SetTileMap(h, 0)
+	return nil
+}
+func (s *Sprite) TileMap() (playdate.SpriteTileMap, bool, error) {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return nil, false, err
+	}
+	native := s.driver.TileMap(h)
+	if native == 0 {
+		return nil, false, nil
+	}
+	if s.tileMap != nil && s.tileMap.handle == native {
+		return s.tileMap, true, nil
+	}
+	return NewBorrowedSpriteTileMap(native, s.driver.tileMapDriver()), true, nil
+}
+func (s *Sprite) SetUpdatesEnabled(v bool) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetUpdatesEnabled(h, v)
+	}
+	return e
+}
+func (s *Sprite) UpdatesEnabled() (bool, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return false, e
+	}
+	return s.driver.UpdatesEnabled(h), nil
+}
+func (s *Sprite) SetCollisionsEnabled(v bool) error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetCollisionsEnabled(h, v)
+	}
+	return e
+}
+func (s *Sprite) CollisionsEnabled() (bool, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return false, e
+	}
+	return s.driver.CollisionsEnabled(h), nil
+}
 func (s *Sprite) SetCollideRect(rect playdate.Rect) error {
 	handle, err := s.nativeHandle()
 	if err != nil {
@@ -1471,6 +1714,13 @@ func (s *Sprite) SetCollideRect(rect playdate.Rect) error {
 	}
 	s.driver.SetCollideRect(handle, rect)
 	return nil
+}
+func (s *Sprite) CollideRect() (playdate.Rect, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return playdate.Rect{}, e
+	}
+	return s.driver.CollideRect(h), nil
 }
 func (s *Sprite) ClearCollideRect() error {
 	handle, err := s.nativeHandle()
@@ -1487,6 +1737,13 @@ func (s *Sprite) SetTag(tag uint8) error {
 	}
 	s.driver.SetTag(handle, tag)
 	return nil
+}
+func (s *Sprite) Tag() (uint8, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return s.driver.Tag(h), nil
 }
 func (s *Sprite) MarkDirty() error {
 	handle, err := s.nativeHandle()
@@ -1553,11 +1810,132 @@ func (s *Sprite) Close() error {
 		s.driver.Remove(handle)
 		s.added = false
 	}
+	if s.tileMap != nil {
+		s.tileMap.attachments--
+		s.tileMap = nil
+	}
 	s.driver.Free(handle)
 	s.closed = true
 	s.handle = 0
 	return nil
 }
+
+// SpriteTileMapDriver contains platform operations for one native LCDTileMap.
+type SpriteTileMapDriver struct {
+	SetImageTable func(uintptr, uintptr)
+	SetSize       func(uintptr, int, int)
+	Size          func(uintptr) (int, int)
+	PixelSize     func(uintptr) (int, int)
+	SetTiles      func(uintptr, []uint16, int)
+	SetTile       func(uintptr, int, int, uint16)
+	Tile          func(uintptr, int, int) uint16
+	Free          func(uintptr)
+}
+
+// SpriteTileMap owns a native LCDTileMap and retains its bitmap table.
+type SpriteTileMap struct {
+	handle        uintptr
+	driver        SpriteTileMapDriver
+	table         *BitmapTable
+	columns, rows int
+	attachments   int
+	owned, closed bool
+}
+
+func NewOwnedSpriteTileMap(handle uintptr, table playdate.BitmapTable, columns, rows int, tiles []uint16, driver SpriteTileMapDriver) (*SpriteTileMap, error) {
+	if handle == 0 {
+		return nil, playdate.ErrSpriteTileMapCreate
+	}
+	t, ok := table.(*BitmapTable)
+	if !ok {
+		driver.Free(handle)
+		return nil, ErrInvalidBitmap
+	}
+	tableHandle, err := OwnedBitmapTableHandle(table)
+	if err != nil {
+		driver.Free(handle)
+		return nil, err
+	}
+	if columns <= 0 || rows <= 0 || len(tiles) != columns*rows {
+		driver.Free(handle)
+		return nil, playdate.ErrSpriteTileMapConfig
+	}
+	value := &SpriteTileMap{handle: handle, driver: driver, table: t, columns: columns, rows: rows, owned: true}
+	driver.SetImageTable(handle, tableHandle)
+	driver.SetSize(handle, columns, rows)
+	driver.SetTiles(handle, tiles, columns)
+	t.tileMapUsers++
+	return value, nil
+}
+func NewBorrowedSpriteTileMap(handle uintptr, driver SpriteTileMapDriver) *SpriteTileMap {
+	return &SpriteTileMap{handle: handle, driver: driver}
+}
+func spriteTileMapValue(tileMap playdate.SpriteTileMap) (*SpriteTileMap, error) {
+	value, ok := tileMap.(*SpriteTileMap)
+	if !ok || value == nil || value.closed || value.handle == 0 {
+		return nil, playdate.ErrSpriteTileMapClosed
+	}
+	return value, nil
+}
+func (m *SpriteTileMap) Size() (int, int, error) {
+	v, e := spriteTileMapValue(m)
+	if e != nil {
+		return 0, 0, e
+	}
+	x, y := v.driver.Size(v.handle)
+	return x, y, nil
+}
+func (m *SpriteTileMap) PixelSize() (int, int, error) {
+	v, e := spriteTileMapValue(m)
+	if e != nil {
+		return 0, 0, e
+	}
+	x, y := v.driver.PixelSize(v.handle)
+	return x, y, nil
+}
+func (m *SpriteTileMap) Tile(column, row int) (uint16, error) {
+	v, e := spriteTileMapValue(m)
+	if e != nil {
+		return 0, e
+	}
+	if column < 0 || row < 0 || column >= v.columns || row >= v.rows {
+		return 0, playdate.ErrSpriteTileMapBounds
+	}
+	return v.driver.Tile(v.handle, column, row), nil
+}
+func (m *SpriteTileMap) SetTile(column, row int, index uint16) error {
+	v, e := spriteTileMapValue(m)
+	if e != nil {
+		return e
+	}
+	if column < 0 || row < 0 || column >= v.columns || row >= v.rows {
+		return playdate.ErrSpriteTileMapBounds
+	}
+	v.driver.SetTile(v.handle, column, row, index)
+	return nil
+}
+func (m *SpriteTileMap) Close() error {
+	v, e := spriteTileMapValue(m)
+	if e != nil {
+		return e
+	}
+	if !v.owned {
+		return playdate.ErrSpriteTileMapBorrowed
+	}
+	if v.attachments != 0 {
+		return playdate.ErrSpriteTileMapInUse
+	}
+	v.driver.Free(v.handle)
+	if v.table != nil {
+		v.table.tileMapUsers--
+		v.table = nil
+	}
+	v.closed = true
+	v.handle = 0
+	return nil
+}
+
+func (d SpriteDriver) tileMapDriver() SpriteTileMapDriver { return d.TileMaps }
 
 // BorrowedSprites converts native query handles without transferring ownership.
 func BorrowedSprites(handles []uintptr, driver SpriteDriver) []playdate.Sprite {
@@ -1793,6 +2171,13 @@ func (context *applicationContext) AddDirtyRect(x, y, width, height int) error {
 		return playdate.ErrSpriteRedrawUnavailable
 	}
 	return redraw.AddDirtyRect(x, y, width, height)
+}
+func (context *applicationContext) NewSpriteTileMap(table playdate.BitmapTable, columns, rows int, tiles []uint16) (playdate.SpriteTileMap, error) {
+	tileMaps, ok := context.Context.(playdate.SpriteTileMaps)
+	if !ok || context.terminated {
+		return nil, playdate.ErrSpriteTileMapUnavailable
+	}
+	return tileMaps.NewSpriteTileMap(table, columns, rows, tiles)
 }
 
 func (context *applicationContext) Input() playdate.Input { return context.input }

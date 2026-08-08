@@ -17,4 +17,18 @@ var (
 	ErrSpriteDirtyRect error = spriteError("invalid sprite dirty rectangle")
 	// ErrSpriteRedrawUnavailable indicates a context without redraw controls.
 	ErrSpriteRedrawUnavailable error = spriteError("sprite redraw controls are unavailable")
+	// ErrSpriteTileMapCreate indicates that Playdate could not allocate a native tilemap.
+	ErrSpriteTileMapCreate error = spriteError("create sprite tilemap failed")
+	// ErrSpriteTileMapUnavailable indicates a context without native tilemap creation.
+	ErrSpriteTileMapUnavailable error = spriteError("sprite tilemaps are unavailable")
+	// ErrSpriteTileMapClosed indicates an operation on a closed native tilemap.
+	ErrSpriteTileMapClosed error = spriteError("sprite tilemap is closed")
+	// ErrSpriteTileMapBorrowed indicates an attempt to close a borrowed native tilemap.
+	ErrSpriteTileMapBorrowed error = spriteError("borrowed sprite tilemap cannot be closed")
+	// ErrSpriteTileMapConfig indicates invalid dimensions or tile data.
+	ErrSpriteTileMapConfig error = spriteError("invalid sprite tilemap configuration")
+	// ErrSpriteTileMapBounds indicates a tile coordinate outside the map.
+	ErrSpriteTileMapBounds error = spriteError("sprite tilemap coordinate is out of range")
+	// ErrSpriteTileMapInUse indicates a tilemap still attached to a sprite.
+	ErrSpriteTileMapInUse error = spriteError("sprite tilemap is still attached")
 )
