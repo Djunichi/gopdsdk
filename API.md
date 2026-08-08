@@ -279,6 +279,15 @@ as `fonts/name`, and close every successful `Font` exactly once. `TextWidth`
 and `Height` use the same native font metrics as drawing; closed fonts return
 `ErrFontClosed`, and foreign handles return `ErrFontInvalid`.
 
+Assert `TextGraphics` for bounded rectangle drawing, character or word
+wrapping, alignment, tracking, leading, wrapping-height measurement, and glyph
+metrics. `Glyph` returns advance and pair kerning plus a borrowed bitmap; the
+bitmap cannot be closed and expires when its owning font closes. Missing glyphs
+return `ErrFontGlyph`. Rectangle dimensions and maximum widths must be positive.
+Fonts remain package-backed: load `.fnt` resources with `LoadFont`; native font
+creation from opaque game-owned data is intentionally omitted because the
+official API does not define a portable lifetime for Go-owned bytes.
+
 Keep game UI as state plus a deterministic draw plan: measure strings, derive
 coordinates, then execute `DrawTextFont` commands. HUD, pause, and game-over
 screens do not require a generic widget tree, focus model, event router, or

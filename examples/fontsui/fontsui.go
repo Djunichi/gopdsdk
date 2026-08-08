@@ -1,4 +1,4 @@
-// Package fontsui is the P2.5 custom-font and deterministic game-UI acceptance scene.
+// Package fontsui is the P7.3 text-layout, font-metrics, and deterministic UI acceptance scene.
 package fontsui
 
 import (
@@ -44,7 +44,7 @@ func LayoutPlan(state State, font TextMeasurer) ([]TextCommand, error) {
 		return nil, err
 	}
 	score := "SCORE " + strconv.Itoa(state.Score)
-	result := []TextCommand{{Text: "P2.5 FONTS + UI", X: 12, Y: 10}, {Text: score, X: 12, Y: 10 + height + 4}}
+	result := []TextCommand{{Text: "P7.3 TEXT + FONTS", X: 12, Y: 10}, {Text: score, X: 12, Y: 10 + height + 4}}
 
 	var title, hint string
 	switch state.Phase {
@@ -68,12 +68,14 @@ func LayoutPlan(state State, font TextMeasurer) ([]TextCommand, error) {
 }
 
 type game struct {
-	state     State
-	font      playdate.Font
-	fontError error
+	state        State
+	font         playdate.Font
+	fontError    error
+	textHeight   int
+	glyphAdvance int
 }
 
-// New creates the P2.5 acceptance game.
+// New creates the P7.3 acceptance game.
 func New() playdate.Game { return &game{} }
 
 func (g *game) Init(context playdate.Context) error {
@@ -88,6 +90,27 @@ func (g *game) Init(context playdate.Context) error {
 		return nil
 	}
 	g.font = font
+	text, ok := context.(playdate.TextGraphics)
+	if !ok {
+		_ = g.font.Close()
+		g.font = nil
+		return errors.New("text graphics are unavailable")
+	}
+	text.SetTextTracking(1)
+	text.SetTextLeading(2)
+	g.textHeight, err = text.TextHeight(font, "WRAPPED TEXT ACCEPTANCE", 120, playdate.TextWrapWord, text.TextTracking(), 2)
+	if err != nil {
+		_ = g.font.Close()
+		g.font = nil
+		return err
+	}
+	glyph, err := text.Glyph(font, 'A', 'V')
+	if err != nil {
+		_ = g.font.Close()
+		g.font = nil
+		return err
+	}
+	g.glyphAdvance = glyph.Advance
 	g.state = State{Phase: Playing}
 	return nil
 }
@@ -118,6 +141,10 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 		if err := graphics.DrawTextFont(g.font, command.Text, command.X, command.Y); err != nil {
 			return false, err
 		}
+	}
+	text := context.(playdate.TextGraphics)
+	if err := text.DrawTextInRect("WRAPPED TEXT ACCEPTANCE", 258, 164, 130, g.textHeight, playdate.TextWrapWord, playdate.TextAlignCenter); err != nil {
+		return false, err
 	}
 	return true, nil
 }

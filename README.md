@@ -368,6 +368,12 @@ physical Playdate. The accepted device artifact uses 275,580 bytes of static
 RAM and produces an 872,964-byte ELF and a 38,768-byte PDX. Extended soak,
 memory-growth measurement, and post-run device-log inspection remain pending.
 
+For complete text layout and custom renderers, assert `playdate.TextGraphics`.
+It adds bounded aligned text, character and word wrapping, tracking, leading,
+wrapping-height measurement, and font-owned borrowed glyph bitmaps with advance
+and kerning metrics. Packaged `.fnt` resources remain the portable offline font
+source on both Simulator and device.
+
 The public package remains a single `playdate` import but is organized by
 domain (`application`, `lifecycle`, `input`, `graphics`, `bitmap`, `audio`, and
 `errors`). `playdate.Context` composes narrower capabilities so application
@@ -429,23 +435,29 @@ that base slice.
 
 ## Fonts and game UI
 
-`examples/fontsui` loads `resources/fonts/gopdsdk-ui.fnt` as `fonts/gopdsdk-ui`, draws
-all UI text with that selected font, and centers overlays from native text
-measurements. Its pure `LayoutPlan` produces stable HUD, score, pause, and
-game-over commands; A increments score or restarts after game over, B ends the
-run, and lifecycle pause/resume selects the pause screen. The owned font is
-closed on termination.
+`examples/fontsui` is the complete P7.3 acceptance scene. It loads
+`resources/fonts/gopdsdk-ui.fnt` as `fonts/gopdsdk-ui`, configures tracking and
+leading, measures wrapped height, reads glyph advance and pair kerning, and
+draws centered word-wrapped text inside a bounded rectangle. Its pure
+`LayoutPlan` produces stable HUD, score, pause, and game-over commands; A
+increments score or restarts after game over, B ends the run, and lifecycle
+pause/resume selects the pause screen. Glyph bitmaps borrow the font lifetime,
+and the owned font is closed on termination.
 
 Run the same example on either target with:
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/fontsui
-go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/fontsui
+go run ./cmd/gopdsdk run device --memory conservative --install --sdk /path/to/PlaydateSDK ./examples/fontsui
 ```
 
-The API and adapters are unit-tested. Windows Simulator and physical-device
-visual acceptance passed with matching custom-font HUD, score, pause,
-game-over, and restart screens. A longer device memory soak remains unverified.
+On 2026-08-08 deterministic tests, Windows SDK 3.1.1 Simulator visual
+acceptance, and physical-device installation, launch, and visual acceptance
+passed with bounded wrapping, matching custom-font HUD, score, pause,
+game-over, and restart screens. The conservative hard-float artifact uses
+278,688 bytes of static RAM and produces an 826,340-byte ELF and a 41,203-byte
+PDX. Device soak, memory-growth measurement, and post-run log inspection remain
+unverified.
 
 ## Drawing primitives and state
 

@@ -157,3 +157,41 @@ type FontGraphics interface {
 	LoadFont(path string) (Font, error)
 	DrawTextFont(font Font, text string, x, y int) error
 }
+
+// TextWrappingMode controls how text exceeding a rectangle or maximum width is handled.
+type TextWrappingMode uint8
+
+const (
+	TextWrapClip TextWrappingMode = iota
+	TextWrapCharacter
+	TextWrapWord
+)
+
+// TextAlignment controls horizontal placement within a text rectangle.
+type TextAlignment uint8
+
+const (
+	TextAlignLeft TextAlignment = iota
+	TextAlignCenter
+	TextAlignRight
+)
+
+// FontGlyph describes one glyph lookup. Bitmap is borrowed from the font and
+// remains valid only while the font remains open.
+type FontGlyph struct {
+	Bitmap  Bitmap
+	Advance int
+	Kerning int
+}
+
+// TextGraphics is the optional complete text-layout and font-metrics slice.
+// Glyph returns metrics for codepoint and its following codepoint; pass zero
+// for next when kerning is not required.
+type TextGraphics interface {
+	SetTextTracking(tracking int)
+	TextTracking() int
+	SetTextLeading(leading int)
+	DrawTextInRect(text string, x, y, width, height int, wrapping TextWrappingMode, alignment TextAlignment) error
+	TextHeight(font Font, text string, maxWidth int, wrapping TextWrappingMode, tracking, leading int) (int, error)
+	Glyph(font Font, codepoint, next rune) (FontGlyph, error)
+}

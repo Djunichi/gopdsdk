@@ -38,6 +38,23 @@ func TestFontHandleRejectsForeignFont(t *testing.T) {
 	}
 }
 
+func TestBorrowedGlyphBitmapExpiresWithFont(t *testing.T) {
+	owner := NewOwnedFont(17, FontDriver{Free: func(uintptr) {}})
+	bitmap, err := NewBorrowedFontBitmap(owner, 23, BitmapDriver{Dimensions: func(uintptr) (int, int) { return 5, 7 }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if width, widthErr := bitmap.Width(); widthErr != nil || width != 5 {
+		t.Fatalf("Width = %d, %v", width, widthErr)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bitmap.Width(); !errors.Is(err, playdate.ErrBitmapClosed) {
+		t.Fatalf("expired Width error = %v", err)
+	}
+}
+
 type foreignFont struct{}
 
 func (foreignFont) TextWidth(string) (int, error) { return 0, nil }

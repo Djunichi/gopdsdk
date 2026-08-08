@@ -14,9 +14,11 @@ func (*font) Height() (int, error)               { return 8, nil }
 func (f *font) Close() error                     { f.closed++; return nil }
 
 type context struct {
-	input playdate.Input
-	font  *font
-	drawn []TextCommand
+	input             playdate.Input
+	font              *font
+	drawn             []TextCommand
+	tracking, leading int
+	rectangles        int
 }
 
 func (*context) Clear()                    {}
@@ -31,6 +33,19 @@ func (c *context) LoadFont(path string) (playdate.Font, error) {
 func (c *context) DrawTextFont(_ playdate.Font, text string, x, y int) error {
 	c.drawn = append(c.drawn, TextCommand{text, x, y})
 	return nil
+}
+func (c *context) SetTextTracking(value int) { c.tracking = value }
+func (c *context) TextTracking() int         { return c.tracking }
+func (c *context) SetTextLeading(value int)  { c.leading = value }
+func (c *context) DrawTextInRect(string, int, int, int, int, playdate.TextWrappingMode, playdate.TextAlignment) error {
+	c.rectangles++
+	return nil
+}
+func (*context) TextHeight(playdate.Font, string, int, playdate.TextWrappingMode, int, int) (int, error) {
+	return 24, nil
+}
+func (*context) Glyph(playdate.Font, rune, rune) (playdate.FontGlyph, error) {
+	return playdate.FontGlyph{Advance: 7, Kerning: -1}, nil
 }
 func (*context) LoadBitmap(string) (playdate.Bitmap, error)                         { return nil, nil }
 func (*context) LoadBitmapTable(string) (playdate.BitmapTable, error)               { return nil, nil }
@@ -55,6 +70,9 @@ func TestLayoutPlanUsesFontMetrics(t *testing.T) {
 	if plan[1] != (TextCommand{"SCORE 42", 12, 22}) || plan[2] != (TextCommand{"GAME OVER", 164, 104}) || plan[3] != (TextCommand{"A:RESTART", 164, 120}) {
 		t.Fatalf("plan = %#v", plan)
 	}
+	if plan[0].Text != "P7.3 TEXT + FONTS" {
+		t.Fatalf("acceptance title = %q", plan[0].Text)
+	}
 }
 
 func TestHUDPauseGameOverAndRestartFlow(t *testing.T) {
@@ -63,9 +81,15 @@ func TestHUDPauseGameOverAndRestartFlow(t *testing.T) {
 	if err := g.Init(c); err != nil {
 		t.Fatal(err)
 	}
+	if c.tracking != 1 || c.leading != 2 || g.textHeight != 24 || g.glyphAdvance != 7 {
+		t.Fatalf("text metrics: tracking=%d leading=%d height=%d advance=%d", c.tracking, c.leading, g.textHeight, g.glyphAdvance)
+	}
 	c.input.Pressed = playdate.ButtonA
 	if _, err := g.Update(c); err != nil || g.state.Score != 1 {
 		t.Fatalf("score: %+v %v", g.state, err)
+	}
+	if c.rectangles != 1 {
+		t.Fatalf("bounded text draws = %d", c.rectangles)
 	}
 	if err := g.HandleLifecycle(c, playdate.LifecyclePause); err != nil || g.state.Phase != Paused {
 		t.Fatalf("pause: %+v %v", g.state, err)
