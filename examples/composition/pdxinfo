@@ -1,0 +1,6 @@
+name=P6.1 Composition Acceptance
+author=gopdsdk
+description=Rotated bitmap and callback-scoped stencil acceptance
+bundleID=dev.gopdsdk.composition
+version=1.0.0
+buildNumber=1

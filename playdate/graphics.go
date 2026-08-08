@@ -104,6 +104,15 @@ type OffscreenGraphics interface {
 	DrawInto(bitmap Bitmap, callback func() error) error
 }
 
+// BitmapCompositor is the optional transformed and stencil-clipped bitmap
+// composition slice. WithStencil keeps the stencil borrowed only for the
+// callback and restores drawing without a stencil even when callback fails.
+// Stencil callbacks cannot be nested.
+type BitmapCompositor interface {
+	DrawRotatedBitmap(bitmap Bitmap, x, y int, degrees, centerX, centerY, scaleX, scaleY float32) error
+	WithStencil(stencil Bitmap, tiled bool, callback func() error) error
+}
+
 // Graphics exposes Playdate drawing and bitmap creation services.
 type Graphics interface {
 	Clear()

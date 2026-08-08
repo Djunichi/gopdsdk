@@ -1,12 +1,13 @@
 # Product roadmap
 
-Status: `v0.5.0` release candidate preparation, updated 2026-08-03.
+Status: `v0.5.0` released; P6 planning, updated 2026-08-08.
 
-This document is the canonical high-level roadmap from the released `v0.3.0`
-baseline to `v1.0.0`. The detailed P0, P1, and P2 documents retain their
-historical plans, decisions, and evidence. Completing a scope means its product
-boundary is implemented; Simulator, SDK integration, and physical-device
-claims still require the evidence named in `COMPATIBILITY.md`.
+This is the only planning document under `docs/` and the canonical roadmap from
+the released foundation to `v1.0.0`. Completed-scope evidence lives in
+`COMPATIBILITY.md`; public contracts live in `API.md`; current implementation
+rules live in `AGENTS.md`. Completing a scope means its product boundary is
+implemented; Simulator, SDK integration, and physical-device claims still
+require the evidence named in `COMPATIBILITY.md`.
 
 ## Product destination
 
@@ -47,7 +48,7 @@ cross-build does not promote a capability to device-ready.
 | P2 | `v0.2.0` | API guard, sprites, collisions, animation, base audio, fonts/UI | Released; evidence limits documented |
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Released |
-| P5 | `v0.5.0` | Advanced audio and music | Release candidate; P5.1-P5.5 device-accepted |
+| P5 | `v0.5.0` | Advanced audio and music | Released; evidence limits documented |
 | P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
 
@@ -507,7 +508,7 @@ growth, and crashlog inspection remain unverified.
   measurement, lifecycle stress, post-run crashlog inspection, and macOS/Linux
   SDK integration remain unverified.
 
-### P5.6 — `v0.5.0` release candidate preparation
+### P5.6 — `v0.5.0` release — complete
 
 - Freeze and review the P5 public API snapshot, migration notes, compatibility
   evidence, changelog, and release procedure.
@@ -521,20 +522,122 @@ growth, and crashlog inspection remain unverified.
 
 ## P6 — advanced graphics, media, and performance
 
-- Masks, stencils, transforms, drawing contexts, and display controls selected
-  by real consumers.
-- Advanced sprite redraw and dirty-region behavior.
-- Video and other specialized media as independent optional slices.
-- Frame-time, heap, native-resource, and artifact-size diagnostics that work for
-  an external game rather than only repository fixtures.
-- Hardware acceptance for at least one external software renderer with no
-  frame-loop allocation: a representative raycaster, wireframe, or bounded
-  polygon experiment with explicit frame-time and memory budgets.
+P6 removes the remaining rendering-class limitations. Its API is selected by
+two small consumers: an in-repository 2D composition scene and a first-party
+software renderer maintained as a separate Go module. The external module must
+use a published gopdsdk version, public API only, and no local `replace` for its
+release acceptance. This boundary proves the same module workflow available to
+a game and prevents acceptance from depending on repository internals.
+
+The renderer is evidence, not a gopdsdk engine package. Projection, clipping,
+rasterization, depth handling, and texture mapping remain consumer algorithms.
+The renderer may become a reusable package only after two real games justify a
+shared contract.
+
+### P6.0 — released baseline and capability audit
+
+- Re-run the released `v0.5.0` unit, vet, native CI, external-consumer CLI, SDK
+  integration, Simulator, device-build, and applicable physical-device gates.
+- Record accepted frame-time, heap, static-RAM, native-resource, ELF, and PDX
+  budgets before expanding the graphics surface.
+- Map each official SDK subsystem to `covered`, `P6`, `P7 if required`,
+  `post-1.0`, or `intentionally omitted`; do not treat symbol coverage as a
+  readiness claim.
+- Select the smallest 2D composition scene and external software-renderer
+  fixture that expose real missing capabilities.
+
+### P6.1 — bitmap composition and graphics state — implemented and device-accepted
+
+- Add masks, tiled stencils, bitmap transforms, and drawing-context behavior
+  required by the composition consumer.
+- Preserve explicit bitmap ownership and restore drawing state on success and
+  failure without a global scene or resource manager.
+- Add only consumer-required text layout, polygon, pixel, or bitmap-copy
+  operations discovered by the capability audit.
+
+The first P6.1 vertical slice exposes optional callback-scoped stencils and
+rotated/scaled bitmap drawing through `BitmapCompositor`. Nested stencil scopes,
+non-finite transforms, invalid scales, closed or foreign bitmaps, and invalid
+tiled widths are rejected before native calls. `examples/composition` owns and
+cleans up its source, screen stencil, and transparent composition canvas. Unit
+tests and generated ABI tests pass. Official Windows SDK 3.1.1 Simulator visual
+acceptance passed after an equivalent official Lua diagnostic proved that
+direct rotated drawing through an active stencil disappears at non-cardinal
+angles. The accepted workaround rotates into the transparent canvas before a
+normal stencil-clipped draw. Conservative hard-float build, USB deployment on
+COM3, launch, and matching physical Playdate interaction passed on 2026-08-08.
+The artifact used 275,312 bytes of static RAM and produced a 36,970-byte PDX.
+Performance measurement, memory growth, soak, and post-run device-log inspection
+remain unverified.
+
+### P6.2 — display and sprite redraw
+
+- Add display controls and advanced sprite dirty-region/redraw behavior needed
+  by the selected consumers.
+- Measure full redraw against dirty-region redraw in Simulator and on hardware;
+  do not infer performance from API discovery or build success.
+- Keep custom native draw/update callbacks out of the public contract unless
+  bounded callback execution and lifecycle cleanup are proven on both ABIs.
+
+### P6.3 — specialized media
+
+- Treat video as an independent optional capability with explicit ownership,
+  cleanup, error behavior, and focused acceptance.
+- Do not make video or another specialized media family a `v0.6.0` gate unless
+  a real consumer requires it to remove a rendering-class limitation.
+
+### P6.4 — external-game diagnostics
+
+- Report frame-time maxima and distribution, heap and memory growth,
+  native-resource counts, static RAM, ELF size, and packaged PDX size for an
+  external module rather than only repository examples.
+- Keep measurements bounded and usable on the sequential TinyGo device profile;
+  distinguish unit, native CI, SDK integration, Simulator, and device evidence.
+
+### P6.5 — software-renderer proof
+
+- Maintain a representative raycaster, wireframe, or bounded polygon renderer
+  as a first-party external module using public API only.
+- Require a steady-state frame loop with no allocation, explicit frame-time and
+  memory budgets, conservative hard-float build, Simulator interaction, and
+  physical-device acceptance.
+- Keep the renderer outside gopdsdk and repeat it as a regression consumer; it
+  proves primitive sufficiency rather than a general 3D-engine promise.
+
+### P6.6 — `v0.6.0` release
+
+- Freeze and review the P6 API snapshot, compatibility evidence, migration
+  notes, changelog, diagnostics, and consumer contracts.
+- Run native CI and external-consumer CLI acceptance on Windows, macOS, and
+  Linux, plus every SDK, Simulator, device-build, and physical-device gate
+  claimed by the compatibility matrix.
+- Verify the composition scene and renderer against the published module
+  without a local `replace` after tagging.
 
 P6 expands what games can render; it does not promise a GPU, a general 3D
-engine, or performance beyond Playdate hardware limits. Passing the renderer
-fixture proves that gopdsdk exposes the required primitives; the renderer stays
-consumer code unless two real games justify a reusable package.
+engine, complete symbol parity with the official SDK, or performance beyond
+Playdate hardware limits.
+
+## Official SDK surface beyond P6
+
+`v1.0.0` requires a commercially realistic offline game, not a mechanical
+wrapper for every official C function. The P6.0 audit owns the exact inventory;
+the expected policy is:
+
+| Official surface | Expected disposition after P6 |
+| --- | --- |
+| Graphics and sprites | Bind consumer-required composition, redraw, display, and media slices; leave rare glyph/page, debug-buffer, bulk-query, userdata, and callback variants until justified. |
+| System | Add launch arguments, restart, menu image, date/time, auto-lock, crank-sound, or system-info operations only when the production consumer requires them. |
+| Sound | Audit one-pole filtering, headphone/headset state, output routing, default-channel access, and custom callback sources; custom callbacks require bounded device proof. |
+| Scoreboards | Retain current bounded API; live configured-service acceptance remains evidence work. |
+| JSON | Prefer a device-safe Go codec when one is proven; do not duplicate the C JSON API solely for symbol parity. |
+| Lua | Intentionally omitted from the independent Go runtime contract. |
+| HTTP and TCP | Post-1.0 feasibility work; not an offline `v1.0.0` gate. |
+| Simulator-only debug API | Add only for a concrete diagnostic consumer and label it Simulator-only. |
+
+An omitted function becomes a P6 or P7 requirement when the external renderer
+or production game cannot meet its acceptance contract without it. Otherwise
+it remains an explicit non-goal rather than an accidental readiness claim.
 
 ## P7 — production hardening and `v1.0.0`
 
@@ -556,6 +659,11 @@ P7 proves the combined SDK rather than adding broad speculative API.
   3D a requirement for the final external game's design.
 - Freeze the reviewed public contract and publish migration and compatibility
   policy for the `v1.x` line.
+
+P7 may add a narrow official-SDK slice exposed by the production game, but it
+must not become a late full-binding milestone. `v1.0.0` can claim only the host
+and target evidence actually run; macOS or Linux SDK, Simulator, USB, and device
+support remain unverified unless those native gates are performed there.
 
 ## Post-1.0 theory — networking and multiplayer
 

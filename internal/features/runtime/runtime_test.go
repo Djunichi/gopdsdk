@@ -76,7 +76,7 @@ func (context *launcherContext) ExitToLauncher() { context.exited = true }
 
 type graphicsCapabilityContext struct {
 	testContext
-	draws, framebuffers, offscreen int
+	draws, framebuffers, offscreen, transformed, stencils int
 }
 
 func (c *graphicsCapabilityContext) DrawLine(int, int, int, int, int, playdate.Paint) error {
@@ -109,6 +109,14 @@ func (c *graphicsCapabilityContext) DrawInto(_ playdate.Bitmap, callback func() 
 	c.offscreen++
 	return callback()
 }
+func (c *graphicsCapabilityContext) DrawRotatedBitmap(playdate.Bitmap, int, int, float32, float32, float32, float32, float32) error {
+	c.transformed++
+	return nil
+}
+func (c *graphicsCapabilityContext) WithStencil(_ playdate.Bitmap, _ bool, callback func() error) error {
+	c.stencils++
+	return callback()
+}
 
 type graphicsCapabilityGame struct{}
 
@@ -125,6 +133,9 @@ func (graphicsCapabilityGame) Init(context playdate.Context) error {
 	if _, ok := context.(playdate.OffscreenGraphics); !ok {
 		return playdate.ErrGraphicsUnavailable
 	}
+	if _, ok := context.(playdate.BitmapCompositor); !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
 	return nil
 }
 func (graphicsCapabilityGame) Update(context playdate.Context) (bool, error) {
@@ -133,6 +144,17 @@ func (graphicsCapabilityGame) Update(context playdate.Context) (bool, error) {
 		return false, err
 	}
 	if err := context.(playdate.FramebufferGraphics).WithFramebuffer(func(playdate.Framebuffer) error { return nil }); err != nil {
+		return false, err
+	}
+	if err := context.(playdate.BitmapCompositor).DrawRotatedBitmap(nil, 10, 20, 45, .5, .5, 1, 1); err != nil {
+		return false, err
+	}
+	if err := context.(playdate.BitmapCompositor).WithStencil(nil, false, func() error {
+		return context.(playdate.BitmapCompositor).WithStencil(nil, false, func() error { return nil })
+	}); !errors.Is(err, playdate.ErrGraphicsStencilActive) {
+		return false, err
+	}
+	if err := context.(playdate.BitmapCompositor).WithStencil(nil, false, func() error { return nil }); err != nil {
 		return false, err
 	}
 	return true, context.(playdate.OffscreenGraphics).DrawInto(nil, func() error { return nil })
@@ -155,6 +177,9 @@ func TestApplicationForwardsOptionalGraphicsCapabilities(t *testing.T) {
 	}
 	if context.framebuffers != 1 || context.offscreen != 1 {
 		t.Fatalf("framebuffers/offscreen = %d/%d", context.framebuffers, context.offscreen)
+	}
+	if context.transformed != 1 || context.stencils != 2 {
+		t.Fatalf("transformed/stencils = %d/%d", context.transformed, context.stencils)
 	}
 }
 
@@ -768,6 +793,17 @@ func TestBitmapArgumentValidation(t *testing.T) {
 	}
 	if err := ValidateBitmapScale(1, *(*float32)(unsafe.Pointer(&[]uint32{0x7fc00000}[0]))); !errors.Is(err, playdate.ErrBitmapScale) {
 		t.Fatalf("NaN scale error = %v", err)
+	}
+	if err := ValidateBitmapTransform(*(*float32)(unsafe.Pointer(&[]uint32{0x7f800000}[0])), .5, .5, 1, 1); !errors.Is(err, playdate.ErrGraphicsGeometry) {
+		t.Fatalf("infinite rotation error = %v", err)
+	}
+	narrow := NewOwnedBitmap(7, BitmapDriver{Dimensions: func(uintptr) (int, int) { return 31, 8 }})
+	if _, err := ValidateStencil(narrow, true); !errors.Is(err, playdate.ErrGraphicsStencilWidth) {
+		t.Fatalf("tiled stencil width error = %v", err)
+	}
+	wide := NewOwnedBitmap(8, BitmapDriver{Dimensions: func(uintptr) (int, int) { return 32, 8 }})
+	if handle, err := ValidateStencil(wide, true); err != nil || handle != 8 {
+		t.Fatalf("valid tiled stencil = %d, %v", handle, err)
 	}
 }
 

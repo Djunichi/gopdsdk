@@ -1197,6 +1197,39 @@ func ValidateBitmapScale(scaleX, scaleY float32) error {
 	return nil
 }
 
+// ValidateBitmapTransform applies the shared rotated-bitmap contract.
+func ValidateBitmapTransform(degrees, centerX, centerY, scaleX, scaleY float32) error {
+	if err := ValidateBitmapScale(scaleX, scaleY); err != nil {
+		return err
+	}
+	const maxFloat32 = 3.4028235e38
+	if degrees != degrees || degrees > maxFloat32 || degrees < -maxFloat32 ||
+		centerX != centerX || centerX > maxFloat32 || centerX < -maxFloat32 ||
+		centerY != centerY || centerY > maxFloat32 || centerY < -maxFloat32 {
+		return playdate.ErrGraphicsGeometry
+	}
+	return nil
+}
+
+// ValidateStencil checks the shared tiled-stencil constraint and extracts its handle.
+func ValidateStencil(stencil playdate.Bitmap, tiled bool) (uintptr, error) {
+	handle, err := BitmapHandle(stencil)
+	if err != nil {
+		return 0, err
+	}
+	if !tiled {
+		return handle, nil
+	}
+	width, err := stencil.Width()
+	if err != nil {
+		return 0, err
+	}
+	if width%32 != 0 {
+		return 0, playdate.ErrGraphicsStencilWidth
+	}
+	return handle, nil
+}
+
 // RawInput contains one platform input sample. Both platform adapters provide
 // this same representation before the runtime derives frame transitions.
 type RawInput struct {
@@ -1236,6 +1269,7 @@ type applicationContext struct {
 	menuItems            []playdate.MenuItem
 	microphoneRecorder   playdate.MicrophoneRecorder
 	accelerometerEnabled bool
+	stencilActive        bool
 	terminated           bool
 }
 
@@ -1781,6 +1815,31 @@ func (context *applicationContext) DrawInto(bitmap playdate.Bitmap, callback fun
 		return playdate.ErrGraphicsUnavailable
 	}
 	return graphics.DrawInto(bitmap, callback)
+}
+
+func (context *applicationContext) DrawRotatedBitmap(bitmap playdate.Bitmap, x, y int, degrees, centerX, centerY, scaleX, scaleY float32) error {
+	graphics, ok := context.Context.(playdate.BitmapCompositor)
+	if !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	return graphics.DrawRotatedBitmap(bitmap, x, y, degrees, centerX, centerY, scaleX, scaleY)
+}
+
+func (context *applicationContext) WithStencil(stencil playdate.Bitmap, tiled bool, callback func() error) error {
+	if callback == nil {
+		return playdate.ErrGraphicsStencilCallback
+	}
+	if context.stencilActive {
+		return playdate.ErrGraphicsStencilActive
+	}
+	graphics, ok := context.Context.(playdate.BitmapCompositor)
+	if !ok {
+		return playdate.ErrGraphicsUnavailable
+	}
+	context.stencilActive = true
+	err := graphics.WithStencil(stencil, tiled, callback)
+	context.stencilActive = false
+	return err
 }
 
 // NewApplication composes a public game with its platform context. beforeInit

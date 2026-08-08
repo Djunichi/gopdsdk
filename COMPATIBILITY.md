@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The `v0.5.0` release candidate retains the exact toolchain profile accepted by
+The released `v0.5.0` retains the exact toolchain profile accepted by
 the published `v0.4.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
@@ -172,6 +172,21 @@ physical hardware work on that host. Docker does not promote those levels.
   bytes of static RAM and produced a 50,601-byte PDX. Denial/revocation,
   long-run overflow and memory measurement, lifecycle stress, and post-run
   crashlog inspection remain unverified.
+- P6.1 implemented at unit and generated-ABI level: optional transformed bitmap
+  drawing and callback-scoped stencil composition validate finite transforms,
+  positive scales, live runtime bitmap handles, nested sections, and the
+  official tiled-width constraint. `examples/composition` deterministically
+  covers owned source, screen-aligned stencil and transparent canvas creation,
+  two transformed draws, scoped clipping, and termination cleanup.
+  A matching official Lua diagnostic reproduced SDK 3.1.1 drawing a bitmap
+  directly through a stencil only at cardinal rotation angles. The accepted Go
+  consumer therefore pre-renders rotation into a transparent offscreen canvas
+  before applying the screen stencil. On 2026-08-08 this path passed official
+  Windows Simulator visual interaction, conservative hard-float build, USB
+  deployment through COM3, launch, and matching physical Playdate interaction.
+  The artifact used 275,312 bytes of static RAM and produced a 36,970-byte PDX.
+  Performance, memory-growth, soak, and post-run device-log evidence remain
+  unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

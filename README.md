@@ -3,8 +3,8 @@
 An independent Go SDK and toolchain for building Playdate applications.
 
 The **P0 foundation and P1 through P5 scopes are implemented**. `v0.5.0` is the
-current release candidate; `v0.4.0` remains the latest published release until
-the candidate gates, tag, and post-tag module-proxy check complete. The public
+latest published release, and P6 advanced graphics, media, and performance work
+is planned next. The public
 API is snapshot-tested and documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
@@ -772,6 +772,35 @@ native FIFO on update frames. The accepted hard-float artifact uses 282,824
 bytes of static RAM and produces a 50,601-byte PDX. Denial/revocation,
 long-run overflow/memory measurement, lifecycle stress, post-run crashlog
 inspection, and macOS/Linux SDK integration remain unverified.
+
+## P6.1 bitmap composition
+
+Games capability-assert `BitmapCompositor` for rotated/scaled bitmap drawing
+and callback-scoped stencils. Transforms reject non-finite values and
+non-positive scales. `WithStencil` borrows a live bitmap only until its callback
+returns, clears the native stencil on callback errors, rejects nesting, and
+requires tiled stencil widths to be multiples of 32 pixels.
+
+`examples/composition` builds an owned 64×64 source and a screen-aligned 400×240
+stencil bitmap through `OffscreenGraphics`. Stencils use framebuffer
+coordinates, so the mask is positioned around the right-hand draw target. SDK
+3.1.1 rendered a direct stencil-plus-rotation path only at cardinal angles in
+both the Go scene and an equivalent official Lua diagnostic. The accepted
+portable path rotates into a transparent 400×240 offscreen canvas, then draws
+that canvas through the screen stencil.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/composition
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/composition
+```
+
+The portable contract and generated Simulator/device bridge paths are
+unit-tested. Official Windows SDK 3.1.1 Simulator compilation and conservative
+hard-float device build pass. Visual interaction passed in the Simulator and on
+a physical Playdate after USB deployment through COM3 on 2026-08-08. The
+accepted device build used 275,312 bytes of static RAM and produced a
+36,970-byte PDX. Performance measurement, memory growth, soak, and post-run
+device-log inspection remain unverified.
 
 ## Development and CI
 

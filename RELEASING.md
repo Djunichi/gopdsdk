@@ -1,34 +1,35 @@
 # Release procedure
 
-The current candidate is `v0.5.0`, covering P5 on top of published `v0.4.0`.
-Go module versions come from Git tags; no separate VERSION file is maintained.
+The latest published release is `v0.5.0`, covering P5. The next planned release
+is `v0.6.0` for P6, but it does not become a candidate until its scoped
+implementation and evidence gates are complete. Go module versions come from
+Git tags; no separate VERSION file is maintained.
 
 ## Candidate gates
 
-1. Confirm the worktree contains only reviewed release changes and that no
-   local or remote `v0.5.0` tag already exists.
+1. Select the intended version, confirm the worktree contains only reviewed
+   release changes, and confirm no local or remote tag for that version exists.
 2. Run formatting, `go test ./...`, `go vet ./...`, `git diff --check`, and
    `gopdsdk doctor` with workspace-local Go caches.
 3. Observe green native CI on Windows, macOS, and Linux, including the external
    consumer and Linux race detector.
-4. On the accepted Windows profile, run `doctor --probe`, then build and launch
-   the P5 audio and microphone consumers in the official Simulator.
-5. Build both consumers for conservative hard-float device, install through
-   USB, and repeat sample/file playback, completion/fade, routing, synth,
-   sequence/effect, microphone permission, stop/start, WAV save, and audible PCM
-   playback acceptance. Record skipped denial/revocation scenarios explicitly.
+4. On every host advertised at SDK-integration level, run `doctor --probe`, then
+   build and launch the release's focused consumers in the official Simulator.
+5. Build the focused consumers for conservative hard-float device, install
+   through USB, and run the release-specific physical acceptance matrix.
+   Record every skipped interaction explicitly.
 6. Run the required physical regression soak and memory-growth checks. Inspect
    post-run crashlogs only when explicitly requested for that release run.
 7. Review [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md),
    [MIGRATING.md](MIGRATING.md), README commands, public Go documentation, and
    [CHANGELOG.md](CHANGELOG.md). Confirm the API snapshot contains only intended
-   P5 additions and no readiness claim exceeds its evidence.
+   additions and no readiness claim exceeds its evidence.
 
 ## Version and consumer check
 
-Before the tag exists, acceptance uses `require ... v0.5.0` with a local
-`replace` to the candidate checkout. After publication, verify from a clean
-directory without a `replace`:
+Before a tag exists, acceptance uses the intended version with a local `replace`
+to the candidate checkout. After publication, verify from a clean directory
+without a `replace`. For the current release that check is:
 
 ```sh
 go mod init example.com/release-check

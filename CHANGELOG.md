@@ -4,7 +4,31 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## Unreleased - v0.5.0
+## Unreleased
+
+### Added
+
+- Optional `playdate.BitmapCompositor` transformed-bitmap and callback-scoped
+  stencil composition, forwarded through `NewApplication` and both native ABI
+  contexts.
+- Shared finite-transform, positive-scale, live-bitmap, nested-stencil, and
+  tiled-stencil-width validation before native calls.
+- A deterministic `examples/composition` P6.1 scene with owned offscreen source
+  and screen-aligned stencil bitmaps, a transparent composition canvas,
+  crank-controlled rotation, and termination cleanup.
+
+### Compatibility
+
+- P6.1 unit and generated-ABI tests pass. An equivalent official Lua diagnostic
+  reproduced SDK 3.1.1 direct rotated draws disappearing through a stencil at
+  non-cardinal angles, so the accepted path rotates into a transparent canvas
+  before the stencil-clipped draw. Official Windows Simulator visual interaction
+  and conservative hard-float build, USB deployment, launch, and physical
+  Playdate interaction pass. The device artifact uses 275,312 bytes of static
+  RAM and produces a 36,970-byte PDX; performance, memory-growth, soak, and
+  device-log evidence remain unverified.
+
+## v0.5.0 (2026-08-03)
 
 ### Added
 
