@@ -1,0 +1,8 @@
+{
+  "inherits": ["cortex-m7"],
+  "llvm-target": "thumbv7em-unknown-unknown-eabihf",
+  "relocation-model": "pic",
+  "build-tags": ["qemu"],
+  "serial": "none",
+  "cflags": ["-mfloat-abi=hard", "-mfpu=fpv5-sp-d16"]
+}

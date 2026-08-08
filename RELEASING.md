@@ -19,7 +19,8 @@ Git tags; no separate VERSION file is maintained.
    through USB, and run the release-specific physical acceptance matrix.
    Record every skipped interaction explicitly.
 6. Run the required physical regression soak and memory-growth checks. Inspect
-   post-run crashlogs only when explicitly requested for that release run.
+   post-run `crashlog.txt` and `errorlog.txt` only when explicitly requested for
+   that release run, and record which files were actually checked.
 7. Review [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md),
    [MIGRATING.md](MIGRATING.md), README commands, public Go documentation, and
    [CHANGELOG.md](CHANGELOG.md). Confirm the API snapshot contains only intended

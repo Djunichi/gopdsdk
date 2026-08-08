@@ -1,13 +1,17 @@
 # Public API
 
-This document describes the public contract proposed for gopdsdk `v0.5.0`.
-The module is still pre-v1: minor releases may make intentional breaking
-changes, which must be called out in release notes. Patch releases preserve the
-documented API and behavior.
+This document describes the current public contract after released `v0.5.0`,
+including implemented P6.1 additions intended for `v0.6.0`. The module is still
+pre-v1: minor releases may make intentional breaking changes, which must be
+called out in release notes. Patch releases preserve the documented API and
+behavior.
 
-Applications import only `github.com/Djunichi/gopdsdk/playdate`. Packages below
-`internal/`, generated runtime bridges, CLI build plans, and example internals
-are not public API.
+Applications import the native contract from
+`github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional
+bounded persistence layer additionally import
+`github.com/Djunichi/gopdsdk/playdate/store`. Packages below `internal/`,
+generated runtime bridges, CLI build plans, and example internals are not
+public API.
 
 ## Application contract
 
@@ -220,6 +224,12 @@ atomic temporary-file replacement, backup recovery, and explicit one-version
 migrations. Serialization and corrupt-save policy remain application-owned.
 Migration failures classify as `store.ErrMigration` and preserve their direct
 cause for `errors.Is`; callers must not parse error strings.
+
+Native capability sentinels remain members of the common `playdate` package and
+are grouped by API area in the source tree. `playdate/store` owns its separate
+error domain because it is a higher-level package rather than a native context
+capability. Source-file placement does not change error identity or import
+paths.
 
 ## System integration
 

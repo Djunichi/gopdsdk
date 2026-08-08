@@ -1,6 +1,7 @@
 # Product roadmap
 
-Status: `v0.5.0` released; P6 planning, updated 2026-08-08.
+Status: `v0.5.0` released; P6 in progress with P6.1 implemented, updated
+2026-08-08.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -49,7 +50,7 @@ cross-build does not promote a capability to device-ready.
 | P3 | `v0.3.0` | Production-capable 2D rendering and game worlds | Released; integrated consumer complete, evidence limits documented |
 | P4 | `v0.4.0` | Persistence and Playdate system integration | Released |
 | P5 | `v0.5.0` | Advanced audio and music | Released; evidence limits documented |
-| P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | Planned |
+| P6 | `v0.6.0` | Advanced graphics, media, and performance facilities | In progress; P6.1 implemented and accepted on Windows |
 | P7 | `v1.0.0` | Production hardening through a real external game | Planned |
 
 ## Capability milestones
@@ -306,7 +307,7 @@ Windows SDK 3.1.1 Simulator execution, the conservative device gate at 268,932
 bytes of static RAM and a 35,674-byte PDX, USB deployment, and physical
 Playdate execution. The menu callbacks changed both settings and the values
 survived a game restart. Extended conservative-GC soak, memory-growth
-measurement, and post-run crashlog inspection remain unverified.
+measurement, and post-run device-log inspection remain unverified.
 
 ### P4.4 — device and system status — implemented
 
@@ -333,7 +334,7 @@ timezone, clock format, reduce-flashing, and `NONE`/`USB` power states. The firs
 device run exposed direct float-return ABI corruption for battery and volume;
 passing their IEEE-754 bits across the TinyGo/C boundary corrected it. `CHARGE`
 and `SCREWS` power states, conservative-GC soak, memory-growth measurement, and
-post-run crashlog inspection remain unverified.
+post-run device-log inspection remain unverified.
 
 ### P4.5 — optional online and debug facilities — implemented, integration unverified
 
@@ -366,7 +367,7 @@ device build used 267,652 bytes of static RAM with a 26,054-byte PDX; USB
 deployment and physical Playdate execution passed. Sending `msg device-hello`
 directly over COM3 reached the native serial callback and displayed
 `device-hello` in the running example. Live Simulator `!msg` delivery,
-conservative-GC soak, memory-growth measurement, and post-run crashlog
+conservative-GC soak, memory-growth measurement, and post-run device-log
 inspection remain unverified.
 
 ### P4.6 — integrated multi-session acceptance game — implemented, physical multi-session gates pending
@@ -389,7 +390,7 @@ cover failed writes, corrupt payloads, migration, reload, and new-run reset.
 Windows Simulator interaction, conservative-GC device build (277,524 bytes
 static RAM), USB installation, and device launch command passed on 2026-08-02.
 Physical cross-restart/update and injected-failure scenarios, soak, memory
-growth, and crashlog inspection remain unverified.
+growth, and device-log inspection remain unverified.
 
 ### P4.7 — `v0.4.0` release — release candidate preparation
 
@@ -415,7 +416,7 @@ growth, and crashlog inspection remain unverified.
   passed audible variable-rate sample and streaming-music interaction in
   Windows Simulator and on a physical Playdate after conservative build, USB
   installation, and launch. macOS/Linux native SDK integration, extended soak,
-  memory-growth measurement, lifecycle stress, and crashlog inspection remain
+  memory-growth measurement, lifecycle stress, and device-log inspection remain
   unverified.
 
 ### P5.2 — timed fades and completion
@@ -430,7 +431,7 @@ growth, and crashlog inspection remain unverified.
   audible sample completion, a half-second streaming fade, completion counters,
   and advancing audio-clock display in Windows Simulator and on a physical
   Playdate after installation and launch through COM3. Extended soak,
-  memory-growth measurement, lifecycle stress, and crashlog inspection remain
+  memory-growth measurement, lifecycle stress, and device-log inspection remain
   unverified.
 
 ### P5.3 — routing, synthesizers, and signals
@@ -450,7 +451,7 @@ growth, and crashlog inspection remain unverified.
   control-signal, transpose, note-off, volume, and pan matrix passed audible
   interaction in Windows Simulator and on a physical Playdate after USB
   installation through COM3 and launch. macOS/Linux SDK integration, extended
-  soak, memory-growth measurement, lifecycle stress, and post-run crashlog
+  soak, memory-growth measurement, lifecycle stress, and post-run device-log
   inspection remain unverified.
 
 ### P5.4 — instruments, sequences, and effects — implemented and physically accepted
@@ -477,7 +478,7 @@ growth, and crashlog inspection remain unverified.
   interaction in Simulator and on a physical Playdate after USB installation
   through COM3. The accepted artifact uses 278,900 bytes of static RAM and
   produces a 168,558-byte PDX. Extended soak, memory-growth measurement,
-  lifecycle stress, post-run crashlog inspection, and macOS/Linux SDK
+  lifecycle stress, post-run device-log inspection, and macOS/Linux SDK
   integration remain unverified.
 
 ### P5.5 — microphone input
@@ -505,7 +506,7 @@ growth, and crashlog inspection remain unverified.
   Device audio input crosses a bounded native FIFO before Go update delivery.
   The accepted hard-float artifact uses 282,824 bytes of static RAM and produces
   a 50,601-byte PDX. Denial/revocation interaction, long-run overflow and memory
-  measurement, lifecycle stress, post-run crashlog inspection, and macOS/Linux
+  measurement, lifecycle stress, post-run device-log inspection, and macOS/Linux
   SDK integration remain unverified.
 
 ### P5.6 — `v0.5.0` release — complete
@@ -515,8 +516,8 @@ growth, and crashlog inspection remain unverified.
 - Run the full Go/vet/diff/doctor gates and observe green Windows/macOS/Linux
   native CI before tagging.
 - Repeat focused Windows Simulator and conservative physical-device audio
-  acceptance, including lifecycle and bounded-memory soak; inspect crashlogs
-  only when explicitly requested for that release run.
+  acceptance, including lifecycle and bounded-memory soak; inspect requested
+  device logs only when explicitly requested for that release run.
 - After tagging, verify a clean external consumer through the module proxy
   without a local `replace`.
 

@@ -27,6 +27,12 @@ external-module workflow, and deterministic target plans. It does not imply
 that official SDK tools, GUI Simulator execution, Arm compilation, USB, or
 physical hardware work on that host. Docker does not promote those levels.
 
+The `crashlog` and `errorlog` command routing, supported filenames, mount-output
+parsing, and missing-tool failures are unit- and external-consumer CLI-tested.
+The shared implementation reads the requested root-level log without modifying
+it. Connected-device execution of the new `errorlog` command has not been run
+for this candidate and remains physical-device unverified.
+
 ## Accepted application evidence
 
 - P1.1: common lifecycle, buttons, crank, dock transitions and frame delta on
@@ -129,7 +135,7 @@ physical hardware work on that host. Docker does not promote those levels.
   conservative device gate at 268,932 bytes of static RAM and a 35,674-byte
   PDX, USB deployment, and physical Playdate execution. Both menu callbacks
   changed their settings and the values survived a game restart. Extended
-  conservative-GC soak, memory-growth measurement, and post-run crashlog
+  conservative-GC soak, memory-growth measurement, and post-run device-log
   inspection remain unverified.
 - P4.4 implemented: optional accelerometer, power-monitor, and read-only system-
   preference capabilities are forwarded through `NewApplication`; termination
@@ -141,7 +147,7 @@ physical hardware work on that host. Docker does not promote those levels.
   volume, timezone, clock format, reduce-flashing, and `NONE`/`USB` power states.
   The device run exposed and verified the correction for direct float-return ABI
   corruption across TinyGo/C. `CHARGE`, `SCREWS`, soak, memory growth, and
-  post-run crashlog inspection remain unverified.
+  post-run device-log inspection remain unverified.
 - P4.5 implemented: optional scoreboards copy SDK-owned asynchronous results,
   bound pending operations, and suppress callbacks after termination. The
   separate debug-message FIFO bounds count and message size and has confirmed
@@ -155,7 +161,7 @@ physical hardware work on that host. Docker does not promote those levels.
   of static RAM and a 948,032-byte PDX, USB installation on COM3, and the device
   launch command. Physical multi-session restart/update, injected power loss,
   corrupt-save recovery observation, soak, memory growth, cleanup observation,
-  and post-run crashlog comparison remain unverified.
+  and post-run device-log comparison remain unverified.
 - P5.1-P5.4 implemented: advanced samples, timed completion/fades, owned audio
   routing and modulation graphs, instruments, sequences, and typed effects are
   covered by unit and generated-ABI tests. Their combined acceptance scene
@@ -171,7 +177,7 @@ physical hardware work on that host. Docker does not promote those levels.
   USB installation through COM3. The accepted hard-float artifact used 282,824
   bytes of static RAM and produced a 50,601-byte PDX. Denial/revocation,
   long-run overflow and memory measurement, lifecycle stress, and post-run
-  crashlog inspection remain unverified.
+  device-log inspection remain unverified.
 - P6.1 implemented at unit and generated-ABI level: optional transformed bitmap
   drawing and callback-scoped stencil composition validate finite transforms,
   positive scales, live runtime bitmap handles, nested sections, and the

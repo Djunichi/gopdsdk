@@ -3,8 +3,9 @@
 An independent Go SDK and toolchain for building Playdate applications.
 
 The **P0 foundation and P1 through P5 scopes are implemented**. `v0.5.0` is the
-latest published release, and P6 advanced graphics, media, and performance work
-is planned next. The public
+latest published release. P6 is underway: P6.1 transformed bitmap and scoped
+stencil composition is implemented and accepted on the verified Windows
+profile, while later P6 work remains planned. The public
 API is snapshot-tested and documented, but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
@@ -166,15 +167,23 @@ Connect and unlock the Playdate over USB before running the probe. A successful
 probe verifies communication only; it does not modify the device or prove that
 the packaged game runs.
 
-Mount the connected Playdate data disk and print its `crashlog.txt` directly to
-the console with:
+Connect and unlock the Playdate, then mount its data disk and print
+`crashlog.txt` directly to the console with:
 
 ```sh
 go run ./cmd/gopdsdk crashlog --sdk /path/to/PlaydateSDK
 ```
 
-The crash log contents are written to stdout, so they can also be redirected to
-a file. The resolved source path is written to stderr.
+Retrieve `errorlog.txt` through the same flow with:
+
+```sh
+go run ./cmd/gopdsdk errorlog --sdk /path/to/PlaydateSDK
+```
+
+Both commands read but do not modify the selected log. Log contents are written
+to stdout, so they can be redirected to a file, and the resolved source path is
+written to stderr. Mounting changes the connected Playdate into data-disk mode;
+neither command proves that a game ran successfully.
 
 ## Build a Simulator application
 
@@ -214,6 +223,11 @@ Dry-run output is a typed semantic plan with structured executable arguments,
 portable `${WORK}` and `${PACKAGE}` tokens, and explicit artifact retention.
 Temporary workspaces are marked `cleanup`; published `.pdx` outputs are marked
 `preserve`. Cleanup rejects unresolved, relative, and filesystem-root paths.
+
+The CLI carries its project-owned Simulator and device ABI bridge sources as
+package-owned `go:embed` assets. It materializes those version-matched sources
+only inside the temporary workspace. Official `pd_api.h`, `setup.c`, and
+`link_map.ld` remain external inputs read from the selected Playdate SDK.
 
 Build and launch the example, replacing its previous build artifact, with:
 
@@ -589,7 +603,7 @@ labels. On 2026-08-02 it passed Windows SDK 3.1.1 Simulator execution, the
 conservative device gate at 268,932 bytes of static RAM and a 35,674-byte PDX,
 USB deployment, and physical Playdate execution. The menu callbacks changed
 both settings and their values survived a game restart. Extended
-conservative-GC soak, memory-growth measurement, and post-run crashlog
+conservative-GC soak, memory-growth measurement, and post-run device-log
 inspection remain unverified.
 
 ## P4.4 device and system status
@@ -610,7 +624,7 @@ volume, timezone, clock format, reduce-flashing, and `NONE`/`USB` power states.
 The first device run exposed direct float-return ABI corruption for battery and
 volume; passing their IEEE-754 bits across the TinyGo/C boundary corrected it.
 `CHARGE` and `SCREWS` power states, extended conservative-GC soak, memory-growth
-measurement, and post-run crashlog inspection remain unverified.
+measurement, and post-run device-log inspection remain unverified.
 
 ## P4.5 optional online and debug facilities
 
@@ -640,7 +654,7 @@ the conservative-GC device gate, USB installation, and the device launch
 command passed on 2026-08-02. The device artifact used 277,524 bytes of static
 RAM and produced a 948,032-byte PDX. Physical multi-session restart/update,
 injected power loss, corrupt-save recovery, soak, memory-growth measurement,
-and post-run crashlog inspection remain unverified.
+and post-run device-log inspection remain unverified.
 
 ## P5.1 advanced sample playback
 
@@ -663,7 +677,7 @@ The runtime and generated Simulator/device ABI paths are regression-tested. On
 physical Playdate after conservative hard-float build, USB installation on
 COM3, and launch. The device artifact used 268,940 bytes of static RAM and
 produced a 125,340-byte PDX. Extended soak, memory-growth measurement, lifecycle
-stress, and post-run crashlog inspection remain unverified.
+stress, and post-run device-log inspection remain unverified.
 
 ## P5.2 timed fades and completion
 
@@ -686,7 +700,7 @@ On 2026-08-02 the scene passed audible sample completion, the half-second music
 fade, `Done S/F` callback counters, and an advancing audio-clock display in
 Windows Simulator and on a physical Playdate. Installation through COM3 and
 device launch succeeded. Extended soak, memory-growth measurement, lifecycle
-stress, and post-run crashlog inspection remain unverified.
+stress, and post-run device-log inspection remain unverified.
 
 ## P5.3 routing, synthesizers, and signals
 
@@ -714,7 +728,7 @@ Simulator and on a physical Playdate. The conservative hard-float device
 artifact uses 273,456 bytes of static RAM and produces a 146,771-byte PDX; USB
 installation through COM3 and launch succeeded. macOS/Linux SDK integration,
 extended soak, memory-growth measurement, lifecycle stress, and post-run
-crashlog inspection remain unverified.
+device-log inspection remain unverified.
 
 ## P5.4 instruments, sequences, and effects
 
@@ -744,7 +758,7 @@ Windows Simulator and on a physical Playdate after USB installation through
 COM3. The accepted device artifact uses 278,900 bytes of static RAM and produces
 a 168,558-byte PDX. Device audio-thread completions enter a bounded native FIFO
 and are delivered to Go on the next update frame. Extended soak, memory-growth
-measurement, lifecycle stress, post-run crashlog inspection, and macOS/Linux SDK
+measurement, lifecycle stress, post-run device-log inspection, and macOS/Linux SDK
 integration remain unverified.
 
 ## P5.5 microphone input
@@ -770,7 +784,7 @@ and audible playback passed in the official Windows Simulator and on a physical
 Playdate installed through COM3. Device input reaches Go through a bounded
 native FIFO on update frames. The accepted hard-float artifact uses 282,824
 bytes of static RAM and produces a 50,601-byte PDX. Denial/revocation,
-long-run overflow/memory measurement, lifecycle stress, post-run crashlog
+long-run overflow/memory measurement, lifecycle stress, post-run device-log
 inspection, and macOS/Linux SDK integration remain unverified.
 
 ## P6.1 bitmap composition
