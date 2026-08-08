@@ -1,4 +1,4 @@
-name=P6.2 Display and Redraw
+name=P7.4 Display and Redraw
 author=gopdsdk
 description=Display controls and sprite dirty-region acceptance
 bundleID=com.gopdsdk.sprites

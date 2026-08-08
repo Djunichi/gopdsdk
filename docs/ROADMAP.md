@@ -50,7 +50,7 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P7 | `v0.7.0` | Complete offline bitmap, drawing, text, and display facilities | Planned |
+| P7 | `v0.7.0` | Complete offline bitmap, drawing, text, and display facilities | In progress |
 | P8 | `v0.8.0` | Complete offline sprite and collision facilities | Planned |
 | P9 | `v0.9.0` | Complete offline sound, sample, and output facilities | Planned |
 | P10 | `v0.10.0` | Complete offline system and lifecycle facilities | Planned |
@@ -126,6 +126,10 @@ P7 completes offline drawing, bitmap, font, text, and presentation behavior.
   on Simulator and physical device.
 
 ### P7.4 — display introspection and release
+
+The display-introspection API and both native adapters passed matching
+Simulator and physical-device acceptance on 2026-08-08. The release gates
+below remain in progress.
 
 - Add display width, height, refresh-rate, and FPS introspection where the value
   is not already an invariant of the public platform contract.

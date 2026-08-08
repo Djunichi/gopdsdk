@@ -190,15 +190,20 @@ association without closing either bitmap. Mask collision accepts only the four
 Games that need physical-display presentation controls assert the optional
 `Display` capability. Refresh rates must be finite and between 0 and 50 FPS;
 scale is limited to 1, 2, 4, or 8; mosaic components are limited to 0 through
-3. Inversion, flipping, and display offset remain explicit presentation state.
+3. `Width` and `Height` report the logical dimensions after scale is applied;
+`RefreshRate` reports the nominal target and `FPS` the measured actual rate.
+Inversion, flipping, and display offset remain explicit presentation state.
+The callback-scoped framebuffer remains available through `FramebufferGraphics`;
+there is no public debug-framebuffer or explicit flush operation because the
+`Game.Update` refresh result owns that presentation decision.
 
 Games that control global redraw policy assert `SpriteRedraw` and use
 `SetAlwaysRedraw` or `AddDirtyRect`. Individual sprites use `MarkDirty` or
 `MarkDirtyRect`; invalid rectangles are rejected before native calls. The
 display and redraw acceptance scene passed dirty/full redraw switching,
-partial invalidation, display effects, comparative measurements, and reset
-behavior in the official
-Windows Simulator and on physical Playdate hardware.
+partial invalidation, display effects, logical-size changes, nominal and
+measured frame-rate reporting, comparative measurements, and reset behavior
+in the official Windows Simulator and on physical Playdate hardware.
 
 `NewSprite` returns an owned sprite. Configure its bitmap, position, visibility,
 and z-index, then call `Add`. `Add` and `Remove` are idempotent. Each frame,

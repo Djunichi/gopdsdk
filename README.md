@@ -383,8 +383,16 @@ helpers can depend on only the API surface they use.
 
 `examples/sprites` exercises explicitly owned sprites, bitmap assignment,
 position and relative movement, visibility, z-index, idempotent display-list
-membership, and the shared update/draw pass. Sprites must be closed before the
-bitmaps they reference.
+membership, the shared update/draw pass, display presentation controls, and
+live logical dimensions, nominal refresh rate, and measured FPS introspection.
+Sprites must be closed before the bitmaps they reference.
+
+On 2026-08-08 the P7.4 scene passed matching visual acceptance in the official
+Windows SDK 3.1.1 Simulator and on a physical Playdate after conservative-GC
+hard-float build and USB installation through COM3. The accepted device
+artifact uses 292,016 bytes of static RAM and produces a 69,505-byte PDX.
+Performance, bounded-memory, soak, and post-run device-log gates remain
+unverified.
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/sprites

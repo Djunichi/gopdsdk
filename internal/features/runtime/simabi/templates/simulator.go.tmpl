@@ -110,6 +110,10 @@ void bridgeSetStencil(uintptr_t bitmap, int tiled);
 void bridgeClearStencil(void);
 uintptr_t bridgeLoadVideo(const char* path); void bridgeFreeVideo(uintptr_t); const char* bridgeVideoError(uintptr_t); void bridgeVideoInfo(uintptr_t,int*,int*,float*,int*,int*); int bridgeVideoSetContext(uintptr_t,uintptr_t); void bridgeVideoUseScreenContext(uintptr_t); int bridgeVideoRenderFrame(uintptr_t,int);
 void bridgeDisplaySetRefreshRate(float rate);
+int bridgeDisplayWidth(void);
+int bridgeDisplayHeight(void);
+float bridgeDisplayRefreshRate(void);
+float bridgeDisplayFPS(void);
 void bridgeDisplaySetInverted(int flag);
 void bridgeDisplaySetScale(unsigned int scale);
 void bridgeDisplaySetMosaic(unsigned int x, unsigned int y);
@@ -525,6 +529,10 @@ func (playdateContext) SetBackgroundColor(color sdkPlaydate.Color) error {if col
 func (playdateContext) SetScreenClipRect(x,y,width,height int) error {if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0);err!=nil{return err};C.bridgeSetScreenClipRect(C.int(x),C.int(y),C.int(width),C.int(height));return nil}
 
 var display = sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{
+	Width: func() int { return int(C.bridgeDisplayWidth()) },
+	Height: func() int { return int(C.bridgeDisplayHeight()) },
+	RefreshRate: func() float32 { return float32(C.bridgeDisplayRefreshRate()) },
+	FPS: func() float32 { return float32(C.bridgeDisplayFPS()) },
 	SetRefreshRate: func(value float32) { C.bridgeDisplaySetRefreshRate(C.float(value)) },
 	SetInverted: func(value bool) { flag := C.int(0); if value { flag = 1 }; C.bridgeDisplaySetInverted(flag) },
 	SetScale: func(value uint) { C.bridgeDisplaySetScale(C.uint(value)) },
@@ -532,6 +540,10 @@ var display = sdkRuntime.NewDisplay(sdkRuntime.DisplayDriver{
 	SetFlipped: func(x, y bool) { xv, yv := C.int(0), C.int(0); if x { xv = 1 }; if y { yv = 1 }; C.bridgeDisplaySetFlipped(xv, yv) },
 	SetOffset: func(x, y int) { C.bridgeDisplaySetOffset(C.int(x), C.int(y)) },
 })
+func (playdateContext) Width() int { return display.Width() }
+func (playdateContext) Height() int { return display.Height() }
+func (playdateContext) RefreshRate() float32 { return display.RefreshRate() }
+func (playdateContext) FPS() float32 { return display.FPS() }
 func (playdateContext) SetRefreshRate(value float32) error { return display.SetRefreshRate(value) }
 func (playdateContext) SetInverted(value bool) { display.SetInverted(value) }
 func (playdateContext) SetScale(value uint) error { return display.SetScale(value) }
