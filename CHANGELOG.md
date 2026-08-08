@@ -6,6 +6,12 @@ that out.
 
 ## Unreleased
 
+- Added the allocation-free `playdate/diagnostics` P6.4 collector for bounded
+  frame-time distributions, live-heap growth, and owned native-resource counts
+  in external games.
+- Measured the external `gopdsdkgame` consumer for 1,800 frames in the official
+  Windows Simulator and on physical Playdate hardware, with stable native
+  resource counts and separately reported frame, heap, and artifact metrics.
 - Added the optional P6.3 PDV video capability with explicitly owned players,
   metadata, validated frame rendering, screen or owned-bitmap targets, native
   decoder errors, and Simulator/device ABI regression coverage.

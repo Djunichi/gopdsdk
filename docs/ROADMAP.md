@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.5.0` released; P6 in progress with P6.1 implemented and the P6.2
-display/redraw API slice implemented, updated
-2026-08-08.
+Status: `v0.5.0` released; P6 in progress with P6.1 and P6.3 device-accepted,
+P6.2 implemented with comparative measurements pending, and P6.4 implemented
+and device-measured, updated 2026-08-08.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -163,10 +163,11 @@ The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame) consumer,
 currently in a private repository, completes the integrated product slice using
 only public `gopdsdk` API. It combines every implemented P1-P3 gameplay
 capability in one playable scene and retains explicit scene ownership and
-rollback. Portable deterministic gameplay and render-plan tests pass. Fixed
-frame-time, bounded-heap, extended physical-device soak, termination cleanup
-observation, and post-run device-log comparison remain unverified evidence and
-are not promoted by scope completion.
+rollback. Portable deterministic gameplay and render-plan tests pass. P6.4
+later recorded frame-time distributions, live-heap growth, and stable native
+resource counts over bounded 1,800-frame official Windows Simulator and
+physical-device runs. Extended physical-device soak, termination cleanup
+observation, and post-run device-log comparison remain unverified evidence.
 
 ### P3.6 — `v0.3.0` release — complete
 
@@ -617,13 +618,28 @@ produced a 976,532-byte ELF and a 227,458-byte PDX. Frame-time measurement,
 memory-growth measurement, soak, and post-run device-log inspection remain
 unverified. P6.3 remains optional and is not a `v0.6.0` release gate.
 
-### P6.4 — external-game diagnostics
+### P6.4 — external-game diagnostics — implemented and device-measured
 
 - Report frame-time maxima and distribution, heap and memory growth,
   native-resource counts, static RAM, ELF size, and packaged PDX size for an
   external module rather than only repository examples.
 - Keep measurements bounded and usable on the sequential TinyGo device profile;
   distinguish unit, native CI, SDK integration, Simulator, and device evidence.
+
+The `playdate/diagnostics` collector uses a fixed histogram and a
+36,000-frame ceiling, performs no frame-loop allocation or I/O, and reports
+frame mean/p50/p95/p99/max, live-heap start/end/max/growth, and explicitly owned
+native-resource start/end/min/max. Existing device builds report static RAM,
+ELF size, and packaged PDX size. Unit evidence covers aggregation and bounds.
+The external `gopdsdkgame` consumer completed 1,800-frame official Windows
+Simulator and physical-device measurements on 2026-08-08. Simulator
+mean/p50/p95/p99/max were 33.01/33/33/33/94 ms, live heap grew from 255,224 to
+892,120 bytes, and 18 native resources remained stable. Physical-device values
+were 33.07/33/34/34/77 ms, heap 7,248 to 129,040 bytes with a 257,952-byte
+maximum, and the same stable 18 resources. Its conservative hard-float artifact
+used 287,912 bytes of static RAM and produced a 1,618,252-byte ELF and a
+965,530-byte PDX. A ten-minute soak, post-run device logs, macOS/Linux native
+targets, and published-version consumer acceptance remain unverified.
 
 ### P6.5 — software-renderer proof
 

@@ -1,17 +1,37 @@
 # Public API
 
 This document describes the current public contract after released `v0.5.0`,
-including implemented P6.1, P6.2, and optional P6.3 additions intended for `v0.6.0`. The module is still
-pre-v1: minor releases may make intentional breaking changes, which must be
-called out in release notes. Patch releases preserve the documented API and
+including implemented P6.1 and P6.2 graphics additions, optional P6.3 video,
+and the P6.4 bounded diagnostics package intended for `v0.6.0`. The module is
+still pre-v1: minor releases may make intentional breaking changes, which must
+be called out in release notes. Patch releases preserve the documented API and
 behavior.
 
 Applications import the native contract from
 `github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional
 bounded persistence layer additionally import
-`github.com/Djunichi/gopdsdk/playdate/store`. Packages below `internal/`,
+`github.com/Djunichi/gopdsdk/playdate/store`. External games collecting bounded
+P6.4 performance evidence import
+`github.com/Djunichi/gopdsdk/playdate/diagnostics`. Packages below `internal/`,
 generated runtime bridges, CLI build plans, and example internals are not
 public API.
+
+## Bounded diagnostics
+
+`playdate/diagnostics.Collector` records a fixed number of samples without
+allocating in the frame loop. A game supplies elapsed frame milliseconds, live
+heap bytes, and its count of currently owned native resources. The report
+contains mean, p50, p95, p99, and maximum frame time; heap start, end, maximum,
+and signed growth; and native-resource start, end, minimum, and maximum. Frame
+times of 255 ms or more share a bounded tail bucket; the exact observed maximum
+is retained. The 36,000-frame ceiling is twenty minutes at 30 FPS.
+
+The collector deliberately does not discover runtime memory or resource
+ownership and does not perform frame-loop I/O. Consumers obtain heap data from
+their target runtime, count the resources they explicitly own, and write or
+render the final report outside the measured interval. Device artifact static
+RAM, ELF size, and packaged PDX size continue to come from `gopdsdk build
+device`; those build metrics are not evidence of Simulator or hardware timing.
 
 ## Application contract
 
