@@ -140,15 +140,21 @@ uint8_t bridgeSpriteTag(uintptr_t);
 void bridgeSpriteMarkDirty(uintptr_t sprite);
 void bridgeSpriteMarkDirtyRect(uintptr_t sprite, float x, float y, float width, float height);
 void* bridgeSpriteMoveWithCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count);
+void* bridgeSpriteCheckCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count);
 void bridgeCollisionInfo(void* collisions, int index, uintptr_t* other, int* response, int* overlaps, float* ti, float* values);
 void bridgeFreeCollisionList(void* collisions);
 void* bridgeQuerySpritesAtPoint(float x, float y, int* count);
 void* bridgeQuerySpritesInRect(float x, float y, float width, float height, int* count);
+void* bridgeQuerySpritesAlongLine(float,float,float,float,int*);
+void* bridgeQuerySpriteInfoAlongLine(float,float,float,float,int*);
+void bridgeSpriteQueryInfo(void*,int,uintptr_t*,float*);
 void* bridgeOverlappingSprites(uintptr_t sprite, int* count);
 uintptr_t bridgeSpriteListItem(void* sprites, int index);
 void bridgeFreeSpriteList(void* sprites);
 void bridgeSpriteAdd(uintptr_t sprite);
 void bridgeSpriteRemove(uintptr_t sprite);
+void bridgeSpriteRemoveMany(uintptr_t*,int);
+void bridgeRemoveAllSprites(void); int bridgeSpriteCount(void); void bridgeResetCollisionWorld(void);
 void bridgeSetAlwaysRedraw(int flag);
 void bridgeAddDirtyRect(int x, int y, int width, int height);
 void bridgeUpdateAndDrawSprites(void);
@@ -559,7 +565,9 @@ func (playdateContext) SetMosaic(x, y uint) error { return display.SetMosaic(x, 
 func (playdateContext) SetFlipped(x, y bool) { display.SetFlipped(x, y) }
 func (playdateContext) SetOffset(x, y int) { display.SetOffset(x, y) }
 
+var spriteDisplayList=sdkRuntime.NewSpriteDisplayListState()
 var spriteDriver = sdkRuntime.SpriteDriver{
+	DisplayList: spriteDisplayList,
 	SetBitmap: func(sprite, bitmap uintptr) { C.bridgeSpriteSetBitmap(C.uintptr_t(sprite), C.uintptr_t(bitmap)) },
 	SetCenter: func(s uintptr,x,y float32){C.bridgeSpriteSetCenter(C.uintptr_t(s),C.float(x),C.float(y))}, Center: func(s uintptr)(float32,float32){var x,y C.float;C.bridgeSpriteGetCenter(C.uintptr_t(s),&x,&y);return float32(x),float32(y)},
 	SetBounds: func(s uintptr,r sdkPlaydate.Rect){C.bridgeSpriteSetBounds(C.uintptr_t(s),C.float(r.X),C.float(r.Y),C.float(r.Width),C.float(r.Height))}, Bounds: func(s uintptr)sdkPlaydate.Rect{return spriteRect(s,false)},
@@ -581,6 +589,7 @@ var spriteDriver = sdkRuntime.SpriteDriver{
 	MarkDirty: func(sprite uintptr) { C.bridgeSpriteMarkDirty(C.uintptr_t(sprite)) },
 	MarkDirtyRect: func(sprite uintptr, rect sdkPlaydate.Rect) { C.bridgeSpriteMarkDirtyRect(C.uintptr_t(sprite), C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height)) },
 	MoveWithCollisions: moveWithCollisions,
+	CheckCollisions: checkCollisions,
 	Add: func(sprite uintptr) { C.bridgeSpriteAdd(C.uintptr_t(sprite)) },
 	Remove: func(sprite uintptr) { C.bridgeSpriteRemove(C.uintptr_t(sprite)) },
 	Free: func(sprite uintptr) { C.bridgeFreeSprite(C.uintptr_t(sprite)) },
@@ -590,8 +599,15 @@ func(playdateContext)NewSpriteTileMap(table sdkPlaydate.BitmapTable,columns,rows
 func boolInt(v bool) C.int { if v{return 1};return 0 }
 func spriteRect(s uintptr,collide bool)sdkPlaydate.Rect{var v [4]C.float;C.bridgeSpriteGetRect(C.uintptr_t(s),boolInt(collide),&v[0]);return sdkPlaydate.Rect{X:float32(v[0]),Y:float32(v[1]),Width:float32(v[2]),Height:float32(v[3])}}
 func moveWithCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
+	return collisionQuery(true, sprite, x, y)
+}
+func checkCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
+	return collisionQuery(false, sprite, x, y)
+}
+func collisionQuery(move bool, sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
 	var actualX, actualY C.float; var count C.int
-	list := C.bridgeSpriteMoveWithCollisions(C.uintptr_t(sprite), C.float(x), C.float(y), &actualX, &actualY, &count)
+	var list unsafe.Pointer
+	if move { list=C.bridgeSpriteMoveWithCollisions(C.uintptr_t(sprite),C.float(x),C.float(y),&actualX,&actualY,&count) } else { list=C.bridgeSpriteCheckCollisions(C.uintptr_t(sprite),C.float(x),C.float(y),&actualX,&actualY,&count) }
 	defer C.bridgeFreeCollisionList(list)
 	result := make([]sdkRuntime.NativeCollision, int(count))
 	for index := range result { var other C.uintptr_t; var response, overlaps C.int; var ti C.float; var values [16]C.float; C.bridgeCollisionInfo(list, C.int(index), &other, &response, &overlaps, &ti, &values[0]); result[index] = sdkRuntime.NativeCollision{Other: uintptr(other), ResponseType: sdkPlaydate.CollisionResponse(response), Overlaps: overlaps != 0, Time: float32(ti), Move: sdkPlaydate.Point{X: float32(values[0]), Y: float32(values[1])}, Normal: sdkPlaydate.Point{X: float32(values[2]), Y: float32(values[3])}, Touch: sdkPlaydate.Point{X: float32(values[4]), Y: float32(values[5])}, SpriteRect: sdkPlaydate.Rect{X: float32(values[6]), Y: float32(values[7]), Width: float32(values[8]), Height: float32(values[9])}, OtherRect: sdkPlaydate.Rect{X: float32(values[10]), Y: float32(values[11]), Width: float32(values[12]), Height: float32(values[13])}} }
@@ -604,7 +620,14 @@ func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
 func querySprites(list unsafe.Pointer, count C.int) []sdkPlaydate.Sprite { defer C.bridgeFreeSpriteList(list); handles := make([]uintptr, int(count)); for index := range handles { handles[index] = uintptr(C.bridgeSpriteListItem(list, C.int(index))) }; return sdkRuntime.BorrowedSprites(handles, spriteDriver) }
 func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { var count C.int; list := C.bridgeQuerySpritesAtPoint(C.float(x), C.float(y), &count); return querySprites(list, count) }
 func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count C.int; list := C.bridgeQuerySpritesInRect(C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height), &count); return querySprites(list, count) }
+func (playdateContext) QuerySpritesAlongLine(x1,y1,x2,y2 float32) []sdkPlaydate.Sprite { var count C.int; return querySprites(C.bridgeQuerySpritesAlongLine(C.float(x1),C.float(y1),C.float(x2),C.float(y2),&count),count) }
+func (playdateContext) QuerySpriteInfoAlongLine(x1,y1,x2,y2 float32) []sdkPlaydate.SpriteQueryInfo { var count C.int; list:=C.bridgeQuerySpriteInfoAlongLine(C.float(x1),C.float(y1),C.float(x2),C.float(y2),&count); defer C.bridgeFreeCollisionList(list); result:=make([]sdkPlaydate.SpriteQueryInfo,int(count)); for i:=range result { var sprite C.uintptr_t; var v [6]C.float; C.bridgeSpriteQueryInfo(list,C.int(i),&sprite,&v[0]); result[i]=sdkPlaydate.SpriteQueryInfo{Sprite:sdkRuntime.NewBorrowedSprite(uintptr(sprite),spriteDriver),EntryTime:float32(v[0]),ExitTime:float32(v[1]),EntryPoint:sdkPlaydate.Point{X:float32(v[2]),Y:float32(v[3])},ExitPoint:sdkPlaydate.Point{X:float32(v[4]),Y:float32(v[5])}} }; return result }
 func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count C.int; list := C.bridgeOverlappingSprites(C.uintptr_t(handle), &count); return querySprites(list, count), nil }
+func(playdateContext)SpriteCount()int{return int(C.bridgeSpriteCount())}
+func(playdateContext)AddSprites(s []sdkPlaydate.Sprite)error{return sdkRuntime.SetSpritesAdded(s,true,func(h []uintptr){for _,v:=range h{C.bridgeSpriteAdd(C.uintptr_t(v))}})}
+func(playdateContext)RemoveSprites(s []sdkPlaydate.Sprite)error{return sdkRuntime.SetSpritesAdded(s,false,func(h []uintptr){if len(h)>0{C.bridgeSpriteRemoveMany((*C.uintptr_t)(unsafe.Pointer(&h[0])),C.int(len(h)))}})}
+func(playdateContext)RemoveAllSprites(){C.bridgeRemoveAllSprites();spriteDisplayList.RemoveAll()}
+func(playdateContext)ResetCollisionWorld(){C.bridgeResetCollisionWorld()}
 func (playdateContext) SetAlwaysRedraw(value bool) { flag := C.int(0); if value { flag = 1 }; C.bridgeSetAlwaysRedraw(flag) }
 func (playdateContext) AddDirtyRect(x, y, width, height int) error { if err := sdkRuntime.ValidateScreenDirtyRect(x, y, width, height); err != nil { return err }; C.bridgeAddDirtyRect(C.int(x), C.int(y), C.int(width), C.int(height)); return nil }
 func (playdateContext) UpdateAndDrawSprites() { C.bridgeUpdateAndDrawSprites() }

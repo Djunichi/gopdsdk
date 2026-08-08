@@ -67,6 +67,9 @@ func (s *testSprite) MarkDirtyRect(playdate.Rect) error            { return s.re
 func (s *testSprite) MoveWithCollisions(float32, float32) (playdate.MoveResult, error) {
 	return playdate.MoveResult{}, s.record("collideMove")
 }
+func (s *testSprite) CheckCollisions(float32, float32) (playdate.MoveResult, error) {
+	return playdate.MoveResult{}, nil
+}
 func (s *testSprite) Add() error    { return s.record("add") }
 func (s *testSprite) Remove() error { return s.record("remove") }
 func (s *testSprite) Close() error  { return s.record("close") }

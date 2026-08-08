@@ -2,7 +2,7 @@
 
 Status: `v0.7.0` released; the remaining offline official-SDK capability gaps
 are allocated through `v0.12.0`, followed by the `v1.0.0` contract release,
-updated 2026-08-08.
+updated 2026-08-09.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -109,6 +109,12 @@ deterministic tests, and Simulator/device visual acceptance are complete.
   behavior.
 
 ### P8.2 — queries and display-list control
+
+Status: complete. Line and detailed-hit queries, non-mutating collision checks,
+sprite count, atomic-validation bulk membership changes, remove-all state
+synchronization, collision-world reset, both native adapters, and deterministic
+tests are complete. The repository-owned self-check scene passed the official
+Windows SDK 3.1.1 Simulator and physical Playdate acceptance on 2026-08-09.
 
 - Add line queries and their detailed hit information, collision checks,
   sprite count, bulk add/remove, remove-all, and collision-world reset.

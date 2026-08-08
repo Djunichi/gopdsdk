@@ -6,6 +6,18 @@ that out.
 
 ## Unreleased
 
+- Completed P8.2 with line and detailed sprite-hit queries, non-mutating
+  collision checks, sprite count, bulk add/remove, remove-all, and
+  collision-world reset across Simulator and device adapters. Batch operations
+  validate every sprite before mutation, preserve input order, and synchronize
+  owned wrapper state after native remove-all operations. On 2026-08-09 the
+  expanded `examples/spritepresentation` startup self-check and visual PASS
+  status succeeded in the official Windows SDK 3.1.1 Simulator and on a
+  physical Playdate. The conservative-GC hard-float device artifact uses
+  282,512 bytes of static RAM and produces a 1,398,940-byte ELF and
+  69,893-byte PDX. Conservative-GC soak, memory-growth measurement, and
+  post-run device-log inspection remain unverified.
+
 - Added sprite geometry and presentation controls for center, bounds,
   position getters, image flip, draw mode, opacity, stencil images and patterns,
   clip rectangles, draw-offset policy, and deterministic update/collision

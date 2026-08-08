@@ -40,6 +40,7 @@ type Sprite interface {
 	MarkDirty() error
 	MarkDirtyRect(Rect) error
 	MoveWithCollisions(goalX, goalY float32) (MoveResult, error)
+	CheckCollisions(goalX, goalY float32) (MoveResult, error)
 	Add() error
 	Remove() error
 	Close() error
@@ -52,6 +53,21 @@ type Sprites interface {
 	QuerySpritesInRect(Rect) []Sprite
 	QueryOverlappingSprites(Sprite) ([]Sprite, error)
 	UpdateAndDrawSprites()
+}
+
+// SpriteQueries exposes line-segment queries and detailed ordered hits.
+type SpriteQueries interface {
+	QuerySpritesAlongLine(x1, y1, x2, y2 float32) []Sprite
+	QuerySpriteInfoAlongLine(x1, y1, x2, y2 float32) []SpriteQueryInfo
+}
+
+// SpriteDisplayList exposes global and batch display-list controls.
+type SpriteDisplayList interface {
+	SpriteCount() int
+	AddSprites([]Sprite) error
+	RemoveSprites([]Sprite) error
+	RemoveAllSprites()
+	ResetCollisionWorld()
 }
 
 // SpriteTileMaps exposes native tilemap creation when the active runtime
@@ -106,4 +122,11 @@ type Collision struct {
 type MoveResult struct {
 	ActualX, ActualY float32
 	Collisions       []Collision
+}
+
+// SpriteQueryInfo describes one ordered intersection with a line segment.
+type SpriteQueryInfo struct {
+	Sprite                Sprite
+	EntryTime, ExitTime   float32
+	EntryPoint, ExitPoint Point
 }

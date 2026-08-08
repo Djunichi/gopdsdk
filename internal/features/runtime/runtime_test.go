@@ -1289,6 +1289,19 @@ func (*displayCapabilityContext) SetFlipped(bool, bool)                   {}
 func (*displayCapabilityContext) SetOffset(int, int)                      {}
 func (c *displayCapabilityContext) SetAlwaysRedraw(bool)                  { c.calls++ }
 func (c *displayCapabilityContext) AddDirtyRect(int, int, int, int) error { c.calls++; return nil }
+func (c *displayCapabilityContext) QuerySpritesAlongLine(float32, float32, float32, float32) []playdate.Sprite {
+	c.calls++
+	return nil
+}
+func (c *displayCapabilityContext) QuerySpriteInfoAlongLine(float32, float32, float32, float32) []playdate.SpriteQueryInfo {
+	c.calls++
+	return nil
+}
+func (c *displayCapabilityContext) SpriteCount() int                      { c.calls++; return 2 }
+func (c *displayCapabilityContext) AddSprites([]playdate.Sprite) error    { c.calls++; return nil }
+func (c *displayCapabilityContext) RemoveSprites([]playdate.Sprite) error { c.calls++; return nil }
+func (c *displayCapabilityContext) RemoveAllSprites()                     { c.calls++ }
+func (c *displayCapabilityContext) ResetCollisionWorld()                  { c.calls++ }
 
 type displayCapabilityGame struct{}
 
@@ -1301,7 +1314,25 @@ func (displayCapabilityGame) Init(context playdate.Context) error {
 		return err
 	}
 	context.(playdate.SpriteRedraw).SetAlwaysRedraw(false)
-	return context.(playdate.SpriteRedraw).AddDirtyRect(1, 2, 3, 4)
+	if err := context.(playdate.SpriteRedraw).AddDirtyRect(1, 2, 3, 4); err != nil {
+		return err
+	}
+	queries := context.(playdate.SpriteQueries)
+	queries.QuerySpritesAlongLine(0, 0, 1, 1)
+	queries.QuerySpriteInfoAlongLine(0, 0, 1, 1)
+	list := context.(playdate.SpriteDisplayList)
+	if list.SpriteCount() != 2 {
+		return errors.New("sprite count was not forwarded")
+	}
+	if err := list.AddSprites(nil); err != nil {
+		return err
+	}
+	if err := list.RemoveSprites(nil); err != nil {
+		return err
+	}
+	list.RemoveAllSprites()
+	list.ResetCollisionWorld()
+	return nil
 }
 func (displayCapabilityGame) Update(playdate.Context) (bool, error) { return false, nil }
 
@@ -1314,7 +1345,7 @@ func TestApplicationForwardsDisplayAndSpriteRedrawCapabilities(t *testing.T) {
 	if err := application.Handle(EventInit, 0); err != nil {
 		t.Fatal(err)
 	}
-	if context.calls != 3 {
+	if context.calls != 10 {
 		t.Fatalf("forwarded calls = %d", context.calls)
 	}
 }
@@ -1327,6 +1358,9 @@ func TestSpriteCollisionBridgeAndBorrowedResponse(t *testing.T) {
 		SetTag:           func(uintptr, uint8) { operations = append(operations, "tag") },
 		MoveWithCollisions: func(uintptr, float32, float32) (float32, float32, []NativeCollision) {
 			return 8, 9, []NativeCollision{{Other: 12, ResponseType: playdate.CollisionOverlap, Time: .5}}
+		},
+		CheckCollisions: func(uintptr, float32, float32) (float32, float32, []NativeCollision) {
+			return 10, 11, []NativeCollision{{Other: 13, ResponseType: playdate.CollisionBounce}}
 		},
 	}
 	sprite := NewOwnedSprite(11, driver)
@@ -1346,6 +1380,10 @@ func TestSpriteCollisionBridgeAndBorrowedResponse(t *testing.T) {
 	if err := result.Collisions[0].Other.Close(); !errors.Is(err, playdate.ErrSpriteBorrowed) {
 		t.Fatalf("borrowed Close() = %v", err)
 	}
+	checked, err := sprite.CheckCollisions(12, 13)
+	if err != nil || checked.ActualX != 10 || checked.ActualY != 11 || len(checked.Collisions) != 1 || checked.Collisions[0].ResponseType != playdate.CollisionBounce {
+		t.Fatalf("CheckCollisions() = %+v, %v", checked, err)
+	}
 	if err := sprite.ClearCollideRect(); err != nil {
 		t.Fatal(err)
 	}
@@ -1357,6 +1395,45 @@ func TestSpriteCollisionBridgeAndBorrowedResponse(t *testing.T) {
 		if operations[index] != want[index] {
 			t.Fatalf("operations = %v", operations)
 		}
+	}
+}
+
+func TestSpriteBatchValidationAndRemoveAllState(t *testing.T) {
+	state := NewSpriteDisplayListState()
+	removeCalls := 0
+	driver := SpriteDriver{DisplayList: state, Add: func(uintptr) {}, Remove: func(uintptr) { removeCalls++ }, Free: func(uintptr) {}}
+	first := NewOwnedSprite(1, driver)
+	second := NewOwnedSprite(2, driver)
+	if err := SetSpritesAdded([]playdate.Sprite{first, second}, true, func(handles []uintptr) {
+		if len(handles) != 2 || handles[0] != 1 || handles[1] != 2 {
+			t.Fatalf("handles = %v", handles)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetSpritesAdded([]playdate.Sprite{first, second}, true, func(handles []uintptr) {
+		if len(handles) != 0 {
+			t.Fatalf("idempotent handles = %v", handles)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	if err := SetSpritesAdded([]playdate.Sprite{first, nil}, false, func([]uintptr) { called = true }); !errors.Is(err, playdate.ErrSpriteClosed) {
+		t.Fatalf("invalid batch error = %v", err)
+	}
+	if called {
+		t.Fatal("partially executed invalid batch")
+	}
+	state.RemoveAll()
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if removeCalls != 0 {
+		t.Fatalf("remove calls after remove-all = %d", removeCalls)
 	}
 }
 

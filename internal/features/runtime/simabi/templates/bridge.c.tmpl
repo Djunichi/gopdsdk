@@ -228,15 +228,19 @@ uint8_t bridgeSpriteTag(uintptr_t s){return bridgePlaydate->sprite->getTag((LCDS
 void bridgeSpriteMarkDirty(uintptr_t sprite) { bridgePlaydate->sprite->markDirty((LCDSprite*)sprite); }
 void bridgeSpriteMarkDirtyRect(uintptr_t sprite, float x, float y, float width, float height) { bridgePlaydate->sprite->markDirtyRect((LCDSprite*)sprite, (PDRect){x, y, width, height}); }
 void* bridgeSpriteMoveWithCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count) { return bridgePlaydate->sprite->moveWithCollisions((LCDSprite*)sprite, x, y, actualX, actualY, count); }
+void* bridgeSpriteCheckCollisions(uintptr_t sprite,float x,float y,float*ax,float*ay,int*count){return bridgePlaydate->sprite->checkCollisions((LCDSprite*)sprite,x,y,ax,ay,count);}
 void bridgeCollisionInfo(void* collisions, int index, uintptr_t* other, int* response, int* overlaps, float* ti, float* v) { SpriteCollisionInfo* c = &((SpriteCollisionInfo*)collisions)[index]; *other=(uintptr_t)c->other; *response=c->responseType; *overlaps=c->overlaps; *ti=c->ti; v[0]=c->move.x; v[1]=c->move.y; v[2]=c->normal.x; v[3]=c->normal.y; v[4]=c->touch.x; v[5]=c->touch.y; v[6]=c->spriteRect.x; v[7]=c->spriteRect.y; v[8]=c->spriteRect.width; v[9]=c->spriteRect.height; v[10]=c->otherRect.x; v[11]=c->otherRect.y; v[12]=c->otherRect.width; v[13]=c->otherRect.height; }
 void bridgeFreeCollisionList(void* collisions) { if (collisions) bridgePlaydate->system->realloc(collisions, 0); }
 void* bridgeQuerySpritesAtPoint(float x, float y, int* count) { return bridgePlaydate->sprite->querySpritesAtPoint(x, y, count); }
 void* bridgeQuerySpritesInRect(float x, float y, float width, float height, int* count) { return bridgePlaydate->sprite->querySpritesInRect(x, y, width, height, count); }
+void* bridgeQuerySpritesAlongLine(float a,float b,float c,float d,int*n){return bridgePlaydate->sprite->querySpritesAlongLine(a,b,c,d,n);} void* bridgeQuerySpriteInfoAlongLine(float a,float b,float c,float d,int*n){return bridgePlaydate->sprite->querySpriteInfoAlongLine(a,b,c,d,n);}
+void bridgeSpriteQueryInfo(void*p,int i,uintptr_t*s,float*v){SpriteQueryInfo*q=&((SpriteQueryInfo*)p)[i];*s=(uintptr_t)q->sprite;v[0]=q->ti1;v[1]=q->ti2;v[2]=q->entryPoint.x;v[3]=q->entryPoint.y;v[4]=q->exitPoint.x;v[5]=q->exitPoint.y;}
 void* bridgeOverlappingSprites(uintptr_t sprite, int* count) { return bridgePlaydate->sprite->overlappingSprites((LCDSprite*)sprite, count); }
 uintptr_t bridgeSpriteListItem(void* sprites, int index) { return (uintptr_t)((LCDSprite**)sprites)[index]; }
 void bridgeFreeSpriteList(void* sprites) { if (sprites) bridgePlaydate->system->realloc(sprites, 0); }
 void bridgeSpriteAdd(uintptr_t sprite) { bridgePlaydate->sprite->addSprite((LCDSprite*)sprite); }
 void bridgeSpriteRemove(uintptr_t sprite) { bridgePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
+void bridgeSpriteRemoveMany(uintptr_t*s,int n){bridgePlaydate->sprite->removeSprites((LCDSprite**)s,n);} void bridgeRemoveAllSprites(void){bridgePlaydate->sprite->removeAllSprites();} int bridgeSpriteCount(void){return bridgePlaydate->sprite->getSpriteCount();} void bridgeResetCollisionWorld(void){bridgePlaydate->sprite->resetCollisionWorld();}
 void bridgeSetAlwaysRedraw(int flag) { bridgePlaydate->sprite->setAlwaysRedraw(flag); }
 void bridgeAddDirtyRect(int x, int y, int width, int height) { bridgePlaydate->sprite->addDirtyRect(LCDMakeRect(x, y, width, height)); }
 void bridgeUpdateAndDrawSprites(void) { bridgePlaydate->sprite->updateAndDrawSprites(); }
