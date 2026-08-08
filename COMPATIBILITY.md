@@ -201,6 +201,18 @@ for this candidate and remains physical-device unverified.
   scale behavior, and reset path passed Windows Simulator visual acceptance.
   Comparative full-redraw versus dirty-region performance and physical-device
   acceptance remain unverified, so P6.2 is not yet accepted.
+- P6.3 API slice implemented at unit and generated-ABI level: optional PDV
+  loading, metadata, frame rendering, screen/offscreen targets, explicit player
+  cleanup, and decoder error messages preserve bitmap ownership and validate
+  frame bounds. `examples/video` now provides a repository-owned deterministic
+  PDV consumer and passes unit tests plus official Windows SDK packaging. On
+  2026-08-08 its animated playback, synchronized audio, pause/resume without
+  restart, stepping, looping, and screen/offscreen targets passed visual and
+  audible acceptance in the official Windows Simulator and on a physical
+  Playdate. The conservative hard-float artifact used 279,880 bytes of static
+  RAM, produced a 976,532-byte ELF and a 227,458-byte PDX, and was installed and
+  launched through COM3. Frame-time, memory growth, soak, and post-run device
+  logs remain unverified.
 
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it

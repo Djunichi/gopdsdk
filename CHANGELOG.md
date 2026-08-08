@@ -6,6 +6,16 @@ that out.
 
 ## Unreleased
 
+- Added the optional P6.3 PDV video capability with explicitly owned players,
+  metadata, validated frame rendering, screen or owned-bitmap targets, native
+  decoder errors, and Simulator/device ABI regression coverage.
+- Added `examples/video` with reproducible four-second project-owned PDV and
+  audio fixtures plus pause, frame stepping, and screen/offscreen target controls.
+- Accepted P6.3 animated and synchronized-audio playback in the official
+  Windows Simulator and on physical Playdate hardware, including pause/resume,
+  looping, stepping, target switching, conservative hard-float build, COM3
+  installation, and launch.
+
 ### Added
 
 - Optional display presentation controls and sprite dirty-region/redraw

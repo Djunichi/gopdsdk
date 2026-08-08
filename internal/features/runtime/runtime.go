@@ -990,6 +990,95 @@ func OwnedBitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
 	return value.nativeHandle()
 }
 
+// VideoDriver contains platform operations for one native video player.
+type VideoDriver struct {
+	Info             func(uintptr) playdate.VideoInfo
+	SetContext       func(uintptr, uintptr) (bool, string)
+	UseScreenContext func(uintptr)
+	RenderFrame      func(uintptr, int) (bool, string)
+	Free             func(uintptr)
+}
+
+// VideoPlayer owns a native PDV decoder.
+type VideoPlayer struct {
+	handle  uintptr
+	driver  VideoDriver
+	context *Bitmap
+	closed  bool
+}
+
+// NewVideoPlayer wraps an owned native PDV decoder.
+func NewVideoPlayer(handle uintptr, driver VideoDriver) *VideoPlayer {
+	return &VideoPlayer{handle: handle, driver: driver}
+}
+
+func (p *VideoPlayer) live() error {
+	if p == nil || p.closed || p.handle == 0 {
+		return playdate.ErrVideoClosed
+	}
+	return nil
+}
+func (p *VideoPlayer) Info() (playdate.VideoInfo, error) {
+	if err := p.live(); err != nil {
+		return playdate.VideoInfo{}, err
+	}
+	return p.driver.Info(p.handle), nil
+}
+func (p *VideoPlayer) SetContext(bitmap playdate.Bitmap) error {
+	if err := p.live(); err != nil {
+		return err
+	}
+	value, ok := bitmap.(*Bitmap)
+	if !ok {
+		return ErrInvalidBitmap
+	}
+	handle, err := OwnedBitmapHandle(bitmap)
+	if err != nil {
+		return err
+	}
+	if ok, message := p.driver.SetContext(p.handle, handle); !ok {
+		return playdate.VideoOperationError{Operation: "set context", Message: message}
+	}
+	p.context = value
+	return nil
+}
+func (p *VideoPlayer) UseScreenContext() error {
+	if err := p.live(); err != nil {
+		return err
+	}
+	p.driver.UseScreenContext(p.handle)
+	p.context = nil
+	return nil
+}
+func (p *VideoPlayer) RenderFrame(frame int) error {
+	if err := p.live(); err != nil {
+		return err
+	}
+	info := p.driver.Info(p.handle)
+	if frame < 0 || frame >= info.FrameCount {
+		return playdate.ErrVideoFrame
+	}
+	if p.context != nil {
+		if _, err := p.context.nativeHandle(); err != nil {
+			return err
+		}
+	}
+	if ok, message := p.driver.RenderFrame(p.handle, frame); !ok {
+		return playdate.VideoOperationError{Operation: "render frame", Message: message}
+	}
+	return nil
+}
+func (p *VideoPlayer) Close() error {
+	if err := p.live(); err != nil {
+		return err
+	}
+	p.driver.Free(p.handle)
+	p.closed = true
+	p.handle = 0
+	p.context = nil
+	return nil
+}
+
 // DisplayDriver contains platform display presentation operations.
 type DisplayDriver struct {
 	SetRefreshRate func(float32)
@@ -1356,6 +1445,17 @@ type applicationContext struct {
 	accelerometerEnabled bool
 	stencilActive        bool
 	terminated           bool
+}
+
+func (context *applicationContext) LoadVideo(path string) (playdate.VideoPlayer, error) {
+	videos, ok := context.Context.(playdate.Videos)
+	if !ok || context.terminated {
+		return nil, playdate.ErrVideoUnavailable
+	}
+	if path == "" {
+		return nil, playdate.ErrVideoPath
+	}
+	return videos.LoadVideo(path)
 }
 
 func (context *applicationContext) display() (playdate.Display, error) {

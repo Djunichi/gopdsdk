@@ -7,8 +7,11 @@ latest published release. P6 is underway: P6.1 transformed bitmap and scoped
 stencil composition is implemented and accepted on the verified Windows
 profile. The initial P6.2 display and sprite-redraw API is implemented at unit
 and generated-ABI level; comparative Simulator and hardware performance
-acceptance remains pending. The public
-API is snapshot-tested and documented, but remains pre-v1. Hardware evidence varies by feature and is
+acceptance remains pending. The optional P6.3 owned PDV player is implemented
+and accepted with synchronized audio in the official Windows Simulator and on
+a physical Playdate; specialized media remains intentionally non-gating. The
+public API is snapshot-tested and documented,
+but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
 projects, including pdgo, may be studied only as behavioral and product
@@ -817,6 +820,24 @@ a physical Playdate after USB deployment through COM3 on 2026-08-08. The
 accepted device build used 275,312 bytes of static RAM and produced a
 36,970-byte PDX. Performance measurement, memory growth, soak, and post-run
 device-log inspection remain unverified.
+
+## P6.3 video
+
+`examples/video` owns a generated four-second, 48-frame PDV fixture and matching
+audio track. It exercises metadata, validated frame playback, explicit video
+and audio cleanup, and screen/offscreen render-target switching. A pauses, B
+changes the target, and Left/Right step through frames.
+
+On 2026-08-08 the complete interaction passed visual and audible acceptance in
+the official Windows Simulator and on a physical Playdate. The accepted
+hard-float device build used 279,880 bytes of static RAM and produced a
+976,532-byte ELF and a 227,458-byte PDX. Performance, memory growth, soak, and
+device-log inspection remain unverified.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/video
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/video
+```
 
 ## Development and CI
 

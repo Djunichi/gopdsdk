@@ -592,12 +592,30 @@ before P6.2 is accepted; custom callbacks remain out of scope. On 2026-08-08 the
 scene's dirty/full switching, partial bar updates, display effects, documented
 2x top-left scaling, and reset path passed Windows Simulator visual acceptance.
 
-### P6.3 — specialized media
+### P6.3 — specialized media — implemented and device-accepted
 
 - Treat video as an independent optional capability with explicit ownership,
   cleanup, error behavior, and focused acceptance.
 - Do not make video or another specialized media family a `v0.6.0` gate unless
   a real consumer requires it to remove a rendering-class limitation.
+
+The initial optional capability loads explicitly owned PDV players, reports
+stream metadata, renders validated frame indexes to the screen or a live owned
+bitmap, preserves borrowed bitmap ownership, forwards through both native ABI
+contexts, and reports native decoder failures without hiding their messages.
+Unit, forwarding, generated Simulator ABI, and generated device ABI tests pass.
+`examples/video` supplies a deterministic repository-owned four-second 400×240
+PDV consumer with a separate synchronized audio fixture, pause, stepping, and
+screen/offscreen target switching. Unit, forwarding, generated-ABI, and
+official Windows SDK packaging tests pass. On 2026-08-08 four-second animated
+playback, synchronized audio, pause/resume without audio restart, frame
+stepping, looping, and screen/offscreen target switching passed official
+Windows Simulator visual and audible acceptance. A conservative hard-float
+build, USB installation through COM3, launch, and the same interaction passed
+on a physical Playdate. The device artifact used 279,880 bytes of static RAM,
+produced a 976,532-byte ELF and a 227,458-byte PDX. Frame-time measurement,
+memory-growth measurement, soak, and post-run device-log inspection remain
+unverified. P6.3 remains optional and is not a `v0.6.0` release gate.
 
 ### P6.4 — external-game diagnostics
 

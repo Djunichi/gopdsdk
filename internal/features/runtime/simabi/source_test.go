@@ -72,6 +72,9 @@ func TestRender(t *testing.T) {
 		"C.bridgeDrawRotatedBitmap",
 		"C.bridgeSetStencil",
 		"C.bridgeClearStencil",
+		"C.bridgeLoadVideo",
+		"C.bridgeVideoRenderFrame",
+		"sdkRuntime.NewVideoPlayer",
 		"C.bridgeDisplaySetRefreshRate",
 		"C.bridgeDisplaySetScale",
 		"C.bridgeDisplaySetMosaic",
@@ -213,6 +216,8 @@ func TestRender(t *testing.T) {
 		"sprite->updateAndDrawSprites",
 		"sound->sample->load",
 		"sound->sampleplayer->newPlayer",
+		"graphics->video->loadVideo",
+		"graphics->video->renderFrame",
 		"sound->fileplayer->loadIntoPlayer",
 	} {
 		if !strings.Contains(sources.C, want) {

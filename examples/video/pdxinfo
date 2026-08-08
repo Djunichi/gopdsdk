@@ -1,0 +1,6 @@
+name=P6.3 Video Acceptance
+author=gopdsdk
+description=Owned PDV playback and render-target acceptance
+bundleID=com.gopdsdk.video
+version=1.0.0
+buildNumber=1

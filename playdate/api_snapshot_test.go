@@ -216,6 +216,7 @@ func (Paint).Components() (solid uint8, pattern [16]byte, patterned bool)
 func (PowerStatus).Has(requested PowerStatus) bool
 func (ScoreboardOperationError).Error() string
 func (ScoreboardOperationError).Unwrap() error
+func (VideoOperationError).Error() string
 func NewAnimation(table BitmapTable, first int, count int, frameSeconds float32) (*Animation, error)
 func NewTileMap(config TileMapConfig) (*TileMap, error)
 func PatternPaint(image [8]byte, mask [8]byte) Paint
@@ -323,6 +324,10 @@ type TileMap struct{columns int; rows int; tileWidth int; tileHeight int; tiles 
 type TileMapConfig struct{Columns int; Rows int; TileWidth int; TileHeight int; Tiles []uint8; Solid []bool}
 type TwoPoleFilter interface{SetFrequency(float32) error; SetFrequencyModulator(Signal) error; SetGain(float32) error; SetResonance(float32) error; SetResonanceModulator(Signal) error; AudioEffect}
 type VariableRatePlayer interface{Rate() (float32, error); SetRate(rate float32) error}
+type VideoInfo struct{Width int; Height int; FrameRate float32; FrameCount int; CurrentFrame int}
+type VideoOperationError struct{Operation string; Message string}
+type VideoPlayer interface{Close() error; Info() (VideoInfo, error); RenderFrame(frame int) error; SetContext(Bitmap) error; UseScreenContext() error}
+type Videos interface{LoadVideo(path string) (VideoPlayer, error)}
 type Waveform uint8
 var ErrAnimationConfig error
 var ErrAudioChannelClosed error
@@ -401,4 +406,9 @@ var ErrSpriteRedrawUnavailable error
 var ErrTileMapBitmap error
 var ErrTileMapConfig error
 var ErrTileMapDraw error
+var ErrVideoClosed error
+var ErrVideoFrame error
+var ErrVideoLoad error
+var ErrVideoPath error
+var ErrVideoUnavailable error
 `
