@@ -10,7 +10,10 @@ and generated-ABI level; comparative Simulator and hardware performance
 acceptance remains pending. The optional P6.3 owned PDV player is implemented
 and accepted with synchronized audio in the official Windows Simulator and on
 a physical Playdate; specialized media remains intentionally non-gating. The
-public API is snapshot-tested and documented,
+bounded `playdate/diagnostics` collector supplies the P6.4 external-game
+measurement contract without adding frame-loop I/O or target-specific state;
+`gopdsdkgame` completed bounded Simulator and physical-device measurements.
+The public API is snapshot-tested and documented,
 but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
 normative source; third-party
@@ -189,6 +192,31 @@ Both commands read but do not modify the selected log. Log contents are written
 to stdout, so they can be redirected to a file, and the resolved source path is
 written to stderr. Mounting changes the connected Playdate into data-disk mode;
 neither command proves that a game ran successfully.
+
+## External-game measurements
+
+`playdate/diagnostics` aggregates a bounded run without allocating while
+samples are recorded. External games use the runtime-provided frame delta,
+sample live heap from their Go runtime, and count the native resources they
+explicitly own:
+
+```go
+collector, _ := diagnostics.New(1800) // one minute at 30 FPS
+// update and render the frame
+var memory runtime.MemStats
+runtime.ReadMemStats(&memory)
+_ = collector.Record(diagnostics.Sample{
+	FrameMilliseconds: uint32(ctx.Input().DeltaSeconds*1000 + 0.5),
+	HeapBytes:          memory.HeapAlloc,
+	NativeResources:    ownedResources,
+})
+```
+
+After the interval, `Report` returns frame-time mean/p50/p95/p99/max, heap
+start/end/max/growth, and resource start/end/min/max. Render or persist that
+report after measurement so diagnostic I/O does not distort the samples. Use
+`gopdsdk build device` for static RAM, ELF, and packaged PDX sizes, and label
+Simulator and physical-device measurements separately.
 
 ## Build a Simulator application
 
@@ -515,8 +543,10 @@ and the packaged card, icon, and launch image all behaved as intended. The
 device path used a conservative-GC hard-float build and USB deployment on COM3.
 Crank Caverns deterministically tests its gameplay state and render plans and
 owns every native resource explicitly. The complete game establishes the P3
-product boundary; fixed frame-time, bounded-heap, extended soak, and post-run
-device-log measurements remain unverified evidence and are not implied by the
+product boundary. P6.4 later recorded frame-time distributions, live-heap
+growth, and stable native-resource counts over bounded 1,800-frame Simulator
+and physical-device runs. Extended soak, termination cleanup observation, and
+post-run device-log comparison remain unverified and are not implied by the
 v0.3.0 release.
 
 ## P4.1 owned filesystem

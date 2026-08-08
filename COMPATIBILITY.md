@@ -33,6 +33,20 @@ The shared implementation reads the requested root-level log without modifying
 it. Connected-device execution of the new `errorlog` command has not been run
 for this candidate and remains physical-device unverified.
 
+The P6.4 `playdate/diagnostics` collector is unit-tested for bounded frame
+aggregation, percentiles, maximum, signed live-heap growth, owned
+native-resource extrema, invalid limits, and completed-collection behavior. It
+does not itself prove target timing or memory behavior. On 2026-08-08 the
+external `gopdsdkgame` module completed 1,800-frame official Windows Simulator
+and physical-device runs. Simulator mean/p50/p95/p99/max frame times were
+33.01/33/33/33/94 ms, live heap was 255,224 to 892,120 bytes, and all native
+resource samples reported 18. Device values were 33.07/33/34/34/77 ms, heap
+7,248 to 129,040 bytes with a 257,952-byte maximum, and 18 resources. The
+hard-float artifact used 287,912 bytes of static RAM and produced a
+1,618,252-byte ELF and 965,530-byte PDX. This is SDK integration and physical
+device evidence for the bounded interval, not a soak or published-version
+consumer gate; post-run device logs were not requested or inspected.
+
 ## Accepted application evidence
 
 - P1.1: common lifecycle, buttons, crank, dock transitions and frame delta on
@@ -103,9 +117,11 @@ for this candidate and remains physical-device unverified.
   graphics resources, sprites and collisions, animation, audio, fonts,
   primitives and graphics state, offscreen drawing, direct framebuffer access,
   tile map and camera, menu transitions, and Launcher exit. Its deterministic
-  gameplay and render plans are unit-tested. Fixed frame-time, bounded-heap,
-  extended physical-device soak, cleanup observation on termination, and
-  post-run device-log comparison remain unverified for the integrated game.
+  gameplay and render plans are unit-tested. P6.4 later recorded bounded
+  1,800-frame Simulator and physical-device timing, live-heap, artifact-size,
+  and stable native-resource evidence for this game. Extended physical-device
+  soak, cleanup observation on termination, and post-run device-log comparison
+  remain unverified for the integrated game.
 - P4.1 implemented: optional filesystem capability forwarding, owned file
   lifetime, read/write/seek/flush/close behavior, path and mode validation,
   metadata, listing, and directory mutations are covered by deterministic
