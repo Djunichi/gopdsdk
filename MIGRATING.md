@@ -20,8 +20,7 @@ borrows an owned bitmap; keep that bitmap open until changing the target or
 closing the player. External games may use `playdate/diagnostics.Collector` for
 bounded frame-time, heap, and owned-resource samples without frame-loop I/O.
 
-## Release-candidate boundary
+## Published-module verification
 
-Before the `v0.6.0` tag exists, use a local `replace` for candidate testing.
-After tagging, remove the replacement and repeat the clean module-proxy check
-from [RELEASING.md](RELEASING.md).
+Remove any local `replace`, require `github.com/Djunichi/gopdsdk v0.6.0`, and
+repeat the clean module-proxy check from [RELEASING.md](RELEASING.md).

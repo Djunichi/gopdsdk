@@ -1,11 +1,10 @@
 # Release procedure
 
-The latest published release is `v0.5.0`, covering P5. `v0.6.0` for P6 is in
-release-candidate preparation after completion of its scoped implementation,
-acceptance, and regression gates. Go module versions come from Git tags; no
-separate VERSION file is maintained.
+The latest published release is `v0.6.0`. Go module versions come from Git
+tags; no separate VERSION file is maintained. The procedure below applies to
+the next planned release selected from the roadmap.
 
-## Candidate gates
+## Release gates
 
 1. Select the intended version, confirm the worktree contains only reviewed
    release changes, and confirm no local or remote tag for that version exists.
@@ -28,9 +27,9 @@ separate VERSION file is maintained.
 
 ## Version and consumer check
 
-Before a tag exists, acceptance uses the intended version with a local `replace`
-to the candidate checkout. After publication, verify from a clean directory
-without a `replace`. For the current release that check is:
+Before a new tag exists, acceptance uses the intended version with a local
+`replace` to the release checkout. After publication, verify from a clean
+directory without a `replace`. For the current published release that check is:
 
 ```sh
 go mod init example.com/release-check
