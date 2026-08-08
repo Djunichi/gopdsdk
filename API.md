@@ -164,6 +164,27 @@ resource load returns `BitmapLoadError`, which retains the Playdate diagnostic.
 Callers should use `errors.Is` for sentinels and `errors.As` for the typed load
 error rather than matching error text.
 
+Games that need bitmap storage and mask operations assert
+`BitmapDataGraphics`. `WithBitmapData` accepts only an owned bitmap and exposes
+its MSB-first image and optional mask bytes for one synchronous callback;
+checked access after return fails with `ErrBitmapDataExpired`. `SetPixel`
+accepts black or white, updates the native image bytes immediately, and marks
+the view dirty. Call `MarkDirty` after direct slice writes; `Dirty` lets an
+editor propagate the change to sprites through their redraw API.
+
+`CopyBitmap`, `RotatedBitmap`, and `CopyDisplayBuffer` return new owned handles.
+The integer returned with a rotated bitmap is the native allocation size for
+budget accounting. `LoadIntoBitmap` and `LoadIntoBitmapTable` require owned
+destinations and preserve the handle identity. A bitmap table created with
+`NewBitmapTable` owns its frames; returned frames remain borrowed from it.
+
+`SetBitmapMask` requires equal bitmap dimensions and keeps both Go handles live
+without transferring ownership. `BitmapMask` returns an owned native view tied
+to the masked bitmap's storage: close the view before its parent. A mask cannot
+be closed while another bitmap retains it. `ClearBitmapMask` removes the
+association without closing either bitmap. Mask collision accepts only the four
+`BitmapFlip` values and an integer test rectangle.
+
 ## Sprites and display list
 
 Games that need physical-display presentation controls assert the optional

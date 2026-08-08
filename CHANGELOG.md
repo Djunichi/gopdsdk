@@ -6,6 +6,22 @@ that out.
 
 ## Unreleased
 
+- Added the P7.2 owned-bitmap data surface, copying and in-place loading,
+  owned bitmap-table creation/loading, mask lifetime and collision operations,
+  rotated-bitmap creation, and persistent display-buffer snapshots on both
+  native adapters. Callback-scoped image and mask bytes expire deterministically;
+  owned mask views remain tied to their parent bitmap, and attached masks cannot
+  be closed while retained.
+- Added `examples/bitmapdata`, a repository-owned P7.2 acceptance scene covering
+  every new bitmap-data, table, mask, collision, rotation, and display-snapshot
+  operation in one deterministic lifecycle.
+- Passed deterministic tests and official Windows SDK 3.1.1 Simulator visual
+  execution for the P7.2 acceptance scene. Built it with the conservative
+  hard-float device profile, installed it over COM3, and confirmed visual
+  execution on a physical Playdate. The artifact uses 275,580 bytes of static
+  RAM and produces an 872,964-byte ELF and a 38,768-byte PDX; extended soak,
+  memory-growth measurement, and post-run device-log inspection remain pending.
+
 - Added the P7.1 drawing and graphics-state surface: value-typed filled
   polygons, rounded rectangles, line-cap style, background color, and
   screen-coordinate clipping on both native adapters.

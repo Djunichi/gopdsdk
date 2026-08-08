@@ -796,6 +796,84 @@ func TestBitmapTableOwnershipAndBorrowedFrames(t *testing.T) {
 	}
 }
 
+func TestOwnedBitmapDataLifetimePixelsAndMask(t *testing.T) {
+	data := []byte{0, 0}
+	mask := []byte{0xff, 0xff}
+	driver := BitmapDriver{
+		Dimensions: func(uintptr) (int, int) { return 9, 1 },
+		Data:       func(uintptr) (int, int, int, []byte, []byte) { return 9, 1, 2, mask, data },
+	}
+	bitmap := NewOwnedBitmap(7, driver)
+	var retained playdate.BitmapData
+	if err := WithBitmapData(bitmap, func(view playdate.BitmapData) error {
+		retained = view
+		if view.Width() != 9 || view.Height() != 1 || view.RowBytes() != 2 {
+			t.Fatalf("dimensions = %d x %d stride %d", view.Width(), view.Height(), view.RowBytes())
+		}
+		if bytes, err := view.MaskBytes(); err != nil || len(bytes) != 2 {
+			t.Fatalf("mask = %v, %v", bytes, err)
+		}
+		if err := view.SetPixel(8, 0, playdate.ColorBlack); err != nil {
+			return err
+		}
+		if dirty, err := view.Dirty(); err != nil || !dirty {
+			t.Fatalf("dirty = %v, %v", dirty, err)
+		}
+		color, err := view.Pixel(8, 0)
+		if err != nil || color != playdate.ColorBlack {
+			t.Fatalf("pixel = %v, %v", color, err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if data[1] != 0x80 {
+		t.Fatalf("data = %x", data)
+	}
+	if _, err := retained.Bytes(); !errors.Is(err, playdate.ErrBitmapDataExpired) {
+		t.Fatalf("retained bytes = %v", err)
+	}
+	if err := retained.SetPixel(0, 0, playdate.ColorBlack); !errors.Is(err, playdate.ErrBitmapDataExpired) {
+		t.Fatalf("retained pixel = %v", err)
+	}
+	if err := WithBitmapData(NewBorrowedBitmap(8, driver), func(playdate.BitmapData) error { return nil }); !errors.Is(err, playdate.ErrBitmapBorrowed) {
+		t.Fatalf("borrowed data = %v", err)
+	}
+	if err := WithBitmapData(bitmap, nil); !errors.Is(err, playdate.ErrBitmapDataCallback) {
+		t.Fatalf("nil callback = %v", err)
+	}
+}
+
+func TestBitmapMaskOwnershipAndLifetime(t *testing.T) {
+	driver := BitmapDriver{Dimensions: func(uintptr) (int, int) { return 8, 8 }, Free: func(uintptr) {}}
+	bitmap, mask := NewOwnedBitmap(1, driver), NewOwnedBitmap(2, driver)
+	var nativeMask uintptr
+	set := func(_ uintptr, value uintptr) bool { nativeMask = value; return true }
+	if err := SetBitmapMask(bitmap, mask, set); err != nil {
+		t.Fatal(err)
+	}
+	borrowed, ok, err := BitmapMask(bitmap, func(uintptr) uintptr { return nativeMask })
+	if err != nil || !ok {
+		t.Fatalf("mask = %v, %v", ok, err)
+	}
+	if err := bitmap.Close(); !errors.Is(err, playdate.ErrBitmapMaskInUse) {
+		t.Fatalf("owner close with mask view = %v", err)
+	}
+	if err := borrowed.Close(); err != nil {
+		t.Fatalf("mask view close = %v", err)
+	}
+	if err := bitmap.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := borrowed.Width(); !errors.Is(err, playdate.ErrBitmapClosed) {
+		t.Fatalf("mask after owner close = %v", err)
+	}
+	wide := NewOwnedBitmap(3, BitmapDriver{Dimensions: func(uintptr) (int, int) { return 9, 8 }})
+	if err := SetBitmapMask(wide, mask, set); !errors.Is(err, playdate.ErrBitmapMaskSize) {
+		t.Fatalf("mask size = %v", err)
+	}
+}
+
 func TestBitmapArgumentValidation(t *testing.T) {
 	if err := ValidateBitmapSize(0, 1); !errors.Is(err, playdate.ErrBitmapSize) {
 		t.Fatalf("size error = %v", err)

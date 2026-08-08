@@ -139,6 +139,16 @@ void bridgeFreeBitmap(uintptr_t bitmap) { bridgePlaydate->graphics->freeBitmap((
 void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height) { bridgePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, width, height, NULL, NULL, NULL); }
 static LCDColor bridgeBitmapColor(int color) { return color == 1 ? kColorWhite : color == 2 ? kColorBlack : kColorClear; }
 void bridgeFillBitmap(uintptr_t bitmap, int color) { bridgePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
+void bridgeBitmapData(uintptr_t bitmap,int* width,int* height,int* rowbytes,uint8_t** mask,uint8_t** data){bridgePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap,width,height,rowbytes,mask,data);}
+uintptr_t bridgeCopyBitmap(uintptr_t bitmap){return(uintptr_t)bridgePlaydate->graphics->copyBitmap((LCDBitmap*)bitmap);}
+void bridgeLoadIntoBitmap(const char* path,uintptr_t bitmap,const char** error){bridgePlaydate->graphics->loadIntoBitmap(path,(LCDBitmap*)bitmap,error);}
+uintptr_t bridgeNewBitmapTable(int count,int width,int height){return(uintptr_t)bridgePlaydate->graphics->newBitmapTable(count,width,height);}
+void bridgeLoadIntoBitmapTable(const char* path,uintptr_t table,const char** error){bridgePlaydate->graphics->loadIntoBitmapTable(path,(LCDBitmapTable*)table,error);}
+int bridgeSetBitmapMask(uintptr_t bitmap,uintptr_t mask){return bridgePlaydate->graphics->setBitmapMask((LCDBitmap*)bitmap,(LCDBitmap*)mask);}
+uintptr_t bridgeGetBitmapMask(uintptr_t bitmap){return(uintptr_t)bridgePlaydate->graphics->getBitmapMask((LCDBitmap*)bitmap);}
+int bridgeCheckMaskCollision(uintptr_t a,int ax,int ay,int af,uintptr_t b,int bx,int by,int bf,int x,int y,int width,int height){return bridgePlaydate->graphics->checkMaskCollision((LCDBitmap*)a,ax,ay,(LCDBitmapFlip)af,(LCDBitmap*)b,bx,by,(LCDBitmapFlip)bf,LCDMakeRect(x,y,width,height));}
+uintptr_t bridgeRotatedBitmap(uintptr_t bitmap,float degrees,float sx,float sy,int* size){return(uintptr_t)bridgePlaydate->graphics->rotatedBitmap((LCDBitmap*)bitmap,degrees,sx,sy,size);}
+uintptr_t bridgeCopyDisplayBuffer(void){return(uintptr_t)bridgePlaydate->graphics->copyFrameBufferBitmap();}
 void bridgeDrawBitmap(uintptr_t bitmap, int x, int y) { bridgePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
 void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY) { bridgePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, scaleX, scaleY); }
 void bridgeDrawRotatedBitmap(uintptr_t bitmap, int x, int y, float degrees, float centerX, float centerY, float scaleX, float scaleY) { bridgePlaydate->graphics->drawRotatedBitmap((LCDBitmap*)bitmap, x, y, degrees, centerX, centerY, scaleX, scaleY); }

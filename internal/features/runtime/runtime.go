@@ -869,23 +869,119 @@ func ValidateAudioRate(rate float32) error {
 // BitmapDriver contains platform operations for one native bitmap handle.
 type BitmapDriver struct {
 	Dimensions func(uintptr) (width, height int)
+	Data       func(uintptr) (width, height, rowBytes int, mask, data []byte)
 	Fill       func(uintptr, playdate.Color)
 	Free       func(uintptr)
 }
 
 // Bitmap owns or borrows a native Playdate bitmap.
 type Bitmap struct {
-	handle uintptr
-	driver BitmapDriver
-	table  *BitmapTable
-	owned  bool
-	closed bool
+	handle               uintptr
+	driver               BitmapDriver
+	table                *BitmapTable
+	parent               *Bitmap
+	mask                 *Bitmap
+	maskUsers, maskViews int
+	owned                bool
+	closed               bool
 }
 
 // BitmapTableDriver contains platform operations for one native bitmap table.
 type BitmapTableDriver struct {
 	Frame func(table uintptr, index int) uintptr
 	Free  func(uintptr)
+}
+
+// BitmapData is valid only during WithBitmapData.
+type BitmapData struct {
+	width, height, rowBytes int
+	data, mask              []byte
+	valid                   bool
+	dirty                   bool
+}
+
+func (d *BitmapData) Width() int    { return d.width }
+func (d *BitmapData) Height() int   { return d.height }
+func (d *BitmapData) RowBytes() int { return d.rowBytes }
+func (d *BitmapData) Bytes() ([]byte, error) {
+	if !d.valid {
+		return nil, playdate.ErrBitmapDataExpired
+	}
+	return d.data, nil
+}
+func (d *BitmapData) MaskBytes() ([]byte, error) {
+	if !d.valid {
+		return nil, playdate.ErrBitmapDataExpired
+	}
+	return d.mask, nil
+}
+func (d *BitmapData) Dirty() (bool, error) {
+	if !d.valid {
+		return false, playdate.ErrBitmapDataExpired
+	}
+	return d.dirty, nil
+}
+func (d *BitmapData) MarkDirty() error {
+	if !d.valid {
+		return playdate.ErrBitmapDataExpired
+	}
+	d.dirty = true
+	return nil
+}
+func (d *BitmapData) Pixel(x, y int) (playdate.Color, error) {
+	if !d.valid {
+		return 0, playdate.ErrBitmapDataExpired
+	}
+	if x < 0 || x >= d.width || y < 0 || y >= d.height {
+		return 0, playdate.ErrBitmapBounds
+	}
+	if d.data[y*d.rowBytes+x/8]&(0x80>>uint(x&7)) != 0 {
+		return playdate.ColorBlack, nil
+	}
+	return playdate.ColorWhite, nil
+}
+func (d *BitmapData) SetPixel(x, y int, color playdate.Color) error {
+	if !d.valid {
+		return playdate.ErrBitmapDataExpired
+	}
+	if x < 0 || x >= d.width || y < 0 || y >= d.height {
+		return playdate.ErrBitmapBounds
+	}
+	if color != playdate.ColorWhite && color != playdate.ColorBlack {
+		return playdate.ErrBitmapColor
+	}
+	index, bit := y*d.rowBytes+x/8, byte(0x80>>uint(x&7))
+	if color == playdate.ColorBlack {
+		d.data[index] |= bit
+	} else {
+		d.data[index] &^= bit
+	}
+	d.dirty = true
+	return nil
+}
+
+// WithBitmapData exposes native bitmap storage for one callback.
+func WithBitmapData(bitmap playdate.Bitmap, callback func(playdate.BitmapData) error) error {
+	if callback == nil {
+		return playdate.ErrBitmapDataCallback
+	}
+	value, ok := bitmap.(*Bitmap)
+	if !ok {
+		return ErrInvalidBitmap
+	}
+	if !value.owned {
+		return playdate.ErrBitmapBorrowed
+	}
+	handle, err := value.nativeHandle()
+	if err != nil {
+		return err
+	}
+	width, height, rowBytes, mask, data := value.driver.Data(handle)
+	view := &BitmapData{width: width, height: height, rowBytes: rowBytes, mask: mask, data: data, valid: true}
+	err = callback(view)
+	view.valid = false
+	view.data, view.mask = nil, nil
+	return err
 }
 
 // BitmapTable owns or borrows a native Playdate bitmap table.
@@ -944,7 +1040,7 @@ func NewBorrowedBitmap(handle uintptr, driver BitmapDriver) *Bitmap {
 }
 
 func (b *Bitmap) nativeHandle() (uintptr, error) {
-	if b == nil || b.closed || b.handle == 0 || b.table != nil && b.table.closed {
+	if b == nil || b.closed || b.handle == 0 || b.table != nil && b.table.closed || b.parent != nil && (b.parent.closed || b.parent.handle == 0) {
 		return 0, playdate.ErrBitmapClosed
 	}
 	return b.handle, nil
@@ -979,7 +1075,17 @@ func (b *Bitmap) Close() error {
 	if !b.owned {
 		return playdate.ErrBitmapBorrowed
 	}
+	if b.maskUsers > 0 || b.maskViews > 0 {
+		return playdate.ErrBitmapMaskInUse
+	}
 	b.driver.Free(b.handle)
+	if b.parent != nil {
+		b.parent.maskViews--
+	}
+	if b.mask != nil {
+		b.mask.maskUsers--
+		b.mask = nil
+	}
 	b.closed = true
 	b.handle = 0
 	return nil
@@ -1004,6 +1110,99 @@ func OwnedBitmapHandle(bitmap playdate.Bitmap) (uintptr, error) {
 		return 0, playdate.ErrBitmapBorrowed
 	}
 	return value.nativeHandle()
+}
+
+// SetBitmapMask validates ownership and dimensions before changing a mask.
+func SetBitmapMask(bitmap, mask playdate.Bitmap, set func(uintptr, uintptr) bool) error {
+	target, ok := bitmap.(*Bitmap)
+	if !ok {
+		return ErrInvalidBitmap
+	}
+	if !target.owned {
+		return playdate.ErrBitmapBorrowed
+	}
+	targetHandle, err := target.nativeHandle()
+	if err != nil {
+		return err
+	}
+	maskValue, ok := mask.(*Bitmap)
+	if !ok {
+		return ErrInvalidBitmap
+	}
+	maskHandle, err := maskValue.nativeHandle()
+	if err != nil {
+		return err
+	}
+	tw, th := target.driver.Dimensions(targetHandle)
+	mw, mh := maskValue.driver.Dimensions(maskHandle)
+	if tw != mw || th != mh {
+		return playdate.ErrBitmapMaskSize
+	}
+	if !set(targetHandle, maskHandle) {
+		return playdate.ErrBitmapMask
+	}
+	if target.mask != nil {
+		target.mask.maskUsers--
+	}
+	target.mask = maskValue
+	maskValue.maskUsers++
+	return nil
+}
+
+// ClearBitmapMask removes the association without closing either bitmap.
+func ClearBitmapMask(bitmap playdate.Bitmap, set func(uintptr, uintptr) bool) error {
+	target, ok := bitmap.(*Bitmap)
+	if !ok {
+		return ErrInvalidBitmap
+	}
+	if !target.owned {
+		return playdate.ErrBitmapBorrowed
+	}
+	handle, err := target.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !set(handle, 0) {
+		return playdate.ErrBitmapMask
+	}
+	if target.mask != nil {
+		target.mask.maskUsers--
+	}
+	target.mask = nil
+	return nil
+}
+
+// BitmapMask returns a borrowed view tied to the target bitmap lifetime.
+func BitmapMask(bitmap playdate.Bitmap, get func(uintptr) uintptr) (playdate.Bitmap, bool, error) {
+	target, ok := bitmap.(*Bitmap)
+	if !ok {
+		return nil, false, ErrInvalidBitmap
+	}
+	handle, err := target.nativeHandle()
+	if err != nil {
+		return nil, false, err
+	}
+	mask := get(handle)
+	if mask == 0 {
+		return nil, false, nil
+	}
+	target.maskViews++
+	return &Bitmap{handle: mask, driver: target.driver, parent: target, owned: true}, true, nil
+}
+
+// OwnedBitmapTableHandle validates a table that native code may replace.
+func OwnedBitmapTableHandle(table playdate.BitmapTable) (uintptr, error) {
+	value, ok := table.(*BitmapTable)
+	if !ok {
+		return 0, ErrInvalidBitmap
+	}
+	if value.closed || value.handle == 0 {
+		return 0, playdate.ErrBitmapTableClosed
+	}
+	if !value.owned {
+		return 0, playdate.ErrBitmapTableBorrowed
+	}
+	return value.handle, nil
 }
 
 // VideoDriver contains platform operations for one native video player.
@@ -1397,6 +1596,22 @@ func ValidateBitmapTransform(degrees, centerX, centerY, scaleX, scaleY float32) 
 		centerX != centerX || centerX > maxFloat32 || centerX < -maxFloat32 ||
 		centerY != centerY || centerY > maxFloat32 || centerY < -maxFloat32 {
 		return playdate.ErrGraphicsGeometry
+	}
+	return nil
+}
+
+// ValidateBitmapFlip rejects values outside the official flip enumeration.
+func ValidateBitmapFlip(flip playdate.BitmapFlip) error {
+	if flip > playdate.BitmapFlippedXY {
+		return playdate.ErrBitmapFlip
+	}
+	return nil
+}
+
+// ValidateBitmapTableSize applies the shared table creation contract.
+func ValidateBitmapTableSize(count, width, height int) error {
+	if count <= 0 || width <= 0 || height <= 0 {
+		return playdate.ErrBitmapTableSize
 	}
 	return nil
 }
@@ -2139,6 +2354,91 @@ func (context *applicationContext) WithStencil(stencil playdate.Bitmap, tiled bo
 	err := graphics.WithStencil(stencil, tiled, callback)
 	context.stencilActive = false
 	return err
+}
+
+func (context *applicationContext) bitmapDataGraphics() (playdate.BitmapDataGraphics, error) {
+	graphics, ok := context.Context.(playdate.BitmapDataGraphics)
+	if !ok {
+		return nil, playdate.ErrGraphicsUnavailable
+	}
+	return graphics, nil
+}
+func (context *applicationContext) WithBitmapData(bitmap playdate.Bitmap, callback func(playdate.BitmapData) error) error {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.WithBitmapData(bitmap, callback)
+}
+func (context *applicationContext) CopyBitmap(bitmap playdate.Bitmap) (playdate.Bitmap, error) {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return nil, err
+	}
+	return graphics.CopyBitmap(bitmap)
+}
+func (context *applicationContext) LoadIntoBitmap(path string, bitmap playdate.Bitmap) error {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.LoadIntoBitmap(path, bitmap)
+}
+func (context *applicationContext) NewBitmapTable(count, width, height int) (playdate.BitmapTable, error) {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return nil, err
+	}
+	return graphics.NewBitmapTable(count, width, height)
+}
+func (context *applicationContext) LoadIntoBitmapTable(path string, table playdate.BitmapTable) error {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.LoadIntoBitmapTable(path, table)
+}
+func (context *applicationContext) SetBitmapMask(bitmap, mask playdate.Bitmap) error {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.SetBitmapMask(bitmap, mask)
+}
+func (context *applicationContext) ClearBitmapMask(bitmap playdate.Bitmap) error {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.ClearBitmapMask(bitmap)
+}
+func (context *applicationContext) BitmapMask(bitmap playdate.Bitmap) (playdate.Bitmap, bool, error) {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return nil, false, err
+	}
+	return graphics.BitmapMask(bitmap)
+}
+func (context *applicationContext) CheckBitmapMaskCollision(a playdate.Bitmap, ax, ay int, af playdate.BitmapFlip, b playdate.Bitmap, bx, by int, bf playdate.BitmapFlip, rx, ry, rw, rh int) (bool, error) {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return false, err
+	}
+	return graphics.CheckBitmapMaskCollision(a, ax, ay, af, b, bx, by, bf, rx, ry, rw, rh)
+}
+func (context *applicationContext) RotatedBitmap(bitmap playdate.Bitmap, degrees, sx, sy float32) (playdate.Bitmap, int, error) {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return nil, 0, err
+	}
+	return graphics.RotatedBitmap(bitmap, degrees, sx, sy)
+}
+func (context *applicationContext) CopyDisplayBuffer() (playdate.Bitmap, error) {
+	graphics, err := context.bitmapDataGraphics()
+	if err != nil {
+		return nil, err
+	}
+	return graphics.CopyDisplayBuffer()
 }
 
 // NewApplication composes a public game with its platform context. beforeInit
