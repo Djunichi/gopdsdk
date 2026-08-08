@@ -54,4 +54,8 @@ only when requested.
   compatibility matrix. Do not add per-P-scope feature status or acceptance
   notes during unreleased development.
 - Record unreleased feature changes and acceptance evidence in `CHANGELOG.md`;
-  record scope status in `docs/ROADMAP.md` and public contracts in `API.md`.
+  record active scope status in `docs/ROADMAP.md` and public contracts in
+  `API.md`. When a release is declared, move its durable evidence to
+  `CHANGELOG.md` or `COMPATIBILITY.md` and remove its completed scope row and
+  milestone section from `docs/ROADMAP.md` so the roadmap contains only future
+  work.

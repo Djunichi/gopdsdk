@@ -1,26 +1,26 @@
-# Migrating to v0.6.0
+# Migrating to v0.7.0
 
-`v0.6.0` adds optional bitmap composition, display and sprite-redraw controls,
-owned PDV video, and bounded diagnostics without widening `playdate.Context`.
-Existing v0.5 games can update their module requirement and continue unchanged.
+`v0.7.0` adds advanced drawing state, owned bitmap data and masks, text layout
+and font metrics, and display introspection. Existing v0.6 games can update
+their module requirement and continue unchanged; all new capabilities are
+additive.
 
-## Graphics and redraw
+## Drawing and bitmap data
 
-Capability-assert `BitmapCompositor` for rotated/scaled bitmap drawing and
-callback-scoped stencils. Pre-render non-cardinal rotation into a transparent
-offscreen bitmap before drawing through a screen stencil. Capability-assert
-`Display` and `SpriteRedraw` only when using presentation modes or global dirty
-regions; use `Sprite.MarkDirty` or `Sprite.MarkDirtyRect` for per-sprite
-invalidation.
+Use the expanded `Graphics` surface for filled polygons, rounded rectangles,
+line caps, background color, and screen-coordinate clipping. Owned bitmap data
+is exposed only inside its callback lifetime; mark modified data dirty before
+the callback returns. Keep borrowed mask views and glyph bitmaps within the
+lifetime of their owning bitmap or font.
 
-## Video and diagnostics
+## Text, fonts, and display
 
-Capability-assert `Videos` and close every owned `VideoPlayer`. A player target
-borrows an owned bitmap; keep that bitmap open until changing the target or
-closing the player. External games may use `playdate/diagnostics.Collector` for
-bounded frame-time, heap, and owned-resource samples without frame-loop I/O.
+Use bounded text drawing and wrapping-height measurement for rectangle layout.
+Glyph metrics and kerning support custom renderers while packaged `.fnt` files
+remain the portable custom-font path. The expanded `Display` capability reports
+logical dimensions, nominal refresh rate, and measured FPS.
 
 ## Published-module verification
 
-Remove any local `replace`, require `github.com/Djunichi/gopdsdk v0.6.0`, and
+Remove any local `replace`, require `github.com/Djunichi/gopdsdk v0.7.0`, and
 repeat the clean module-proxy check from [RELEASING.md](RELEASING.md).

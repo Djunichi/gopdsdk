@@ -6,6 +6,8 @@ that out.
 
 ## Unreleased
 
+## v0.7.0 (2026-08-08)
+
 - Added P7.4 logical display width/height, nominal refresh-rate, and measured
   FPS introspection through `playdate.Display`, `NewApplication`, and both
   native adapters. The existing sprite/display acceptance scene now reports
@@ -17,9 +19,9 @@ that out.
   matching logical dimensions, nominal refresh rate, measured FPS, redraw,
   and presentation behavior on a physical Playdate on 2026-08-08. The device
   artifact uses 292,016 bytes of static RAM and produces a 1,018,708-byte ELF
-  and a 69,505-byte PDX. Full graphics regression, performance,
-  bounded-memory, soak, and post-run device-log gates remain pending before
-  `v0.7.0` release.
+  and a 69,505-byte PDX. Bounded-memory, soak, and post-run device-log gates
+  passed on 2026-08-08; full graphics performance regression remains
+  unverified.
 - Added the P7.3 text-layout and font-metrics surface on both native adapters:
   bounded rectangle drawing, character/word wrapping, alignment, tracking,
   leading, wrapping-height measurement, glyph advance and kerning, and
@@ -34,7 +36,7 @@ that out.
   static RAM and produces an 826,340-byte ELF and a 41,203-byte PDX; Simulator
   visual execution passed on Windows; physical-device installation, launch,
   and visual execution passed on COM3. Soak, memory-growth measurement, and
-  device-log inspection remain unverified.
+  device-log inspection passed on 2026-08-08.
 
 - Added the P7.2 owned-bitmap data surface, copying and in-place loading,
   owned bitmap-table creation/loading, mask lifetime and collision operations,
@@ -50,7 +52,8 @@ that out.
   hard-float device profile, installed it over COM3, and confirmed visual
   execution on a physical Playdate. The artifact uses 275,580 bytes of static
   RAM and produces an 872,964-byte ELF and a 38,768-byte PDX; extended soak,
-  memory-growth measurement, and post-run device-log inspection remain pending.
+  memory-growth measurement, and post-run device-log inspection passed on
+  2026-08-08.
 
 - Added the P7.1 drawing and graphics-state surface: value-typed filled
   polygons, rounded rectangles, line-cap style, background color, and
@@ -58,9 +61,10 @@ that out.
 - Passed official Windows SDK 3.1.1 Simulator execution and conservative-GC
   physical-device build, COM3 installation, launch, and execution for the P7.1
   acceptance scene. The device artifact uses 274,720 bytes of static RAM and
-  produces an 813,972-byte ELF and a 38,355-byte PDX; extended soak, memory
-  growth, post-run logs, and isolated visual assertions for every new operation
-  remain pending.
+  produces an 813,972-byte ELF and a 38,355-byte PDX. Extended soak,
+  memory-growth measurement, and post-run device-log inspection passed on
+  2026-08-08; isolated visual assertions for every new operation remain
+  unverified.
 
 ## v0.6.0 (2026-08-08)
 

@@ -1,6 +1,6 @@
 # Release procedure
 
-The latest published release is `v0.6.0`. Go module versions come from Git
+The latest published release is `v0.7.0`. Go module versions come from Git
 tags; no separate VERSION file is maintained. The procedure below applies to
 the next planned release selected from the roadmap.
 
@@ -23,7 +23,10 @@ the next planned release selected from the roadmap.
 7. Review [API.md](API.md), [COMPATIBILITY.md](COMPATIBILITY.md),
    [MIGRATING.md](MIGRATING.md), README commands, public Go documentation, and
    [CHANGELOG.md](CHANGELOG.md). Confirm the API snapshot contains only intended
-   additions and no readiness claim exceeds its evidence.
+   additions and no readiness claim exceeds its evidence. Move the released
+   scope's durable evidence to the changelog or compatibility matrix, then
+   remove its completed row and milestone section from
+   [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Version and consumer check
 
@@ -33,8 +36,8 @@ directory without a `replace`. For the current published release that check is:
 
 ```sh
 go mod init example.com/release-check
-go get github.com/Djunichi/gopdsdk@v0.6.0
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.6.0 doctor
+go get github.com/Djunichi/gopdsdk@v0.7.0
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.7.0 doctor
 ```
 
 Then compile and dry-run a standalone application against both targets. This

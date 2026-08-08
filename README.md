@@ -2,12 +2,12 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The latest published release is **`v0.6.0`**. Bitmap composition, display and
-sprite redraw, optional video, and bounded external-game diagnostics are
-accepted on the verified Windows Simulator and physical-device profile. The
-`v0.6.0` regression run covered
-comparative redraw behavior, bounded memory, physical soak, and post-run device
-logs. Specialized media remains intentionally non-gating.
+The latest published release is **`v0.7.0`**. It completes the offline bitmap,
+drawing, text, font, and display facilities planned for P7 on top of the bitmap
+composition, sprite redraw, optional video, and bounded external-game
+diagnostics accepted in `v0.6.0`. P7 acceptance, soak, bounded-memory, and
+post-run device-log checks passed on the verified Windows Simulator and
+physical-device profile.
 The public API is snapshot-tested and documented,
 but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
@@ -22,7 +22,7 @@ external-consumer CLI suite natively on all three hosts. Windows is additionally
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
 
-The exact `v0.6.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+The exact `v0.7.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
 TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
 solely by version number: `doctor` reports them as `UNVERIFIED` until the
 relevant probe succeeds.
@@ -54,8 +54,8 @@ TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 Run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.6.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.6.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.7.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.7.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -366,7 +366,8 @@ On 2026-08-08 this scene passed deterministic tests, official Windows SDK
 build, USB installation through COM3, launch, and visual execution on a
 physical Playdate. The accepted device artifact uses 275,580 bytes of static
 RAM and produces an 872,964-byte ELF and a 38,768-byte PDX. Extended soak,
-memory-growth measurement, and post-run device-log inspection remain pending.
+memory-growth measurement, and post-run device-log inspection passed on
+2026-08-08.
 
 For complete text layout and custom renderers, assert `playdate.TextGraphics`.
 It adds bounded aligned text, character and word wrapping, tracking, leading,
@@ -391,8 +392,8 @@ On 2026-08-08 the P7.4 scene passed matching visual acceptance in the official
 Windows SDK 3.1.1 Simulator and on a physical Playdate after conservative-GC
 hard-float build and USB installation through COM3. The accepted device
 artifact uses 292,016 bytes of static RAM and produces a 69,505-byte PDX.
-Performance, bounded-memory, soak, and post-run device-log gates remain
-unverified.
+Bounded-memory, soak, and post-run device-log gates passed on 2026-08-08;
+performance regression evidence remains unverified.
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/sprites
@@ -464,8 +465,8 @@ acceptance, and physical-device installation, launch, and visual acceptance
 passed with bounded wrapping, matching custom-font HUD, score, pause,
 game-over, and restart screens. The conservative hard-float artifact uses
 278,688 bytes of static RAM and produces an 826,340-byte ELF and a 41,203-byte
-PDX. Device soak, memory-growth measurement, and post-run log inspection remain
-unverified.
+PDX. Device soak, memory-growth measurement, and post-run log inspection passed
+on 2026-08-08.
 
 ## Drawing primitives and state
 
