@@ -20,6 +20,22 @@ that out.
   and a 69,505-byte PDX. Full graphics regression, performance,
   bounded-memory, soak, and post-run device-log gates remain pending before
   `v0.7.0` release.
+- Added the P7.3 text-layout and font-metrics surface on both native adapters:
+  bounded rectangle drawing, character/word wrapping, alignment, tracking,
+  leading, wrapping-height measurement, glyph advance and kerning, and
+  font-owned borrowed glyph bitmaps. Glyph bitmaps now expire with their font.
+- Kept custom fonts package-backed. The official `makeFontFromData` API consumes
+  opaque `LCDFontData` and does not provide a portable ownership contract for
+  Go-owned bytes across Simulator and device; packaged `.fnt` loading preserves
+  offline behavior without retaining Go memory in native code.
+- Passed deterministic tests, vet, official SDK 3.1.1 Simulator compilation,
+  and conservative hard-float device compilation for the expanded
+  `examples/fontsui` P7.3 scene. The device artifact uses 278,688 bytes of
+  static RAM and produces an 826,340-byte ELF and a 41,203-byte PDX; Simulator
+  visual execution passed on Windows; physical-device installation, launch,
+  and visual execution passed on COM3. Soak, memory-growth measurement, and
+  device-log inspection remain unverified.
+
 - Added the P7.2 owned-bitmap data surface, copying and in-place loading,
   owned bitmap-table creation/loading, mask lifetime and collision operations,
   rotated-bitmap creation, and persistent display-buffer snapshots on both

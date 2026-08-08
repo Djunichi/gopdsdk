@@ -880,6 +880,7 @@ type Bitmap struct {
 	driver               BitmapDriver
 	table                *BitmapTable
 	parent               *Bitmap
+	font                 *font
 	mask                 *Bitmap
 	maskUsers, maskViews int
 	owned                bool
@@ -1039,8 +1040,20 @@ func NewBorrowedBitmap(handle uintptr, driver BitmapDriver) *Bitmap {
 	return &Bitmap{handle: handle, driver: driver}
 }
 
+// NewBorrowedFontBitmap wraps a glyph bitmap controlled by an owned font.
+func NewBorrowedFontBitmap(owner playdate.Font, handle uintptr, driver BitmapDriver) (*Bitmap, error) {
+	value, ok := owner.(*font)
+	if !ok {
+		return nil, playdate.ErrFontInvalid
+	}
+	if _, err := value.nativeHandle(); err != nil {
+		return nil, err
+	}
+	return &Bitmap{handle: handle, driver: driver, font: value}, nil
+}
+
 func (b *Bitmap) nativeHandle() (uintptr, error) {
-	if b == nil || b.closed || b.handle == 0 || b.table != nil && b.table.closed || b.parent != nil && (b.parent.closed || b.parent.handle == 0) {
+	if b == nil || b.closed || b.handle == 0 || b.table != nil && b.table.closed || b.parent != nil && (b.parent.closed || b.parent.handle == 0) || b.font != nil && (b.font.closed || b.font.handle == 0) {
 		return 0, playdate.ErrBitmapClosed
 	}
 	return b.handle, nil
@@ -2218,6 +2231,51 @@ func (context *applicationContext) DrawTextFont(font playdate.Font, text string,
 		return playdate.ErrFontLoad
 	}
 	return graphics.DrawTextFont(font, text, x, y)
+}
+
+func (context *applicationContext) textGraphics() (playdate.TextGraphics, error) {
+	graphics, ok := context.Context.(playdate.TextGraphics)
+	if !ok {
+		return nil, playdate.ErrGraphicsUnavailable
+	}
+	return graphics, nil
+}
+func (context *applicationContext) SetTextTracking(value int) {
+	if graphics, err := context.textGraphics(); err == nil {
+		graphics.SetTextTracking(value)
+	}
+}
+func (context *applicationContext) TextTracking() int {
+	if graphics, err := context.textGraphics(); err == nil {
+		return graphics.TextTracking()
+	}
+	return 0
+}
+func (context *applicationContext) SetTextLeading(value int) {
+	if graphics, err := context.textGraphics(); err == nil {
+		graphics.SetTextLeading(value)
+	}
+}
+func (context *applicationContext) DrawTextInRect(text string, x, y, width, height int, wrapping playdate.TextWrappingMode, alignment playdate.TextAlignment) error {
+	graphics, err := context.textGraphics()
+	if err != nil {
+		return err
+	}
+	return graphics.DrawTextInRect(text, x, y, width, height, wrapping, alignment)
+}
+func (context *applicationContext) TextHeight(font playdate.Font, text string, maxWidth int, wrapping playdate.TextWrappingMode, tracking, leading int) (int, error) {
+	graphics, err := context.textGraphics()
+	if err != nil {
+		return 0, err
+	}
+	return graphics.TextHeight(font, text, maxWidth, wrapping, tracking, leading)
+}
+func (context *applicationContext) Glyph(font playdate.Font, codepoint, next rune) (playdate.FontGlyph, error) {
+	graphics, err := context.textGraphics()
+	if err != nil {
+		return playdate.FontGlyph{}, err
+	}
+	return graphics.Glyph(font, codepoint, next)
 }
 
 func (context *applicationContext) primitiveGraphics() (playdate.PrimitiveGraphics, error) {

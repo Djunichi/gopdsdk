@@ -29,6 +29,18 @@ func bridgeTextWidth(font uintptr, text *byte, length uintptr) int32
 func bridgeFontHeight(font uintptr) int32
 //go:linkname bridgeFreeFont bridgeFreeFont
 func bridgeFreeFont(font uintptr)
+//go:linkname bridgeSetTextTracking bridgeSetTextTracking
+func bridgeSetTextTracking(value int32)
+//go:linkname bridgeTextTracking bridgeTextTracking
+func bridgeTextTracking() int32
+//go:linkname bridgeSetTextLeading bridgeSetTextLeading
+func bridgeSetTextLeading(value int32)
+//go:linkname bridgeDrawTextInRect bridgeDrawTextInRect
+func bridgeDrawTextInRect(text *byte,length uintptr,x,y,width,height,wrap,align int32)
+//go:linkname bridgeTextHeight bridgeTextHeight
+func bridgeTextHeight(font uintptr,text *byte,length uintptr,width,wrap,tracking,leading int32)int32
+//go:linkname bridgeFontGlyph bridgeFontGlyph
+func bridgeFontGlyph(font uintptr,code,next uint32,bitmap *uintptr,advance,kerning *int32)uintptr
 
 //go:linkname bridgeCurrentTimeMilliseconds bridgeCurrentTimeMilliseconds
 func bridgeCurrentTimeMilliseconds() uint32
@@ -596,6 +608,12 @@ func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int
 	handle, err := sdkRuntime.FontHandle(font); if err != nil { return err }
 	bridgeSetFont(handle); bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y)); return nil
 }
+func (playdateContext) SetTextTracking(value int){bridgeSetTextTracking(int32(value))}
+func (playdateContext) TextTracking()int{return int(bridgeTextTracking())}
+func (playdateContext) SetTextLeading(value int){bridgeSetTextLeading(int32(value))}
+func (playdateContext) DrawTextInRect(text string,x,y,width,height int,wrap sdkPlaydate.TextWrappingMode,align sdkPlaydate.TextAlignment)error{if width<=0||height<=0||wrap>sdkPlaydate.TextWrapWord||align>sdkPlaydate.TextAlignRight{return sdkPlaydate.ErrGraphicsGeometry};bridgeDrawTextInRect(unsafe.StringData(text),uintptr(len(text)),int32(x),int32(y),int32(width),int32(height),int32(wrap),int32(align));return nil}
+func (playdateContext) TextHeight(font sdkPlaydate.Font,text string,width int,wrap sdkPlaydate.TextWrappingMode,tracking,leading int)(int,error){handle,err:=sdkRuntime.FontHandle(font);if err!=nil{return 0,err};if width<=0||wrap>sdkPlaydate.TextWrapWord{return 0,sdkPlaydate.ErrGraphicsGeometry};return int(bridgeTextHeight(handle,unsafe.StringData(text),uintptr(len(text)),int32(width),int32(wrap),int32(tracking),int32(leading))),nil}
+func (playdateContext) Glyph(font sdkPlaydate.Font,code,next rune)(sdkPlaydate.FontGlyph,error){handle,err:=sdkRuntime.FontHandle(font);if err!=nil{return sdkPlaydate.FontGlyph{},err};var bitmap uintptr;var advance,kerning int32;if bridgeFontGlyph(handle,uint32(code),uint32(next),&bitmap,&advance,&kerning)==0{return sdkPlaydate.FontGlyph{},sdkPlaydate.ErrFontGlyph};image,err:=sdkRuntime.NewBorrowedFontBitmap(font,bitmap,bitmapDriver);if err!=nil{return sdkPlaydate.FontGlyph{},err};return sdkPlaydate.FontGlyph{Bitmap:image,Advance:int(advance),Kerning:int(kerning)},nil}
 
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return bridgeCurrentTimeMilliseconds()

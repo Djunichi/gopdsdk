@@ -81,6 +81,12 @@ void bridgeSetFont(uintptr_t font) { activePlaydate->graphics->setFont((LCDFont*
 int32_t bridgeTextWidth(uintptr_t font, const char* text, uintptr_t length) { return activePlaydate->graphics->getTextWidth((LCDFont*)font,text,length,kUTF8Encoding,0); }
 int32_t bridgeFontHeight(uintptr_t font) { return activePlaydate->graphics->getFontHeight((LCDFont*)font); }
 void bridgeFreeFont(uintptr_t font) { activePlaydate->system->realloc((void*)font,0); }
+void bridgeSetTextTracking(int32_t value){activePlaydate->graphics->setTextTracking(value);}
+int32_t bridgeTextTracking(void){return activePlaydate->graphics->getTextTracking();}
+void bridgeSetTextLeading(int32_t value){activePlaydate->graphics->setTextLeading(value);}
+void bridgeDrawTextInRect(const char* text,uintptr_t length,int32_t x,int32_t y,int32_t width,int32_t height,int32_t wrap,int32_t align){activePlaydate->graphics->drawTextInRect(text,length,kUTF8Encoding,x,y,width,height,(PDTextWrappingMode)wrap,(PDTextAlignment)align);}
+int32_t bridgeTextHeight(uintptr_t font,const char* text,uintptr_t length,int32_t width,int32_t wrap,int32_t tracking,int32_t leading){return activePlaydate->graphics->getTextHeightForMaxWidth((LCDFont*)font,text,length,width,kUTF8Encoding,(PDTextWrappingMode)wrap,tracking,leading);}
+uintptr_t bridgeFontGlyph(uintptr_t font,uint32_t code,uint32_t next,uintptr_t* bitmap,int32_t* advance,int32_t* kerning){LCDFontPage* page=activePlaydate->graphics->getFontPage((LCDFont*)font,code);if(!page)return 0;LCDBitmap* image=0;LCDFontGlyph* glyph=activePlaydate->graphics->getPageGlyph(page,code,&image,(int*)advance);if(!glyph)return 0;*bitmap=(uintptr_t)image;*kerning=next?activePlaydate->graphics->getGlyphKerning(glyph,code,next):0;return(uintptr_t)glyph;}
 
 uint32_t bridgeCurrentTimeMilliseconds(void)
 {

@@ -193,6 +193,12 @@ const PolygonFillNonZero PolygonFillRule
 const PowerCharging PowerStatus
 const PowerScrews PowerStatus
 const PowerUSB PowerStatus
+const TextAlignCenter TextAlignment
+const TextAlignLeft TextAlignment
+const TextAlignRight TextAlignment
+const TextWrapCharacter TextWrappingMode
+const TextWrapClip TextWrappingMode
+const TextWrapWord TextWrappingMode
 const WaveformNoise Waveform
 const WaveformPODigital Waveform
 const WaveformPOPhase Waveform
@@ -275,6 +281,7 @@ type FilePlayer interface{Close() error; Pause() error; Play() error; Resume() e
 type FileSystem interface{List(path string, showHidden bool) ([]string, error); Mkdir(path string) error; OpenFile(path string, options FileOptions) (File, error); Remove(path string, recursive bool) error; Rename(from string, to string) error; Stat(path string) (FileInfo, error)}
 type FilterType uint8
 type Font interface{Close() error; Height() (int, error); TextWidth(text string) (int, error)}
+type FontGlyph struct{Bitmap Bitmap; Advance int; Kerning int}
 type FontGraphics interface{DrawTextFont(font Font, text string, x int, y int) error; LoadFont(path string) (Font, error)}
 type FontLoadError string
 type Framebuffer interface{Bytes() ([]byte, error); Height() int; MarkDirtyRows(start int, end int) error; Pixel(x int, y int) (Color, error); RowBytes() int; SetPixel(x int, y int, color Color) error; Width() int}
@@ -334,6 +341,9 @@ type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelo
 type System interface{CurrentTimeMilliseconds() uint32}
 type SystemMenu interface{AddActionMenuItem(title string, callback func()) (MenuItem, error); AddCheckmarkMenuItem(title string, value bool, callback func()) (CheckmarkMenuItem, error); AddOptionsMenuItem(title string, options []string, callback func()) (OptionsMenuItem, error)}
 type SystemPreferences interface{ReduceFlashing() bool; SystemVolume() float32; TimezoneOffsetSeconds() int32; Uses24HourTime() bool}
+type TextAlignment uint8
+type TextGraphics interface{DrawTextInRect(text string, x int, y int, width int, height int, wrapping TextWrappingMode, alignment TextAlignment) error; Glyph(font Font, codepoint rune, next rune) (FontGlyph, error); SetTextLeading(leading int); SetTextTracking(tracking int); TextHeight(font Font, text string, maxWidth int, wrapping TextWrappingMode, tracking int, leading int) (int, error); TextTracking() int}
+type TextWrappingMode uint8
 type TileDrawStats struct{Visited int; Drawn int}
 type TileMap struct{columns int; rows int; tileWidth int; tileHeight int; tiles []uint8; solid []bool}
 type TileMapConfig struct{Columns int; Rows int; TileWidth int; TileHeight int; Tiles []uint8; Solid []bool}
@@ -391,6 +401,7 @@ var ErrFileOffset error
 var ErrFilePath error
 var ErrFileUnavailable error
 var ErrFontClosed error
+var ErrFontGlyph error
 var ErrFontInvalid error
 var ErrFontLoad error
 var ErrFramebufferBounds error
