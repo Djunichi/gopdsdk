@@ -1,0 +1,768 @@
+package main
+
+import (
+	"unsafe"
+
+	sdkRuntime %q
+	sdkPlaydate %q
+	app %q
+)
+
+//go:linkname bridgeClear bridgeClear
+func bridgeClear()
+
+//go:linkname bridgeGetFrame bridgeGetFrame
+func bridgeGetFrame() uintptr
+
+//go:linkname bridgeMarkUpdatedRows bridgeMarkUpdatedRows
+func bridgeMarkUpdatedRows(start, end int32)
+
+//go:linkname bridgeDrawText bridgeDrawText
+func bridgeDrawText(text *byte, length uintptr, x, y int32)
+//go:linkname bridgeLoadFont bridgeLoadFont
+func bridgeLoadFont(path *byte, message *uintptr) uintptr
+//go:linkname bridgeSetFont bridgeSetFont
+func bridgeSetFont(font uintptr)
+//go:linkname bridgeTextWidth bridgeTextWidth
+func bridgeTextWidth(font uintptr, text *byte, length uintptr) int32
+//go:linkname bridgeFontHeight bridgeFontHeight
+func bridgeFontHeight(font uintptr) int32
+//go:linkname bridgeFreeFont bridgeFreeFont
+func bridgeFreeFont(font uintptr)
+
+//go:linkname bridgeCurrentTimeMilliseconds bridgeCurrentTimeMilliseconds
+func bridgeCurrentTimeMilliseconds() uint32
+//go:linkname bridgeCurrentAudioTime bridgeCurrentAudioTime
+func bridgeCurrentAudioTime() uint32
+
+//go:linkname bridgeExitToLauncher bridgeExitToLauncher
+func bridgeExitToLauncher()
+//go:linkname bridgeSetAccelerometerEnabled bridgeSetAccelerometerEnabled
+func bridgeSetAccelerometerEnabled(enabled int32)
+//go:linkname bridgeAccelerometer bridgeAccelerometer
+func bridgeAccelerometer(x, y, z *float32)
+//go:linkname bridgePowerStatus bridgePowerStatus
+func bridgePowerStatus() int32
+//go:linkname bridgeBatteryPercentageBits bridgeBatteryPercentageBits
+func bridgeBatteryPercentageBits() uint32
+//go:linkname bridgeBatteryVoltageBits bridgeBatteryVoltageBits
+func bridgeBatteryVoltageBits() uint32
+//go:linkname bridgeSystemVolumeBits bridgeSystemVolumeBits
+func bridgeSystemVolumeBits() uint32
+//go:linkname bridgeReduceFlashing bridgeReduceFlashing
+func bridgeReduceFlashing() int32
+//go:linkname bridgeTimezoneOffsetSeconds bridgeTimezoneOffsetSeconds
+func bridgeTimezoneOffsetSeconds() int32
+//go:linkname bridgeUses24HourTime bridgeUses24HourTime
+func bridgeUses24HourTime() int32
+//go:linkname bridgeLanguage bridgeLanguage
+func bridgeLanguage() int32
+//go:linkname bridgeLocalizedText bridgeLocalizedText
+func bridgeLocalizedText(key *byte, language int32) uintptr
+//go:linkname bridgeFree bridgeFree
+func bridgeFree(pointer uintptr)
+//go:linkname bridgeAddScore bridgeAddScore
+func bridgeAddScore(board *byte, value uint32) int32
+//go:linkname bridgeGetPersonalBest bridgeGetPersonalBest
+func bridgeGetPersonalBest(board *byte) int32
+//go:linkname bridgeGetScoreboards bridgeGetScoreboards
+func bridgeGetScoreboards() int32
+//go:linkname bridgeGetScores bridgeGetScores
+func bridgeGetScores(board *byte) int32
+//go:linkname bridgeScoreNumber bridgeScoreNumber
+func bridgeScoreNumber(score uintptr, field int32) uint32
+//go:linkname bridgeScoreText bridgeScoreText
+func bridgeScoreText(score uintptr, field int32) uintptr
+//go:linkname bridgeListNumber bridgeListNumber
+func bridgeListNumber(list uintptr, field int32) uint32
+//go:linkname bridgeListText bridgeListText
+func bridgeListText(list uintptr, index, field int32) uintptr
+//go:linkname bridgeListItemNumber bridgeListItemNumber
+func bridgeListItemNumber(list uintptr, index, field int32) uint32
+//go:linkname bridgeAddMenuItem bridgeAddMenuItem
+func bridgeAddMenuItem(title *byte, kind int32, options **byte, count, value int32, callback uint32) uintptr
+//go:linkname bridgeRemoveMenuItem bridgeRemoveMenuItem
+func bridgeRemoveMenuItem(item uintptr)
+//go:linkname bridgeMenuItemTitle bridgeMenuItemTitle
+func bridgeMenuItemTitle(item uintptr) uintptr
+//go:linkname bridgeSetMenuItemTitle bridgeSetMenuItemTitle
+func bridgeSetMenuItemTitle(item uintptr, title *byte)
+//go:linkname bridgeMenuItemValue bridgeMenuItemValue
+func bridgeMenuItemValue(item uintptr) int32
+//go:linkname bridgeSetMenuItemValue bridgeSetMenuItemValue
+func bridgeSetMenuItemValue(item uintptr, value int32)
+//go:linkname bridgeFileError bridgeFileError
+func bridgeFileError() uintptr
+//go:linkname bridgeFileOpen bridgeFileOpen
+func bridgeFileOpen(path *byte, options int32) uintptr
+//go:linkname bridgeFileClose bridgeFileClose
+func bridgeFileClose(file uintptr) int32
+//go:linkname bridgeFileRead bridgeFileRead
+func bridgeFileRead(file uintptr, buffer *byte, length uint32) int32
+//go:linkname bridgeFileWrite bridgeFileWrite
+func bridgeFileWrite(file uintptr, buffer *byte, length uint32) int32
+//go:linkname bridgeFileFlush bridgeFileFlush
+func bridgeFileFlush(file uintptr) int32
+//go:linkname bridgeFileTell bridgeFileTell
+func bridgeFileTell(file uintptr) int32
+//go:linkname bridgeFileSeek bridgeFileSeek
+func bridgeFileSeek(file uintptr, position, whence int32) int32
+//go:linkname bridgeFileStat bridgeFileStat
+func bridgeFileStat(path *byte, values *int32) int32
+//go:linkname bridgeFileList bridgeFileList
+func bridgeFileList(path *byte, showHidden int32, count, result *int32) uintptr
+//go:linkname bridgeFileListItem bridgeFileListItem
+func bridgeFileListItem(list uintptr, index int32) uintptr
+//go:linkname bridgeFileListFree bridgeFileListFree
+func bridgeFileListFree(list uintptr)
+//go:linkname bridgeFileMkdir bridgeFileMkdir
+func bridgeFileMkdir(path *byte) int32
+//go:linkname bridgeFileRemove bridgeFileRemove
+func bridgeFileRemove(path *byte, recursive int32) int32
+//go:linkname bridgeFileRename bridgeFileRename
+func bridgeFileRename(from, to *byte) int32
+
+//go:linkname bridgeButtons bridgeButtons
+func bridgeButtons() uint32
+
+//go:linkname bridgeCrankAngleBits bridgeCrankAngleBits
+func bridgeCrankAngleBits() uint32
+
+//go:linkname bridgeCrankDeltaBits bridgeCrankDeltaBits
+func bridgeCrankDeltaBits() uint32
+
+//go:linkname bridgeCrankDocked bridgeCrankDocked
+func bridgeCrankDocked() int32
+
+//go:linkname bridgeFrameDeltaBits bridgeFrameDeltaBits
+func bridgeFrameDeltaBits() uint32
+
+//go:linkname bridgeLoadBitmap bridgeLoadBitmap
+func bridgeLoadBitmap(path *byte, message *uintptr) uintptr
+//go:linkname bridgeLoadBitmapTable bridgeLoadBitmapTable
+func bridgeLoadBitmapTable(path *byte, message *uintptr) uintptr
+//go:linkname bridgeBitmapTableFrame bridgeBitmapTableFrame
+func bridgeBitmapTableFrame(table uintptr, index int32) uintptr
+//go:linkname bridgeFreeBitmapTable bridgeFreeBitmapTable
+func bridgeFreeBitmapTable(table uintptr)
+//go:linkname bridgeNewBitmap bridgeNewBitmap
+func bridgeNewBitmap(width, height int32) uintptr
+//go:linkname bridgeFreeBitmap bridgeFreeBitmap
+func bridgeFreeBitmap(bitmap uintptr)
+//go:linkname bridgeBitmapSize bridgeBitmapSize
+func bridgeBitmapSize(bitmap uintptr, width, height *int32)
+//go:linkname bridgeFillBitmap bridgeFillBitmap
+func bridgeFillBitmap(bitmap uintptr, color int32)
+//go:linkname bridgeDrawBitmap bridgeDrawBitmap
+func bridgeDrawBitmap(bitmap uintptr, x, y int32)
+//go:linkname bridgeDrawScaledBitmapBits bridgeDrawScaledBitmapBits
+func bridgeDrawScaledBitmapBits(bitmap uintptr, x, y int32, scaleX, scaleY uint32)
+//go:linkname bridgeDrawRotatedBitmapBits bridgeDrawRotatedBitmapBits
+func bridgeDrawRotatedBitmapBits(bitmap uintptr, x, y int32, degrees, centerX, centerY, scaleX, scaleY uint32)
+//go:linkname bridgeDrawPrimitive bridgeDrawPrimitive
+func bridgeDrawPrimitive(kind, x1, y1, x2, y2, x3, y3, lineWidth, solid int32, startAngle, endAngle uint32, pattern uintptr, patterned int32)
+//go:linkname bridgeSetClipRect bridgeSetClipRect
+func bridgeSetClipRect(x, y, width, height int32)
+//go:linkname bridgeClearClipRect bridgeClearClipRect
+func bridgeClearClipRect()
+
+//go:linkname bridgePushContext bridgePushContext
+func bridgePushContext(bitmap uintptr)
+
+//go:linkname bridgePopContext bridgePopContext
+func bridgePopContext()
+//go:linkname bridgeSetStencil bridgeSetStencil
+func bridgeSetStencil(bitmap uintptr, tiled int32)
+//go:linkname bridgeClearStencil bridgeClearStencil
+func bridgeClearStencil()
+//go:linkname bridgeSetDrawOffset bridgeSetDrawOffset
+func bridgeSetDrawOffset(dx, dy int32)
+//go:linkname bridgeSetDrawMode bridgeSetDrawMode
+func bridgeSetDrawMode(mode int32)
+//go:linkname bridgeNewSprite bridgeNewSprite
+func bridgeNewSprite() uintptr
+//go:linkname bridgeFreeSprite bridgeFreeSprite
+func bridgeFreeSprite(sprite uintptr)
+//go:linkname bridgeSpriteSetBitmap bridgeSpriteSetBitmap
+func bridgeSpriteSetBitmap(sprite, bitmap uintptr)
+//go:linkname bridgeSpriteMoveToBits bridgeSpriteMoveToBits
+func bridgeSpriteMoveToBits(sprite uintptr, x, y uint32)
+//go:linkname bridgeSpriteMoveByBits bridgeSpriteMoveByBits
+func bridgeSpriteMoveByBits(sprite uintptr, dx, dy uint32)
+//go:linkname bridgeSpriteSetVisible bridgeSpriteSetVisible
+func bridgeSpriteSetVisible(sprite uintptr, visible int32)
+//go:linkname bridgeSpriteSetZIndex bridgeSpriteSetZIndex
+func bridgeSpriteSetZIndex(sprite uintptr, z int32)
+//go:linkname bridgeSpriteSetCollideRectBits bridgeSpriteSetCollideRectBits
+func bridgeSpriteSetCollideRectBits(sprite uintptr, x, y, width, height uint32)
+//go:linkname bridgeSpriteClearCollideRect bridgeSpriteClearCollideRect
+func bridgeSpriteClearCollideRect(sprite uintptr)
+//go:linkname bridgeSpriteSetTag bridgeSpriteSetTag
+func bridgeSpriteSetTag(sprite uintptr, tag uint8)
+//go:linkname bridgeSpriteMoveWithCollisionsBits bridgeSpriteMoveWithCollisionsBits
+func bridgeSpriteMoveWithCollisionsBits(sprite uintptr, x, y uint32, actualX, actualY *uint32, count *int32) uintptr
+//go:linkname bridgeCollisionValueBits bridgeCollisionValueBits
+func bridgeCollisionValueBits(collisions uintptr, index, field int32) uint32
+//go:linkname bridgeCollisionOther bridgeCollisionOther
+func bridgeCollisionOther(collisions uintptr, index int32) uintptr
+//go:linkname bridgeFreeList bridgeFreeList
+func bridgeFreeList(list uintptr)
+//go:linkname bridgeQuerySpritesAtPointBits bridgeQuerySpritesAtPointBits
+func bridgeQuerySpritesAtPointBits(x, y uint32, count *int32) uintptr
+//go:linkname bridgeQuerySpritesInRectBits bridgeQuerySpritesInRectBits
+func bridgeQuerySpritesInRectBits(x, y, width, height uint32, count *int32) uintptr
+//go:linkname bridgeSpriteListItem bridgeSpriteListItem
+func bridgeSpriteListItem(list uintptr, index int32) uintptr
+//go:linkname bridgeOverlappingSprites bridgeOverlappingSprites
+func bridgeOverlappingSprites(sprite uintptr, count *int32) uintptr
+//go:linkname bridgeSpriteAdd bridgeSpriteAdd
+func bridgeSpriteAdd(sprite uintptr)
+//go:linkname bridgeSpriteRemove bridgeSpriteRemove
+func bridgeSpriteRemove(sprite uintptr)
+//go:linkname bridgeUpdateAndDrawSprites bridgeUpdateAndDrawSprites
+func bridgeUpdateAndDrawSprites()
+//go:linkname bridgeLoadSoundEffect bridgeLoadSoundEffect
+func bridgeLoadSoundEffect(path *byte) uintptr
+//go:linkname bridgeNewPCMPlayer bridgeNewPCMPlayer
+func bridgeNewPCMPlayer(samples *int16, count int32, sampleRate uint32) uintptr
+//go:linkname bridgeSoundEffectPlay bridgeSoundEffectPlay
+func bridgeSoundEffectPlay(effect uintptr) int32
+//go:linkname bridgeSamplePlayerPlayBits bridgeSamplePlayerPlayBits
+func bridgeSamplePlayerPlayBits(effect uintptr, repeat int32, rate uint32) int32
+//go:linkname bridgeSoundEffectStop bridgeSoundEffectStop
+func bridgeSoundEffectStop(effect uintptr)
+//go:linkname bridgeSoundEffectSetVolumeBits bridgeSoundEffectSetVolumeBits
+func bridgeSoundEffectSetVolumeBits(effect uintptr, left, right uint32)
+//go:linkname bridgeSoundEffectVolumeBits bridgeSoundEffectVolumeBits
+func bridgeSoundEffectVolumeBits(effect uintptr, left, right *uint32)
+//go:linkname bridgeSoundEffectIsPlaying bridgeSoundEffectIsPlaying
+func bridgeSoundEffectIsPlaying(effect uintptr) int32
+//go:linkname bridgeSoundEffectPause bridgeSoundEffectPause
+func bridgeSoundEffectPause(effect uintptr, paused int32)
+//go:linkname bridgeSamplePlayerLengthBits bridgeSamplePlayerLengthBits
+func bridgeSamplePlayerLengthBits(effect uintptr) uint32
+//go:linkname bridgeSamplePlayerSetOffsetBits bridgeSamplePlayerSetOffsetBits
+func bridgeSamplePlayerSetOffsetBits(effect uintptr, offset uint32)
+//go:linkname bridgeSamplePlayerOffsetBits bridgeSamplePlayerOffsetBits
+func bridgeSamplePlayerOffsetBits(effect uintptr) uint32
+//go:linkname bridgeSamplePlayerSetRateBits bridgeSamplePlayerSetRateBits
+func bridgeSamplePlayerSetRateBits(effect uintptr, rate uint32)
+//go:linkname bridgeSamplePlayerRateBits bridgeSamplePlayerRateBits
+func bridgeSamplePlayerRateBits(effect uintptr) uint32
+//go:linkname bridgeFreeSoundEffect bridgeFreeSoundEffect
+func bridgeFreeSoundEffect(effect uintptr)
+//go:linkname bridgeLoadFilePlayer bridgeLoadFilePlayer
+func bridgeLoadFilePlayer(path *byte) uintptr
+//go:linkname bridgeFilePlayerPlay bridgeFilePlayerPlay
+func bridgeFilePlayerPlay(player uintptr) int32
+//go:linkname bridgeFilePlayerStop bridgeFilePlayerStop
+func bridgeFilePlayerStop(player uintptr)
+//go:linkname bridgeFilePlayerSetVolumeBits bridgeFilePlayerSetVolumeBits
+func bridgeFilePlayerSetVolumeBits(player uintptr, left, right uint32)
+//go:linkname bridgeFilePlayerVolumeBits bridgeFilePlayerVolumeBits
+func bridgeFilePlayerVolumeBits(player uintptr, left, right *uint32)
+//go:linkname bridgeFilePlayerIsPlaying bridgeFilePlayerIsPlaying
+func bridgeFilePlayerIsPlaying(player uintptr) int32
+//go:linkname bridgeFilePlayerPause bridgeFilePlayerPause
+func bridgeFilePlayerPause(player uintptr)
+//go:linkname bridgeFilePlayerSetRateBits bridgeFilePlayerSetRateBits
+func bridgeFilePlayerSetRateBits(player uintptr, rate uint32)
+//go:linkname bridgeFilePlayerRateBits bridgeFilePlayerRateBits
+func bridgeFilePlayerRateBits(player uintptr) uint32
+//go:linkname bridgeSoundEffectSetFinishCallback bridgeSoundEffectSetFinishCallback
+func bridgeSoundEffectSetFinishCallback(effect uintptr, callback uint32)
+//go:linkname bridgeFilePlayerSetFinishCallback bridgeFilePlayerSetFinishCallback
+func bridgeFilePlayerSetFinishCallback(player uintptr, callback uint32)
+//go:linkname bridgePollAudioCallback bridgePollAudioCallback
+func bridgePollAudioCallback(callback *uint32, oneShot *int32) int32
+//go:linkname bridgeFilePlayerFadeVolumeBits bridgeFilePlayerFadeVolumeBits
+func bridgeFilePlayerFadeVolumeBits(player uintptr, left, right, frames, callback uint32)
+//go:linkname bridgeFreeFilePlayer bridgeFreeFilePlayer
+func bridgeFreeFilePlayer(player uintptr)
+//go:linkname bridgeSoundEffectSource bridgeSoundEffectSource
+func bridgeSoundEffectSource(effect uintptr) uintptr
+//go:linkname bridgeNewAudioChannel bridgeNewAudioChannel
+func bridgeNewAudioChannel() uintptr
+//go:linkname bridgeAudioChannelAddSource bridgeAudioChannelAddSource
+func bridgeAudioChannelAddSource(channel, source uintptr) int32
+//go:linkname bridgeAudioChannelRemoveSource bridgeAudioChannelRemoveSource
+func bridgeAudioChannelRemoveSource(channel, source uintptr) int32
+//go:linkname bridgeAudioChannelSetVolumeBits bridgeAudioChannelSetVolumeBits
+func bridgeAudioChannelSetVolumeBits(channel uintptr, volume uint32)
+//go:linkname bridgeAudioChannelVolumeBits bridgeAudioChannelVolumeBits
+func bridgeAudioChannelVolumeBits(channel uintptr) uint32
+//go:linkname bridgeAudioChannelSetPanBits bridgeAudioChannelSetPanBits
+func bridgeAudioChannelSetPanBits(channel uintptr, pan uint32)
+//go:linkname bridgeRemoveAudioChannel bridgeRemoveAudioChannel
+func bridgeRemoveAudioChannel(channel uintptr) int32
+//go:linkname bridgeFreeAudioChannel bridgeFreeAudioChannel
+func bridgeFreeAudioChannel(channel uintptr)
+//go:linkname bridgeAudioChannelAddEffect bridgeAudioChannelAddEffect
+func bridgeAudioChannelAddEffect(channel, effect uintptr) int32
+//go:linkname bridgeAudioChannelRemoveEffect bridgeAudioChannelRemoveEffect
+func bridgeAudioChannelRemoveEffect(channel, effect uintptr) int32
+//go:linkname bridgeNewSynth bridgeNewSynth
+func bridgeNewSynth(waveform int32) uintptr
+//go:linkname bridgeSynthSetWaveform bridgeSynthSetWaveform
+func bridgeSynthSetWaveform(synth uintptr, waveform int32)
+//go:linkname bridgeSynthSetEnvelopeBits bridgeSynthSetEnvelopeBits
+func bridgeSynthSetEnvelopeBits(synth uintptr, attack, decay, sustain, release uint32)
+//go:linkname bridgeSynthSetTransposeBits bridgeSynthSetTransposeBits
+func bridgeSynthSetTransposeBits(synth uintptr, transpose uint32)
+//go:linkname bridgeSynthSetFrequencyModulator bridgeSynthSetFrequencyModulator
+func bridgeSynthSetFrequencyModulator(synth, signal uintptr)
+//go:linkname bridgeSynthSetAmplitudeModulator bridgeSynthSetAmplitudeModulator
+func bridgeSynthSetAmplitudeModulator(synth, signal uintptr)
+//go:linkname bridgeSynthPlayMIDINoteBits bridgeSynthPlayMIDINoteBits
+func bridgeSynthPlayMIDINoteBits(synth uintptr, note, velocity, length, when uint32)
+//go:linkname bridgeSynthNoteOff bridgeSynthNoteOff
+func bridgeSynthNoteOff(synth uintptr, when uint32)
+//go:linkname bridgeFreeSynth bridgeFreeSynth
+func bridgeFreeSynth(synth uintptr)
+//go:linkname bridgeNewInstrument bridgeNewInstrument
+func bridgeNewInstrument() uintptr
+//go:linkname bridgeInstrumentAddVoiceBits bridgeInstrumentAddVoiceBits
+func bridgeInstrumentAddVoiceBits(instrument, synth uintptr, start, end int32, transpose uint32) int32
+//go:linkname bridgeInstrumentSetValueBits bridgeInstrumentSetValueBits
+func bridgeInstrumentSetValueBits(instrument uintptr, kind int32, value uint32)
+//go:linkname bridgeInstrumentNoteOff bridgeInstrumentNoteOff
+func bridgeInstrumentNoteOff(instrument uintptr, note int32, when uint32)
+//go:linkname bridgeInstrumentAllNotesOff bridgeInstrumentAllNotesOff
+func bridgeInstrumentAllNotesOff(instrument uintptr, when uint32)
+//go:linkname bridgeInstrumentSetVolumeBits bridgeInstrumentSetVolumeBits
+func bridgeInstrumentSetVolumeBits(instrument uintptr, left, right uint32)
+//go:linkname bridgeInstrumentVolumeBits bridgeInstrumentVolumeBits
+func bridgeInstrumentVolumeBits(instrument uintptr, left, right *uint32)
+//go:linkname bridgeInstrumentActiveVoiceCount bridgeInstrumentActiveVoiceCount
+func bridgeInstrumentActiveVoiceCount(instrument uintptr) int32
+//go:linkname bridgeFreeInstrument bridgeFreeInstrument
+func bridgeFreeInstrument(instrument uintptr)
+//go:linkname bridgeNewTrack bridgeNewTrack
+func bridgeNewTrack() uintptr
+//go:linkname bridgeTrackSetInstrument bridgeTrackSetInstrument
+func bridgeTrackSetInstrument(track, instrument uintptr)
+//go:linkname bridgeTrackAddNoteBits bridgeTrackAddNoteBits
+func bridgeTrackAddNoteBits(track uintptr, step, length uint32, note int32, velocity uint32)
+//go:linkname bridgeTrackRemoveNote bridgeTrackRemoveNote
+func bridgeTrackRemoveNote(track uintptr, step uint32, note int32)
+//go:linkname bridgeTrackClearNotes bridgeTrackClearNotes
+func bridgeTrackClearNotes(track uintptr)
+//go:linkname bridgeTrackControlEventBits bridgeTrackControlEventBits
+func bridgeTrackControlEventBits(track uintptr, controller, step int32, value uint32, interpolate, remove int32) int32
+//go:linkname bridgeTrackClearControlEvents bridgeTrackClearControlEvents
+func bridgeTrackClearControlEvents(track uintptr)
+//go:linkname bridgeTrackSetMuted bridgeTrackSetMuted
+func bridgeTrackSetMuted(track uintptr, muted int32)
+//go:linkname bridgeTrackLength bridgeTrackLength
+func bridgeTrackLength(track uintptr) uint32
+//go:linkname bridgeFreeTrack bridgeFreeTrack
+func bridgeFreeTrack(track uintptr)
+//go:linkname bridgeNewSequence bridgeNewSequence
+func bridgeNewSequence() uintptr
+//go:linkname bridgeSequenceTrackCount bridgeSequenceTrackCount
+func bridgeSequenceTrackCount(sequence uintptr) uint32
+//go:linkname bridgeSequenceAddTrack bridgeSequenceAddTrack
+func bridgeSequenceAddTrack(sequence uintptr) uintptr
+//go:linkname bridgeSequenceLoadMIDI bridgeSequenceLoadMIDI
+func bridgeSequenceLoadMIDI(sequence uintptr, path *byte) int32
+//go:linkname bridgeSequenceSetTempoBits bridgeSequenceSetTempoBits
+func bridgeSequenceSetTempoBits(sequence uintptr, tempo uint32)
+//go:linkname bridgeSequenceTempoBits bridgeSequenceTempoBits
+func bridgeSequenceTempoBits(sequence uintptr) uint32
+//go:linkname bridgeSequenceSetLoops bridgeSequenceSetLoops
+func bridgeSequenceSetLoops(sequence uintptr, start, end, count int32)
+//go:linkname bridgeSequenceSetTrack bridgeSequenceSetTrack
+func bridgeSequenceSetTrack(sequence uintptr, index uint32, track uintptr)
+//go:linkname bridgeSequencePlay bridgeSequencePlay
+func bridgeSequencePlay(sequence uintptr, callback uint32)
+//go:linkname bridgeSequenceStop bridgeSequenceStop
+func bridgeSequenceStop(sequence uintptr)
+//go:linkname bridgeSequenceIsPlaying bridgeSequenceIsPlaying
+func bridgeSequenceIsPlaying(sequence uintptr) int32
+//go:linkname bridgeSequenceTime bridgeSequenceTime
+func bridgeSequenceTime(sequence uintptr) uint32
+//go:linkname bridgeSequenceSetTime bridgeSequenceSetTime
+func bridgeSequenceSetTime(sequence uintptr, value uint32)
+//go:linkname bridgeSequenceLength bridgeSequenceLength
+func bridgeSequenceLength(sequence uintptr) uint32
+//go:linkname bridgeFreeSequence bridgeFreeSequence
+func bridgeFreeSequence(sequence uintptr)
+//go:linkname bridgeNewTypedEffect bridgeNewTypedEffect
+func bridgeNewTypedEffect(kind int32, value uint32, flag int32) uintptr
+//go:linkname bridgeTypedEffectSetValueBits bridgeTypedEffectSetValueBits
+func bridgeTypedEffectSetValueBits(effect uintptr, kind, slot int32, value uint32)
+//go:linkname bridgeTypedEffectSetSignal bridgeTypedEffectSetSignal
+func bridgeTypedEffectSetSignal(effect uintptr, kind, slot int32, signal uintptr)
+//go:linkname bridgeTypedEffectSetFlag bridgeTypedEffectSetFlag
+func bridgeTypedEffectSetFlag(effect uintptr, kind, slot, value int32)
+//go:linkname bridgeFreeTypedEffect bridgeFreeTypedEffect
+func bridgeFreeTypedEffect(effect uintptr, kind int32)
+//go:linkname bridgeDelayAddTap bridgeDelayAddTap
+func bridgeDelayAddTap(delay uintptr, frames int32) uintptr
+//go:linkname bridgeDelayTapSet bridgeDelayTapSet
+func bridgeDelayTapSet(tap uintptr, slot, value int32, signal uintptr)
+//go:linkname bridgeFreeDelayTap bridgeFreeDelayTap
+func bridgeFreeDelayTap(tap uintptr)
+//go:linkname bridgeNewLFO bridgeNewLFO
+func bridgeNewLFO(lfoType int32) uintptr
+//go:linkname bridgeNewEnvelopeBits bridgeNewEnvelopeBits
+func bridgeNewEnvelopeBits(attack, decay, sustain, release uint32) uintptr
+//go:linkname bridgeNewControlSignal bridgeNewControlSignal
+func bridgeNewControlSignal() uintptr
+//go:linkname bridgeSignalValueBits bridgeSignalValueBits
+func bridgeSignalValueBits(signal uintptr) uint32
+//go:linkname bridgeSignalSetScaleBits bridgeSignalSetScaleBits
+func bridgeSignalSetScaleBits(signal uintptr, value uint32)
+//go:linkname bridgeSignalSetOffsetBits bridgeSignalSetOffsetBits
+func bridgeSignalSetOffsetBits(signal uintptr, value uint32)
+//go:linkname bridgeLFOSetValueBits bridgeLFOSetValueBits
+func bridgeLFOSetValueBits(signal uintptr, kind int32, value uint32)
+//go:linkname bridgeLFOSetRetrigger bridgeLFOSetRetrigger
+func bridgeLFOSetRetrigger(signal uintptr, value int32)
+//go:linkname bridgeLFOSetArpeggiation bridgeLFOSetArpeggiation
+func bridgeLFOSetArpeggiation(signal uintptr, count int32, steps uintptr)
+//go:linkname bridgeEnvelopeSetValueBits bridgeEnvelopeSetValueBits
+func bridgeEnvelopeSetValueBits(signal uintptr, kind int32, value uint32)
+//go:linkname bridgeEnvelopeSetFlag bridgeEnvelopeSetFlag
+func bridgeEnvelopeSetFlag(signal uintptr, kind, value int32)
+//go:linkname bridgeControlSignalAddEventBits bridgeControlSignalAddEventBits
+func bridgeControlSignalAddEventBits(signal uintptr, step int32, value uint32, interpolate int32)
+//go:linkname bridgeControlSignalRemoveEvent bridgeControlSignalRemoveEvent
+func bridgeControlSignalRemoveEvent(signal uintptr, step int32)
+//go:linkname bridgeControlSignalClearEvents bridgeControlSignalClearEvents
+func bridgeControlSignalClearEvents(signal uintptr)
+//go:linkname bridgeFreeLFO bridgeFreeLFO
+func bridgeFreeLFO(signal uintptr)
+//go:linkname bridgeFreeEnvelope bridgeFreeEnvelope
+func bridgeFreeEnvelope(signal uintptr)
+//go:linkname bridgeFreeControlSignal bridgeFreeControlSignal
+func bridgeFreeControlSignal(signal uintptr)
+//go:linkname bridgeSourceStop bridgeSourceStop
+func bridgeSourceStop(source uintptr)
+//go:linkname bridgeSourceSetVolumeBits bridgeSourceSetVolumeBits
+func bridgeSourceSetVolumeBits(source uintptr, left, right uint32)
+//go:linkname bridgeSourceVolumeBits bridgeSourceVolumeBits
+func bridgeSourceVolumeBits(source uintptr, left, right *uint32)
+//go:linkname bridgeSourceIsPlaying bridgeSourceIsPlaying
+func bridgeSourceIsPlaying(source uintptr) int32
+//go:linkname bridgeRequestMicAccess bridgeRequestMicAccess
+func bridgeRequestMicAccess(purpose *byte) int32
+//go:linkname bridgeStartMicrophone bridgeStartMicrophone
+func bridgeStartMicrophone(source int32) int32
+//go:linkname bridgeStopMicrophone bridgeStopMicrophone
+func bridgeStopMicrophone()
+//go:linkname bridgePollMicrophonePermission bridgePollMicrophonePermission
+func bridgePollMicrophonePermission() int32
+//go:linkname bridgePollMicrophoneSamples bridgePollMicrophoneSamples
+func bridgePollMicrophoneSamples(destination *int16, capacity int32) int32
+
+func float32FromBits(bits uint32) float32 { return *(*float32)(unsafe.Pointer(&bits)) }
+
+type playdateContext struct{}
+
+var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
+var _ sdkPlaydate.GraphicsState = playdateContext{}
+var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
+var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
+var _ sdkPlaydate.Launcher = playdateContext{}
+var _ sdkPlaydate.FileSystem = playdateContext{}
+var _ sdkPlaydate.SystemMenu = playdateContext{}
+var _ sdkPlaydate.Localization = playdateContext{}
+var _ sdkPlaydate.Scoreboards = playdateContext{}
+var _ sdkPlaydate.DebugMessages = playdateContext{}
+var _ sdkPlaydate.AudioClock = playdateContext{}
+var _ sdkPlaydate.AudioChannels = playdateContext{}
+var _ sdkPlaydate.Synthesizers = playdateContext{}
+var _ sdkPlaydate.Microphones = playdateContext{}
+var _ sdkPlaydate.PCMPlayers = playdateContext{}
+var _ sdkPlaydate.Sequencers = playdateContext{}
+var _ sdkPlaydate.AudioEffects = playdateContext{}
+
+//export goAudioCallback
+func goAudioCallback(callback uint32, oneShot int32){sdkRuntime.InvokeAudioCallback(callback,oneShot!=0)}
+var microphonePermissionCallback func(bool)
+var microphoneRecordingCallback func([]int16)bool
+var microphonePollBuffer [256]int16
+
+var debugMessages=sdkRuntime.NewDebugMessageQueue(8,256)
+//export goSerialMessage
+func goSerialMessage(message uintptr){if message!=0{debugMessages.Push(copiedCString(message))}}
+func (playdateContext) PollDebugMessage()(string,bool){return debugMessages.Poll()}
+
+func (playdateContext) Clear() { bridgeClear() }
+func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
+	data := unsafe.Slice((*byte)(unsafe.Pointer(bridgeGetFrame())), 52*240)
+	return sdkRuntime.WithFramebuffer(data, 400, 240, 52, func(start,end int){bridgeMarkUpdatedRows(int32(start),int32(end))}, callback)
+}
+func (playdateContext) DrawInto(bitmap sdkPlaydate.Bitmap, callback func() error) error {
+	if callback == nil{return sdkPlaydate.ErrOffscreenCallback}; handle,err:=sdkRuntime.OwnedBitmapHandle(bitmap);if err!=nil{return err}
+	bridgePushContext(handle);err=callback();bridgePopContext();return err
+}
+func (playdateContext) WithStencil(stencil sdkPlaydate.Bitmap,tiled bool,callback func()error)error{
+	if callback==nil{return sdkPlaydate.ErrGraphicsStencilCallback};handle,err:=sdkRuntime.ValidateStencil(stencil,tiled);if err!=nil{return err};tile:=int32(0);if tiled{tile=1};bridgeSetStencil(handle,tile);err=callback();bridgeClearStencil();return err
+}
+
+func (playdateContext) DrawText(text string, x, y int) {
+	bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y))
+}
+
+var fontDriver = sdkRuntime.FontDriver{
+	TextWidth: func(handle uintptr, text string) int { return int(bridgeTextWidth(handle, unsafe.StringData(text), uintptr(len(text)))) },
+	Height: func(handle uintptr) int { return int(bridgeFontHeight(handle)) },
+	Free: bridgeFreeFont,
+}
+func (playdateContext) LoadFont(path string) (sdkPlaydate.Font, error) {
+	terminated := path + "\x00"; var message uintptr
+	handle := bridgeLoadFont(unsafe.StringData(terminated), &message)
+	if handle == 0 { if message != 0 { return nil, sdkPlaydate.FontLoadError(cString(message)) }; return nil, sdkPlaydate.FontLoadError("unknown error") }
+	return sdkRuntime.NewOwnedFont(handle, fontDriver), nil
+}
+func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int) error {
+	handle, err := sdkRuntime.FontHandle(font); if err != nil { return err }
+	bridgeSetFont(handle); bridgeDrawText(unsafe.StringData(text), uintptr(len(text)), int32(x), int32(y)); return nil
+}
+
+func (playdateContext) CurrentTimeMilliseconds() uint32 {
+	return bridgeCurrentTimeMilliseconds()
+}
+func (playdateContext) CurrentAudioTime() (uint32,error) { return bridgeCurrentAudioTime(),nil }
+
+func (playdateContext) ExitToLauncher() { bridgeExitToLauncher() }
+func (playdateContext) SetAccelerometerEnabled(enabled bool){value:=int32(0);if enabled{value=1};bridgeSetAccelerometerEnabled(value)}
+func (playdateContext) AccelerometerXYZ()(float32,float32,float32){var x,y,z float32;bridgeAccelerometer(&x,&y,&z);return x,y,z}
+func (playdateContext) PowerStatus()sdkPlaydate.PowerStatus{return sdkPlaydate.PowerStatus(bridgePowerStatus())}
+func (playdateContext) BatteryPercentage()float32{return float32FromBits(bridgeBatteryPercentageBits())}
+func (playdateContext) BatteryVoltage()float32{return float32FromBits(bridgeBatteryVoltageBits())}
+func (playdateContext) SystemVolume()float32{return float32FromBits(bridgeSystemVolumeBits())}
+func (playdateContext) ReduceFlashing()bool{return bridgeReduceFlashing()!=0}
+func (playdateContext) TimezoneOffsetSeconds()int32{return bridgeTimezoneOffsetSeconds()}
+func (playdateContext) Uses24HourTime()bool{return bridgeUses24HourTime()!=0}
+
+var addScoreCallback func(sdkPlaydate.Score,string)
+var personalBestCallback func(sdkPlaydate.Score,string)
+var boardsCallback func(sdkPlaydate.BoardsList,string)
+var scoresCallback func(sdkPlaydate.ScoresList,string)
+func copiedScore(pointer uintptr)sdkPlaydate.Score{return sdkPlaydate.Score{Rank:bridgeScoreNumber(pointer,0),Value:bridgeScoreNumber(pointer,1),Player:copiedCString(bridgeScoreText(pointer,0)),BoardID:copiedCString(bridgeScoreText(pointer,1))}}
+//export goScoreCallback
+func goScoreCallback(kind int32,pointer,message uintptr){callback:=addScoreCallback;if kind==1{callback=personalBestCallback};if callback!=nil{callback(copiedScore(pointer),copiedCString(message))};if kind==0{addScoreCallback=nil}else{personalBestCallback=nil}}
+//export goBoardsCallback
+func goBoardsCallback(pointer,message uintptr){list:=sdkPlaydate.BoardsList{};if pointer!=0{list.LastUpdated=bridgeListNumber(pointer,1);count:=int(bridgeListNumber(pointer,0));list.Boards=make([]sdkPlaydate.Board,count);for i:=range list.Boards{list.Boards[i]=sdkPlaydate.Board{ID:copiedCString(bridgeListText(pointer,int32(i),0)),Name:copiedCString(bridgeListText(pointer,int32(i),1))}}};callback:=boardsCallback;boardsCallback=nil;if callback!=nil{callback(list,copiedCString(message))}}
+//export goScoresCallback
+func goScoresCallback(pointer,message uintptr){list:=sdkPlaydate.ScoresList{};if pointer!=0{list.BoardID=copiedCString(bridgeListText(pointer,-1,0));list.LastUpdated=bridgeListNumber(pointer,1);list.PlayerIncluded=bridgeListNumber(pointer,2)!=0;list.Limit=bridgeListNumber(pointer,3);count:=int(bridgeListNumber(pointer,0));list.Scores=make([]sdkPlaydate.ListScore,count);for i:=range list.Scores{list.Scores[i]=sdkPlaydate.ListScore{Rank:bridgeListItemNumber(pointer,int32(i),0),Value:bridgeListItemNumber(pointer,int32(i),1),Player:copiedCString(bridgeListText(pointer,int32(i),2))}}};callback:=scoresCallback;scoresCallback=nil;if callback!=nil{callback(list,copiedCString(message))}}
+var scoreboardService=sdkRuntime.NewScoreboardService(sdkRuntime.ScoreboardDriver{AddScore:func(board string,value uint32,callback func(sdkPlaydate.Score,string))bool{addScoreCallback=callback;if bridgeAddScore(terminatedPath(board),value)==0{addScoreCallback=nil;return false};return true},PersonalBest:func(board string,callback func(sdkPlaydate.Score,string))bool{personalBestCallback=callback;if bridgeGetPersonalBest(terminatedPath(board))==0{personalBestCallback=nil;return false};return true},Scoreboards:func(callback func(sdkPlaydate.BoardsList,string))bool{boardsCallback=callback;if bridgeGetScoreboards()==0{boardsCallback=nil;return false};return true},Scores:func(board string,callback func(sdkPlaydate.ScoresList,string))bool{scoresCallback=callback;if bridgeGetScores(terminatedPath(board))==0{scoresCallback=nil;return false};return true}})
+func (playdateContext) AddScore(board string,value uint32,callback func(sdkPlaydate.Score,error))error{return scoreboardService.AddScore(board,value,callback)}
+func (playdateContext) GetPersonalBest(board string,callback func(sdkPlaydate.Score,error))error{return scoreboardService.GetPersonalBest(board,callback)}
+func (playdateContext) GetScoreboards(callback func(sdkPlaydate.BoardsList,error))error{return scoreboardService.GetScoreboards(callback)}
+func (playdateContext) GetScores(board string,callback func(sdkPlaydate.ScoresList,error))error{return scoreboardService.GetScores(board,callback)}
+
+var menuCallbackIDs=map[uintptr]uint32{}
+//export goMenuCallback
+func goMenuCallback(id uint32){sdkRuntime.InvokeMenuCallback(id)}
+var menuDriver=sdkRuntime.MenuDriver{SetTitle:func(handle uintptr,title string){bridgeSetMenuItemTitle(handle,terminatedPath(title))},Title:func(handle uintptr)string{return copiedCString(bridgeMenuItemTitle(handle))},Value:func(handle uintptr)int{return int(bridgeMenuItemValue(handle))},SetValue:func(handle uintptr,value int){bridgeSetMenuItemValue(handle,int32(value))},Remove:func(handle uintptr){bridgeRemoveMenuItem(handle);sdkRuntime.ForgetMenuCallback(menuCallbackIDs[handle]);delete(menuCallbackIDs,handle)}}
+func addMenuItem(title string,kind int,options []string,value int,callback func())(uintptr,error){if title==""{return 0,sdkPlaydate.ErrMenuTitle};if kind==2&&len(options)==0{return 0,sdkPlaydate.ErrMenuOptions};values:=make([]*byte,len(options));for i:=range options{if options[i]==""{return 0,sdkPlaydate.ErrMenuOptions};values[i]=terminatedPath(options[i])};id:=sdkRuntime.RegisterMenuCallback(callback);var pointer **byte;if len(values)>0{pointer=&values[0]};handle:=bridgeAddMenuItem(terminatedPath(title),int32(kind),pointer,int32(len(values)),int32(value),id);if handle==0{sdkRuntime.ForgetMenuCallback(id);return 0,sdkPlaydate.ErrMenuItemCreate};menuCallbackIDs[handle]=id;return handle,nil}
+func (playdateContext) AddActionMenuItem(title string,callback func())(sdkPlaydate.MenuItem,error){handle,err:=addMenuItem(title,0,nil,0,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedMenuItem(handle,0,menuDriver),nil}
+func (playdateContext) AddCheckmarkMenuItem(title string,value bool,callback func())(sdkPlaydate.CheckmarkMenuItem,error){native:=0;if value{native=1};handle,err:=addMenuItem(title,1,nil,native,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedCheckmarkMenuItem(handle,menuDriver),nil}
+func (playdateContext) AddOptionsMenuItem(title string,options []string,callback func())(sdkPlaydate.OptionsMenuItem,error){handle,err:=addMenuItem(title,2,options,0,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedOptionsMenuItem(handle,len(options),menuDriver),nil}
+func (playdateContext) Language()sdkPlaydate.Language{return sdkPlaydate.Language(bridgeLanguage())}
+func (playdateContext) LocalizedText(key string,language sdkPlaydate.Language)(string,bool){if key==""{return "",false};pointer:=bridgeLocalizedText(terminatedPath(key),int32(language));if pointer==0{return "",false};value:=copiedCString(pointer);bridgeFree(pointer);return value,true}
+
+func copiedCString(pointer uintptr) string { if pointer==0{return ""};value:=cString(pointer);copy:=make([]byte,len(value));for index:=range copy{copy[index]=value[index]};return string(copy) }
+func fileErrorMessage() string { pointer:=bridgeFileError();if pointer==0{return ""};return copiedCString(pointer) }
+var fileDriver=sdkRuntime.FileDriver{
+	Read:func(handle uintptr,buffer []byte)(int,string){result:=int(bridgeFileRead(handle,unsafe.SliceData(buffer),uint32(len(buffer))));if result<0{return result,fileErrorMessage()};return result,""},
+	Write:func(handle uintptr,buffer []byte)(int,string){result:=int(bridgeFileWrite(handle,unsafe.SliceData(buffer),uint32(len(buffer))));if result<0{return result,fileErrorMessage()};return result,""},
+	Flush:func(handle uintptr)(int,string){result:=int(bridgeFileFlush(handle));if result<0{return result,fileErrorMessage()};return result,""},
+	Tell:func(handle uintptr)(int,string){result:=int(bridgeFileTell(handle));if result<0{return result,fileErrorMessage()};return result,""},
+	Seek:func(handle uintptr,position int32,whence int)(int,string){result:=int(bridgeFileSeek(handle,position,int32(whence)));if result<0{return result,fileErrorMessage()};return result,""},
+	Close:func(handle uintptr)(int,string){result:=int(bridgeFileClose(handle));if result<0{return result,fileErrorMessage()};return result,""},
+}
+func terminatedPath(path string)*byte{return unsafe.StringData(path+"\x00")}
+func (playdateContext) OpenFile(path string,options sdkPlaydate.FileOptions)(sdkPlaydate.File,error){if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return nil,err};if err:=sdkRuntime.ValidateFileOptions(options);err!=nil{return nil,err};handle:=bridgeFileOpen(terminatedPath(path),int32(options));if handle==0{return nil,sdkPlaydate.FileOperationError{Operation:"open",Path:path,Message:fileErrorMessage()}};return sdkRuntime.NewOwnedFile(handle,path,fileDriver),nil}
+func (playdateContext) Stat(path string)(sdkPlaydate.FileInfo,error){if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return sdkPlaydate.FileInfo{},err};var values [8]int32;if bridgeFileStat(terminatedPath(path),&values[0])<0{return sdkPlaydate.FileInfo{},sdkPlaydate.FileOperationError{Operation:"stat",Path:path,Message:fileErrorMessage()}};return sdkPlaydate.FileInfo{IsDir:values[0]!=0,Size:uint32(values[1]),Year:int(values[2]),Month:int(values[3]),Day:int(values[4]),Hour:int(values[5]),Minute:int(values[6]),Second:int(values[7])},nil}
+func (playdateContext) List(path string,showHidden bool)([]string,error){if err:=sdkRuntime.ValidateFilePath(path,true);err!=nil{return nil,err};hidden:=int32(0);if showHidden{hidden=1};var count,result int32;list:=bridgeFileList(terminatedPath(path),hidden,&count,&result);if result<0{message:="";if result == -1 {message=fileErrorMessage()};if list!=0{bridgeFileListFree(list)};return nil,sdkPlaydate.FileOperationError{Operation:"list",Path:path,Message:message}};items:=make([]string,int(count));for i:=range items{items[i]=copiedCString(bridgeFileListItem(list,int32(i)))};bridgeFileListFree(list);return items,nil}
+func filePathOperation(operation,path string,call func(*byte)int32)error{if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return err};if call(terminatedPath(path))<0{return sdkPlaydate.FileOperationError{Operation:operation,Path:path,Message:fileErrorMessage()}};return nil}
+func (playdateContext) Mkdir(path string)error{return filePathOperation("mkdir",path,bridgeFileMkdir)}
+func (playdateContext) Remove(path string,recursive bool)error{flag:=int32(0);if recursive{flag=1};return filePathOperation("remove",path,func(value *byte)int32{return bridgeFileRemove(value,flag)})}
+func (playdateContext) Rename(from,to string)error{if err:=sdkRuntime.ValidateFilePath(from,false);err!=nil{return err};if err:=sdkRuntime.ValidateFilePath(to,false);err!=nil{return err};if bridgeFileRename(terminatedPath(from),terminatedPath(to))<0{return sdkPlaydate.FileOperationError{Operation:"rename",Path:from,Message:fileErrorMessage()}};return nil}
+
+func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
+
+var bitmapDriver = sdkRuntime.BitmapDriver{
+	Dimensions: func(handle uintptr) (int, int) { var width, height int32; bridgeBitmapSize(handle, &width, &height); return int(width), int(height) },
+	Fill: func(handle uintptr, color sdkPlaydate.Color) { bridgeFillBitmap(handle, int32(color)) },
+	Free: bridgeFreeBitmap,
+}
+var bitmapTableDriver = sdkRuntime.BitmapTableDriver{
+	Frame: func(table uintptr, index int) uintptr { return bridgeBitmapTableFrame(table, int32(index)) },
+	Free: bridgeFreeBitmapTable,
+}
+
+func (playdateContext) LoadBitmap(path string) (sdkPlaydate.Bitmap, error) {
+	terminated := path + "\x00"; var message uintptr
+	handle := bridgeLoadBitmap(unsafe.StringData(terminated), &message)
+	if handle == 0 { if message != 0 { return nil, sdkPlaydate.BitmapLoadError(cString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) LoadBitmapTable(path string) (sdkPlaydate.BitmapTable, error) {
+	terminated := path + "\x00"; var message uintptr
+	handle := bridgeLoadBitmapTable(unsafe.StringData(terminated), &message)
+	if handle == 0 { if message != 0 { return nil, sdkPlaydate.BitmapLoadError(cString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmapTable(handle, bitmapTableDriver, bitmapDriver), nil
+}
+func cString(pointer uintptr) string { length := 0; for *(*byte)(unsafe.Pointer(pointer + uintptr(length))) != 0 { length++ }; return unsafe.String((*byte)(unsafe.Pointer(pointer)), length) }
+func (playdateContext) NewBitmap(width, height int) (sdkPlaydate.Bitmap, error) {
+	if err := sdkRuntime.ValidateBitmapSize(width, height); err != nil { return nil, err }
+	handle := bridgeNewBitmap(int32(width), int32(height)); if handle == 0 { return nil, sdkPlaydate.ErrBitmapCreate }
+	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) DrawBitmap(bitmap sdkPlaydate.Bitmap, x, y int) error {
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }; bridgeDrawBitmap(handle, int32(x), int32(y)); return nil
+}
+func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, scaleX, scaleY float32) error {
+	if err := sdkRuntime.ValidateBitmapScale(scaleX, scaleY); err != nil { return err }
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
+	bridgeDrawScaledBitmapBits(handle, int32(x), int32(y), *(*uint32)(unsafe.Pointer(&scaleX)), *(*uint32)(unsafe.Pointer(&scaleY))); return nil
+}
+func (playdateContext) DrawRotatedBitmap(bitmap sdkPlaydate.Bitmap,x,y int,degrees,centerX,centerY,scaleX,scaleY float32)error{
+	if err:=sdkRuntime.ValidateBitmapTransform(degrees,centerX,centerY,scaleX,scaleY);err!=nil{return err};handle,err:=sdkRuntime.BitmapHandle(bitmap);if err!=nil{return err};bridgeDrawRotatedBitmapBits(handle,int32(x),int32(y),float32Bits(degrees),float32Bits(centerX),float32Bits(centerY),float32Bits(scaleX),float32Bits(scaleY));return nil
+}
+func drawPrimitive(kind, x1, y1, x2, y2, x3, y3, lineWidth int, startAngle, endAngle float32, paint sdkPlaydate.Paint) { solid, pattern, patterned := paint.Components(); flag := int32(0); if patterned { flag = 1 }; bridgeDrawPrimitive(int32(kind),int32(x1),int32(y1),int32(x2),int32(y2),int32(x3),int32(y3),int32(lineWidth),int32(solid),float32Bits(startAngle),float32Bits(endAngle),uintptr(unsafe.Pointer(&pattern[0])),flag) }
+func (playdateContext) DrawLine(x1,y1,x2,y2,width int, paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,1,1,0,0); err!=nil{return err}; drawPrimitive(0,x1,y1,x2,y2,0,0,width,0,0,paint); return nil }
+func (playdateContext) DrawRect(x,y,width,height int, paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0); err!=nil{return err}; drawPrimitive(1,x,y,width,height,0,0,1,0,0,paint); return nil }
+func (playdateContext) FillRect(x,y,width,height int, paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0); err!=nil{return err}; drawPrimitive(2,x,y,width,height,0,0,1,0,0,paint); return nil }
+func (playdateContext) DrawEllipse(x,y,width,height,lineWidth int,startAngle,endAngle float32,paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,lineWidth,startAngle,endAngle);err!=nil{return err};drawPrimitive(3,x,y,width,height,0,0,lineWidth,startAngle,endAngle,paint);return nil }
+func (playdateContext) FillEllipse(x,y,width,height int,startAngle,endAngle float32,paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,startAngle,endAngle);err!=nil{return err};drawPrimitive(4,x,y,width,height,0,0,1,startAngle,endAngle,paint);return nil }
+func (playdateContext) FillTriangle(x1,y1,x2,y2,x3,y3 int,paint sdkPlaydate.Paint) error { drawPrimitive(5,x1,y1,x2,y2,x3,y3,1,0,0,paint);return nil }
+func (playdateContext) DrawTriangle(x1,y1,x2,y2,x3,y3,width int,paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,1,1,0,0);err!=nil{return err};drawPrimitive(6,x1,y1,x2,y2,x3,y3,width,0,0,paint);return nil }
+func (playdateContext) SetClipRect(x,y,width,height int) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0);err!=nil{return err};bridgeSetClipRect(int32(x),int32(y),int32(width),int32(height));return nil }
+func (playdateContext) ClearClipRect(){bridgeClearClipRect()}
+func (playdateContext) SetDrawOffset(dx,dy int){bridgeSetDrawOffset(int32(dx),int32(dy))}
+func (playdateContext) SetDrawMode(mode sdkPlaydate.DrawMode) error {if err:=sdkRuntime.ValidateDrawMode(mode);err!=nil{return err};bridgeSetDrawMode(int32(mode));return nil}
+
+func float32Bits(value float32) uint32 { return *(*uint32)(unsafe.Pointer(&value)) }
+var spriteDriver = sdkRuntime.SpriteDriver{
+	SetBitmap: bridgeSpriteSetBitmap,
+	MoveTo: func(sprite uintptr, x, y float32) { bridgeSpriteMoveToBits(sprite, float32Bits(x), float32Bits(y)) },
+	MoveBy: func(sprite uintptr, dx, dy float32) { bridgeSpriteMoveByBits(sprite, float32Bits(dx), float32Bits(dy)) },
+	SetVisible: func(sprite uintptr, visible bool) { value := int32(0); if visible { value = 1 }; bridgeSpriteSetVisible(sprite, value) },
+	SetZIndex: func(sprite uintptr, z int) { bridgeSpriteSetZIndex(sprite, int32(z)) },
+	SetCollideRect: func(sprite uintptr, rect sdkPlaydate.Rect) { bridgeSpriteSetCollideRectBits(sprite, float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height)) },
+	ClearCollideRect: bridgeSpriteClearCollideRect,
+	SetTag: bridgeSpriteSetTag,
+	MoveWithCollisions: moveWithCollisions,
+	Add: bridgeSpriteAdd, Remove: bridgeSpriteRemove, Free: bridgeFreeSprite,
+}
+func moveWithCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
+	var actualX, actualY uint32; var count int32; list := bridgeSpriteMoveWithCollisionsBits(sprite, float32Bits(x), float32Bits(y), &actualX, &actualY, &count)
+	result := make([]sdkRuntime.NativeCollision, int(count)); for index := range result { value := func(field int32) float32 { return float32FromBits(bridgeCollisionValueBits(list, int32(index), field)) }; result[index] = sdkRuntime.NativeCollision{Other: bridgeCollisionOther(list, int32(index)), ResponseType: sdkPlaydate.CollisionResponse(bridgeCollisionValueBits(list, int32(index), 14)), Overlaps: bridgeCollisionValueBits(list, int32(index), 15) != 0, Time: value(0), Move: sdkPlaydate.Point{X:value(1),Y:value(2)}, Normal:sdkPlaydate.Point{X:value(3),Y:value(4)}, Touch:sdkPlaydate.Point{X:value(5),Y:value(6)}, SpriteRect:sdkPlaydate.Rect{X:value(7),Y:value(8),Width:value(9),Height:value(10)}, OtherRect:sdkPlaydate.Rect{X:value(11),Y:value(12),Width:value(13),Height:value(16)}} }; bridgeFreeList(list); return float32FromBits(actualX), float32FromBits(actualY), result
+}
+func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
+	handle := bridgeNewSprite(); if handle == 0 { return nil, sdkPlaydate.ErrSpriteCreate }
+	return sdkRuntime.NewOwnedSprite(handle, spriteDriver), nil
+}
+func borrowedSpriteList(list uintptr, count int32) []sdkPlaydate.Sprite { handles := make([]uintptr, int(count)); for index := range handles { handles[index] = bridgeSpriteListItem(list, int32(index)) }; sprites := sdkRuntime.BorrowedSprites(handles, spriteDriver); bridgeFreeList(list); return sprites }
+func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesAtPointBits(float32Bits(x), float32Bits(y), &count); return borrowedSpriteList(list, count) }
+func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count int32; list := bridgeQuerySpritesInRectBits(float32Bits(rect.X), float32Bits(rect.Y), float32Bits(rect.Width), float32Bits(rect.Height), &count); return borrowedSpriteList(list, count) }
+func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count int32; list := bridgeOverlappingSprites(handle, &count); return borrowedSpriteList(list, count), nil }
+func (playdateContext) UpdateAndDrawSprites() { bridgeUpdateAndDrawSprites() }
+
+var soundEffectDriver = sdkRuntime.AudioDriver{
+	Source: bridgeSoundEffectSource,
+	Play: func(handle uintptr) bool { return bridgeSoundEffectPlay(handle) != 0 }, Stop: bridgeSoundEffectStop,
+	PlayRepeated: func(handle uintptr, repeat int, rate float32) bool { return bridgeSamplePlayerPlayBits(handle, int32(repeat), float32Bits(rate)) != 0 },
+	SetVolume: func(handle uintptr, left, right float32) { bridgeSoundEffectSetVolumeBits(handle, float32Bits(left), float32Bits(right)) },
+	Volume: func(handle uintptr) (float32, float32) { var left, right uint32; bridgeSoundEffectVolumeBits(handle, &left, &right); return float32FromBits(left), float32FromBits(right) },
+	IsPlaying: func(handle uintptr) bool { return bridgeSoundEffectIsPlaying(handle) != 0 },
+	Pause: func(handle uintptr, paused bool) { value := int32(0); if paused { value = 1 }; bridgeSoundEffectPause(handle, value) },
+	Length: func(handle uintptr) float32 { return float32FromBits(bridgeSamplePlayerLengthBits(handle)) },
+	SetOffset: func(handle uintptr, offset float32) { bridgeSamplePlayerSetOffsetBits(handle, float32Bits(offset)) }, Offset: func(handle uintptr) float32 { return float32FromBits(bridgeSamplePlayerOffsetBits(handle)) },
+	SetRate: func(handle uintptr, rate float32) { bridgeSamplePlayerSetRateBits(handle, float32Bits(rate)) }, Rate: func(handle uintptr) float32 { return float32FromBits(bridgeSamplePlayerRateBits(handle)) }, Free: bridgeFreeSoundEffect,
+	SetFinishCallback: bridgeSoundEffectSetFinishCallback,
+}
+var filePlayerDriver = sdkRuntime.AudioDriver{
+	Source: func(handle uintptr) uintptr { return handle },
+	Play: func(handle uintptr) bool { return bridgeFilePlayerPlay(handle) != 0 }, Stop: bridgeFilePlayerStop,
+	SetVolume: func(handle uintptr, left, right float32) { bridgeFilePlayerSetVolumeBits(handle, float32Bits(left), float32Bits(right)) },
+	Volume: func(handle uintptr) (float32, float32) { var left, right uint32; bridgeFilePlayerVolumeBits(handle, &left, &right); return float32FromBits(left), float32FromBits(right) },
+	IsPlaying: func(handle uintptr) bool { return bridgeFilePlayerIsPlaying(handle) != 0 },
+	Pause: func(handle uintptr, _ bool) { bridgeFilePlayerPause(handle) },
+	SetRate: func(handle uintptr, rate float32) { bridgeFilePlayerSetRateBits(handle, float32Bits(rate)) }, Rate: func(handle uintptr) float32 { return float32FromBits(bridgeFilePlayerRateBits(handle)) }, Free: bridgeFreeFilePlayer,
+	SetFinishCallback: bridgeFilePlayerSetFinishCallback,
+	FadeVolume: func(handle uintptr,left,right float32,frames,callback uint32){bridgeFilePlayerFadeVolumeBits(handle,float32Bits(left),float32Bits(right),frames,callback)},
+}
+func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSoundEffect(handle, soundEffectDriver), nil }
+func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadSoundEffect(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil }
+func(playdateContext)NewPCMPlayer(samples []int16,rate uint32)(sdkPlaydate.SamplePlayer,error){if len(samples)==0||rate==0{return nil,sdkPlaydate.ErrAudioParameter};handle:=bridgeNewPCMPlayer(&samples[0],int32(len(samples)),rate);if handle==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSamplePlayer(handle,soundEffectDriver),nil}
+func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadFilePlayer(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil }
+var audioChannelDriver=sdkRuntime.AudioChannelDriver{AddSource:func(c,s uintptr)bool{return bridgeAudioChannelAddSource(c,s)!=0},RemoveSource:func(c,s uintptr)bool{return bridgeAudioChannelRemoveSource(c,s)!=0},AddEffect:func(c,e uintptr)bool{return bridgeAudioChannelAddEffect(c,e)!=0},RemoveEffect:func(c,e uintptr)bool{return bridgeAudioChannelRemoveEffect(c,e)!=0},SetVolume:func(h uintptr,v float32){bridgeAudioChannelSetVolumeBits(h,float32Bits(v))},Volume:func(h uintptr)float32{return float32FromBits(bridgeAudioChannelVolumeBits(h))},SetPan:func(h uintptr,v float32){bridgeAudioChannelSetPanBits(h,float32Bits(v))},Remove:func(h uintptr)bool{return bridgeRemoveAudioChannel(h)!=0},Free:bridgeFreeAudioChannel}
+func(playdateContext)NewAudioChannel()(sdkPlaydate.AudioChannel,error){h:=bridgeNewAudioChannel();if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewAudioChannel(h,audioChannelDriver),nil}
+var signalDriver=sdkRuntime.SignalDriver{Value:func(h uintptr)float32{return float32FromBits(bridgeSignalValueBits(h))},SetScale:func(h uintptr,v float32){bridgeSignalSetScaleBits(h,float32Bits(v))},SetOffset:func(h uintptr,v float32){bridgeSignalSetOffsetBits(h,float32Bits(v))}}
+var lfoDriver=sdkRuntime.LFODriver{Signal:signalDriver,SetRate:func(h uintptr,v float32){bridgeLFOSetValueBits(h,0,float32Bits(v))},SetPhase:func(h uintptr,v float32){bridgeLFOSetValueBits(h,1,float32Bits(v))},SetCenter:func(h uintptr,v float32){bridgeLFOSetValueBits(h,2,float32Bits(v))},SetDepth:func(h uintptr,v float32){bridgeLFOSetValueBits(h,3,float32Bits(v))},SetRetrigger:func(h uintptr,v bool){var f int32;if v{f=1};bridgeLFOSetRetrigger(h,f)},SetArpeggiation:func(h uintptr,s []float32){bridgeLFOSetArpeggiation(h,int32(len(s)),uintptr(unsafe.Pointer(&s[0])))}}
+var envelopeDriver=sdkRuntime.EnvelopeDriver{Signal:signalDriver,SetAttack:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,0,float32Bits(v))},SetDecay:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,1,float32Bits(v))},SetSustain:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,2,float32Bits(v))},SetRelease:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,3,float32Bits(v))},SetLegato:func(h uintptr,v bool){var f int32;if v{f=1};bridgeEnvelopeSetFlag(h,0,f)},SetRetrigger:func(h uintptr,v bool){var f int32;if v{f=1};bridgeEnvelopeSetFlag(h,1,f)}}
+var controlSignalDriver=sdkRuntime.ControlSignalDriver{Signal:signalDriver,AddEvent:func(h uintptr,step int,v float32,i bool){var f int32;if i{f=1};bridgeControlSignalAddEventBits(h,int32(step),float32Bits(v),f)},RemoveEvent:func(h uintptr,step int){bridgeControlSignalRemoveEvent(h,int32(step))},ClearEvents:bridgeControlSignalClearEvents}
+var synthDriver=sdkRuntime.SynthDriver{Audio:sdkRuntime.AudioDriver{Source:func(h uintptr)uintptr{return h},Stop:bridgeSourceStop,SetVolume:func(h uintptr,l,r float32){bridgeSourceSetVolumeBits(h,float32Bits(l),float32Bits(r))},Volume:func(h uintptr)(float32,float32){var l,r uint32;bridgeSourceVolumeBits(h,&l,&r);return float32FromBits(l),float32FromBits(r)},IsPlaying:func(h uintptr)bool{return bridgeSourceIsPlaying(h)!=0},Pause:func(uintptr,bool){},Free:bridgeFreeSynth},SetWaveform:func(h uintptr,w sdkPlaydate.Waveform){bridgeSynthSetWaveform(h,int32(w))},SetEnvelope:func(h uintptr,a,d,s,r float32){bridgeSynthSetEnvelopeBits(h,float32Bits(a),float32Bits(d),float32Bits(s),float32Bits(r))},SetTranspose:func(h uintptr,v float32){bridgeSynthSetTransposeBits(h,float32Bits(v))},SetFrequencyModulator:bridgeSynthSetFrequencyModulator,SetAmplitudeModulator:bridgeSynthSetAmplitudeModulator,PlayMIDINote:func(h uintptr,n,v,l float32,w uint32){bridgeSynthPlayMIDINoteBits(h,float32Bits(n),float32Bits(v),float32Bits(l),w)},NoteOff:bridgeSynthNoteOff}
+func(playdateContext)NewSynth(w sdkPlaydate.Waveform)(sdkPlaydate.Synth,error){if w>sdkPlaydate.WaveformPOVosim{return nil,sdkPlaydate.ErrAudioWaveform};h:=bridgeNewSynth(int32(w));if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSynth(h,synthDriver),nil}
+func(playdateContext)NewLFO(t sdkPlaydate.LFOType)(sdkPlaydate.LFO,error){if t>sdkPlaydate.LFOTypeArpeggiator{return nil,sdkPlaydate.ErrAudioWaveform};h:=bridgeNewLFO(int32(t));if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=lfoDriver;d.Signal.Free=bridgeFreeLFO;return sdkRuntime.NewLFO(h,d),nil}
+func(playdateContext)NewEnvelope(a,d,s,r float32)(sdkPlaydate.Envelope,error){if err:=sdkRuntime.ValidateEnvelope(a,d,s,r);err!=nil{return nil,err};h:=bridgeNewEnvelopeBits(float32Bits(a),float32Bits(d),float32Bits(s),float32Bits(r));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=envelopeDriver;driver.Signal.Free=bridgeFreeEnvelope;return sdkRuntime.NewEnvelope(h,driver),nil}
+func(playdateContext)NewControlSignal()(sdkPlaydate.ControlSignal,error){h:=bridgeNewControlSignal();if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=controlSignalDriver;d.Signal.Free=bridgeFreeControlSignal;return sdkRuntime.NewControlSignal(h,d),nil}
+var microphoneService=sdkRuntime.NewMicrophoneService(sdkRuntime.MicrophoneDriver{Request:func(purpose string,callback func(bool))sdkPlaydate.MicrophonePermission{microphonePermissionCallback=callback;return sdkPlaydate.MicrophonePermission(bridgeRequestMicAccess(terminatedPath(purpose)))},Start:func(source sdkPlaydate.MicrophoneSource,callback func([]int16)bool)sdkPlaydate.MicrophoneSource{microphoneRecordingCallback=callback;used:=sdkPlaydate.MicrophoneSource(bridgeStartMicrophone(int32(source)));if used==sdkPlaydate.MicrophoneSourceAutomatic{microphoneRecordingCallback=nil};return used},Stop:func(){bridgeStopMicrophone();microphoneRecordingCallback=nil}})
+func(playdateContext)RequestMicrophoneAccess(purpose string,callback func(sdkPlaydate.MicrophonePermission))(sdkPlaydate.MicrophonePermission,error){return microphoneService.RequestMicrophoneAccess(purpose,callback)}
+func(playdateContext)StartMicrophoneRecording(source sdkPlaydate.MicrophoneSource,callback func(sdkPlaydate.MicrophoneSamples)bool)(sdkPlaydate.MicrophoneRecorder,error){return microphoneService.StartMicrophoneRecording(source,callback)}
+func(playdateContext)CloseMicrophone(){microphoneService.Close();microphonePermissionCallback=nil;microphoneRecordingCallback=nil}
+var instrumentDriver=sdkRuntime.InstrumentDriver{AddVoice:func(i,s uintptr,a,b uint8,t float32)bool{return bridgeInstrumentAddVoiceBits(i,s,int32(a),int32(b),float32Bits(t))!=0},SetPitchBend:func(h uintptr,v float32){bridgeInstrumentSetValueBits(h,0,float32Bits(v))},SetPitchBendRange:func(h uintptr,v float32){bridgeInstrumentSetValueBits(h,1,float32Bits(v))},SetTranspose:func(h uintptr,v float32){bridgeInstrumentSetValueBits(h,2,float32Bits(v))},NoteOff:func(h uintptr,n uint8,w uint32){bridgeInstrumentNoteOff(h,int32(n),w)},AllNotesOff:bridgeInstrumentAllNotesOff,SetVolume:func(h uintptr,l,r float32){bridgeInstrumentSetVolumeBits(h,float32Bits(l),float32Bits(r))},Volume:func(h uintptr)(float32,float32){var l,r uint32;bridgeInstrumentVolumeBits(h,&l,&r);return float32FromBits(l),float32FromBits(r)},ActiveVoiceCount:func(h uintptr)int{return int(bridgeInstrumentActiveVoiceCount(h))},Free:bridgeFreeInstrument}
+var trackDriver=sdkRuntime.TrackDriver{SetInstrument:bridgeTrackSetInstrument,AddNote:func(h uintptr,s,l uint32,n uint8,v float32){bridgeTrackAddNoteBits(h,s,l,int32(n),float32Bits(v))},RemoveNote:func(h uintptr,s uint32,n uint8){bridgeTrackRemoveNote(h,s,int32(n))},ClearNotes:bridgeTrackClearNotes,AddControlEvent:func(h uintptr,c,s int,v float32,i bool)bool{var f int32;if i{f=1};return bridgeTrackControlEventBits(h,int32(c),int32(s),float32Bits(v),f,0)!=0},RemoveControlEvent:func(h uintptr,c,s int)bool{return bridgeTrackControlEventBits(h,int32(c),int32(s),0,0,1)!=0},ClearControlEvents:bridgeTrackClearControlEvents,SetMuted:func(h uintptr,v bool){var f int32;if v{f=1};bridgeTrackSetMuted(h,f)},Length:bridgeTrackLength,Free:bridgeFreeTrack}
+var sequenceDriver=sdkRuntime.SequenceDriver{LoadMIDI:func(h uintptr,p string)bool{z:=p+"\x00";return bridgeSequenceLoadMIDI(h,unsafe.StringData(z))!=0},SetTempo:func(h uintptr,v float32){bridgeSequenceSetTempoBits(h,float32Bits(v))},Tempo:func(h uintptr)float32{return float32FromBits(bridgeSequenceTempoBits(h))},SetLoops:func(h uintptr,a,b,c int){bridgeSequenceSetLoops(h,int32(a),int32(b),int32(c))},SetTrack:func(h uintptr,i uint,t uintptr){bridgeSequenceSetTrack(h,uint32(i),t)},Play:bridgeSequencePlay,Stop:bridgeSequenceStop,IsPlaying:func(h uintptr)bool{return bridgeSequenceIsPlaying(h)!=0},Time:bridgeSequenceTime,SetTime:bridgeSequenceSetTime,Length:bridgeSequenceLength,Free:bridgeFreeSequence}
+func init(){sequenceDriver.TrackCount=func(h uintptr)uint{return uint(bridgeSequenceTrackCount(h))};sequenceDriver.AddTrack=bridgeSequenceAddTrack}
+func(playdateContext)NewInstrument()(sdkPlaydate.Instrument,error){h:=bridgeNewInstrument();if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewInstrument(h,instrumentDriver),nil}
+func(playdateContext)NewSequenceTrack()(sdkPlaydate.SequenceTrack,error){h:=bridgeNewTrack();if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSequenceTrack(h,trackDriver),nil}
+func(playdateContext)NewSequence()(sdkPlaydate.Sequence,error){h:=bridgeNewSequence();if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSequence(h,sequenceDriver),nil}
+func typedEffectDriver(kind int32) sdkRuntime.EffectDriver{return sdkRuntime.EffectDriver{SetMix:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,kind,10,float32Bits(v))},SetMixModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,kind,10,m)},Free:func(h uintptr){bridgeFreeTypedEffect(h,kind)}}}
+func(playdateContext)NewTwoPoleFilter(k sdkPlaydate.FilterType)(sdkPlaydate.TwoPoleFilter,error){if k>sdkPlaydate.FilterHighShelf{return nil,sdkPlaydate.ErrAudioParameter};h:=bridgeNewTypedEffect(0,uint32(k),0);if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.TwoPoleFilterDriver{Effect:typedEffectDriver(0),SetType:func(h uintptr,v sdkPlaydate.FilterType){bridgeTypedEffectSetFlag(h,0,0,int32(v))},SetFrequency:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,0,0,float32Bits(v))},SetFrequencyModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,0,0,m)},SetGain:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,0,1,float32Bits(v))},SetResonance:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,0,2,float32Bits(v))},SetResonanceModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,0,2,m)}};return sdkRuntime.NewTwoPoleFilter(h,d),nil}
+func(playdateContext)NewBitCrusher()(sdkPlaydate.BitCrusher,error){h:=bridgeNewTypedEffect(1,0,0);if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.BitCrusherDriver{Effect:typedEffectDriver(1),SetExponential:func(h uintptr,v bool){var f int32;if v{f=1};bridgeTypedEffectSetFlag(h,1,0,f)},SetDepth:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,1,0,float32Bits(v))},SetDepthModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,1,0,m)},SetDownsampling:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,1,1,float32Bits(v))},SetDownsamplingModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,1,1,m)}};return sdkRuntime.NewBitCrusher(h,d),nil}
+func(playdateContext)NewRingModulator()(sdkPlaydate.RingModulator,error){h:=bridgeNewTypedEffect(2,0,0);if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.RingModulatorDriver{Effect:typedEffectDriver(2),SetFrequency:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,2,0,float32Bits(v))},SetFrequencyModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,2,0,m)}};return sdkRuntime.NewRingModulator(h,d),nil}
+func(playdateContext)NewOverdrive()(sdkPlaydate.Overdrive,error){h:=bridgeNewTypedEffect(3,0,0);if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.OverdriveDriver{Effect:typedEffectDriver(3),SetGain:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,3,0,float32Bits(v))},SetLimit:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,3,1,float32Bits(v))},SetLimitModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,3,1,m)},SetOffset:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,3,2,float32Bits(v))},SetOffsetModulator:func(h,m uintptr){bridgeTypedEffectSetSignal(h,3,2,m)}};return sdkRuntime.NewOverdrive(h,d),nil}
+func(playdateContext)NewDelayLine(length int,stereo bool)(sdkPlaydate.DelayLine,error){if length<1{return nil,sdkPlaydate.ErrAudioParameter};var f int32;if stereo{f=1};h:=bridgeNewTypedEffect(4,uint32(length),f);if h==0{return nil,sdkPlaydate.ErrAudioCreate};tap:=sdkRuntime.AudioDriver{Source:func(h uintptr)uintptr{return h},Stop:bridgeSourceStop,SetVolume:func(h uintptr,l,r float32){bridgeSourceSetVolumeBits(h,float32Bits(l),float32Bits(r))},Volume:func(h uintptr)(float32,float32){var l,r uint32;bridgeSourceVolumeBits(h,&l,&r);return float32FromBits(l),float32FromBits(r)},IsPlaying:func(h uintptr)bool{return bridgeSourceIsPlaying(h)!=0},Pause:func(uintptr,bool){},Free:bridgeFreeDelayTap};d:=sdkRuntime.DelayLineDriver{Effect:typedEffectDriver(4),SetLength:func(h uintptr,v int){bridgeTypedEffectSetFlag(h,4,0,int32(v))},SetFeedback:func(h uintptr,v float32){bridgeTypedEffectSetValueBits(h,4,0,float32Bits(v))},AddTap:func(h uintptr,v int)uintptr{return bridgeDelayAddTap(h,int32(v))},Tap:tap,SetTapDelay:func(h uintptr,v int){bridgeDelayTapSet(h,0,int32(v),0)},SetTapDelayModulator:func(h,m uintptr){bridgeDelayTapSet(h,1,0,m)},SetTapChannelsFlipped:func(h uintptr,v bool){var f int32;if v{f=1};bridgeDelayTapSet(h,2,f,0)}};return sdkRuntime.NewDelayLine(h,d),nil}
+
+var gameContext playdateContext
+var application = mustApplication()
+
+func mustApplication() *sdkRuntime.Application {
+	application, err := sdkRuntime.NewApplication(app.New(), gameContext, nil)
+	if err != nil {
+		panic(err)
+	}
+	return application
+}
+
+//export goEventHandler
+func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
+	if err := application.Handle(sdkRuntime.Event(event), arg); err != nil {
+		return -1
+	}
+	return 0
+}
+
+//export goUpdate
+func goUpdate() int32 {
+	for {
+		var callback uint32
+		var oneShot int32
+		if bridgePollAudioCallback(&callback, &oneShot) == 0 {
+			break
+		}
+		sdkRuntime.InvokeAudioCallback(callback, oneShot != 0)
+	}
+	if allowed:=bridgePollMicrophonePermission();allowed>=0{callback:=microphonePermissionCallback;microphonePermissionCallback=nil;if callback!=nil{callback(allowed!=0)}}
+	for microphoneRecordingCallback!=nil{count:=bridgePollMicrophoneSamples(&microphonePollBuffer[0],int32(len(microphonePollBuffer)));if count==0{break};if !microphoneRecordingCallback(microphonePollBuffer[:count]){bridgeStopMicrophone();microphoneRecordingCallback=nil;break}}
+	refresh, err := application.Update(sdkRuntime.RawInput{
+		Buttons: sdkPlaydate.Buttons(bridgeButtons()), CrankAngle: float32FromBits(bridgeCrankAngleBits()),
+		CrankDelta: float32FromBits(bridgeCrankDeltaBits()), CrankDocked: bridgeCrankDocked() != 0,
+		DeltaSeconds: float32FromBits(bridgeFrameDeltaBits()),
+	})
+	if err != nil {
+		return 0
+	}
+	return int32(refresh)
+}
+
+func main() {}

@@ -1,0 +1,590 @@
+package main
+
+/*
+#include %q
+#include <stdlib.h>
+void bridgeRegisterUpdate(PlaydateAPI* playdate);
+void bridgeLogError(const char* message);
+int bridgeAddScore(const char* board, uint32_t value);
+int bridgeGetPersonalBest(const char* board);
+int bridgeGetScoreboards(void);
+int bridgeGetScores(const char* board);
+uint32_t bridgeScoreNumber(uintptr_t score, int field);
+const char* bridgeScoreText(uintptr_t score, int field);
+uint32_t bridgeListNumber(uintptr_t list, int field);
+const char* bridgeListText(uintptr_t list, int index, int field);
+uint32_t bridgeListItemNumber(uintptr_t list, int index, int field);
+void bridgeClear(void);
+uint8_t* bridgeGetFrame(void);
+void bridgeMarkUpdatedRows(int start, int end);
+void bridgeDrawText(const char* text, size_t length, int x, int y);
+uintptr_t bridgeLoadFont(const char* path, const char** error);
+void bridgeSetFont(uintptr_t font);
+int bridgeTextWidth(uintptr_t font, const char* text, size_t length);
+int bridgeFontHeight(uintptr_t font);
+void bridgeFreeFont(uintptr_t font);
+uint32_t bridgeCurrentTimeMilliseconds(void);
+uint32_t bridgeCurrentAudioTime(void);
+void bridgeExitToLauncher(void);
+void bridgeSetAccelerometerEnabled(int enabled);
+void bridgeAccelerometer(float* x, float* y, float* z);
+int bridgePowerStatus(void);
+float bridgeBatteryPercentage(void);
+float bridgeBatteryVoltage(void);
+float bridgeSystemVolume(void);
+int bridgeReduceFlashing(void);
+int bridgeTimezoneOffsetSeconds(void);
+int bridgeUses24HourTime(void);
+int bridgeLanguage(void);
+char* bridgeLocalizedText(const char* key, int language);
+void bridgeFree(void* pointer);
+uintptr_t bridgeAddMenuItem(const char* title, int kind, const char** options, int count, int value, uint32_t callback);
+void bridgeRemoveMenuItem(uintptr_t item);
+const char* bridgeMenuItemTitle(uintptr_t item);
+void bridgeSetMenuItemTitle(uintptr_t item, const char* title);
+int bridgeMenuItemValue(uintptr_t item);
+void bridgeSetMenuItemValue(uintptr_t item, int value);
+const char* bridgeFileError(void);
+uintptr_t bridgeFileOpen(const char* path, int options);
+int bridgeFileClose(uintptr_t file);
+int bridgeFileRead(uintptr_t file, void* buffer, unsigned int length);
+int bridgeFileWrite(uintptr_t file, const void* buffer, unsigned int length);
+int bridgeFileFlush(uintptr_t file);
+int bridgeFileTell(uintptr_t file);
+int bridgeFileSeek(uintptr_t file, int position, int whence);
+int bridgeFileStat(const char* path, int* values);
+uintptr_t bridgeFileList(const char* path, int showHidden, int* count, int* result);
+const char* bridgeFileListItem(uintptr_t list, int index);
+void bridgeFileListFree(uintptr_t list);
+int bridgeFileMkdir(const char* path);
+int bridgeFileRemove(const char* path, int recursive);
+int bridgeFileRename(const char* from, const char* to);
+uint32_t bridgeButtons(void);
+float bridgeCrankAngle(void);
+float bridgeCrankDelta(void);
+int bridgeCrankDocked(void);
+float bridgeFrameDelta(void);
+uintptr_t bridgeLoadBitmap(const char* path, const char** error);
+uintptr_t bridgeLoadBitmapTable(const char* path, const char** error);
+uintptr_t bridgeBitmapTableFrame(uintptr_t table, int index);
+void bridgeFreeBitmapTable(uintptr_t table);
+uintptr_t bridgeNewBitmap(int width, int height);
+void bridgeFreeBitmap(uintptr_t bitmap);
+void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height);
+void bridgeFillBitmap(uintptr_t bitmap, int color);
+void bridgeDrawBitmap(uintptr_t bitmap, int x, int y);
+void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY);
+void bridgeDrawRotatedBitmap(uintptr_t bitmap, int x, int y, float degrees, float centerX, float centerY, float scaleX, float scaleY);
+void bridgeDrawLine(int x1, int y1, int x2, int y2, int width, int solid, const uint8_t* pattern, int patterned);
+void bridgeDrawRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned);
+void bridgeDrawEllipse(int x, int y, int width, int height, int lineWidth, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillEllipse(int x, int y, int width, int height, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned);
+void bridgeFillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int solid, const uint8_t* pattern, int patterned);
+void bridgeDrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int width, int solid, const uint8_t* pattern, int patterned);
+void bridgeSetClipRect(int x, int y, int width, int height);
+void bridgeClearClipRect(void);
+void bridgeSetDrawOffset(int dx, int dy);
+void bridgeSetDrawMode(int mode);
+void bridgePushContext(uintptr_t bitmap);
+void bridgePopContext(void);
+void bridgeSetStencil(uintptr_t bitmap, int tiled);
+void bridgeClearStencil(void);
+uintptr_t bridgeNewSprite(void);
+void bridgeFreeSprite(uintptr_t sprite);
+void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap);
+void bridgeSpriteMoveTo(uintptr_t sprite, float x, float y);
+void bridgeSpriteMoveBy(uintptr_t sprite, float dx, float dy);
+void bridgeSpriteSetVisible(uintptr_t sprite, int visible);
+void bridgeSpriteSetZIndex(uintptr_t sprite, int z);
+void bridgeSpriteSetCollideRect(uintptr_t sprite, float x, float y, float width, float height);
+void bridgeSpriteClearCollideRect(uintptr_t sprite);
+void bridgeSpriteSetTag(uintptr_t sprite, uint8_t tag);
+void* bridgeSpriteMoveWithCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count);
+void bridgeCollisionInfo(void* collisions, int index, uintptr_t* other, int* response, int* overlaps, float* ti, float* values);
+void bridgeFreeCollisionList(void* collisions);
+void* bridgeQuerySpritesAtPoint(float x, float y, int* count);
+void* bridgeQuerySpritesInRect(float x, float y, float width, float height, int* count);
+void* bridgeOverlappingSprites(uintptr_t sprite, int* count);
+uintptr_t bridgeSpriteListItem(void* sprites, int index);
+void bridgeFreeSpriteList(void* sprites);
+void bridgeSpriteAdd(uintptr_t sprite);
+void bridgeSpriteRemove(uintptr_t sprite);
+void bridgeUpdateAndDrawSprites(void);
+uintptr_t bridgeLoadSoundEffect(const char* path);
+uintptr_t bridgeNewPCMPlayer(const int16_t* samples, int count, uint32_t sampleRate);
+int bridgeSoundEffectPlay(uintptr_t effect);
+int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate);
+void bridgeSoundEffectStop(uintptr_t effect);
+void bridgeSoundEffectSetVolume(uintptr_t effect, float left, float right);
+void bridgeSoundEffectVolume(uintptr_t effect, float* left, float* right);
+int bridgeSoundEffectIsPlaying(uintptr_t effect);
+void bridgeSoundEffectPause(uintptr_t effect, int paused);
+float bridgeSamplePlayerLength(uintptr_t effect);
+void bridgeSamplePlayerSetOffset(uintptr_t effect, float offset);
+float bridgeSamplePlayerOffset(uintptr_t effect);
+void bridgeSamplePlayerSetRate(uintptr_t effect, float rate);
+float bridgeSamplePlayerRate(uintptr_t effect);
+void bridgeFreeSoundEffect(uintptr_t effect);
+uintptr_t bridgeLoadFilePlayer(const char* path);
+int bridgeFilePlayerPlay(uintptr_t player);
+void bridgeFilePlayerStop(uintptr_t player);
+void bridgeFilePlayerSetVolume(uintptr_t player, float left, float right);
+void bridgeFilePlayerVolume(uintptr_t player, float* left, float* right);
+int bridgeFilePlayerIsPlaying(uintptr_t player);
+void bridgeFilePlayerPause(uintptr_t player, int paused);
+void bridgeFilePlayerSetRate(uintptr_t player, float rate);
+float bridgeFilePlayerRate(uintptr_t player);
+void bridgeSoundEffectSetFinishCallback(uintptr_t effect, uint32_t callback);
+void bridgeFilePlayerSetFinishCallback(uintptr_t player, uint32_t callback);
+void bridgeFilePlayerFadeVolume(uintptr_t player, float left, float right, uint32_t frames, uint32_t callback);
+void bridgeFreeFilePlayer(uintptr_t player);
+uintptr_t bridgeSoundEffectSource(uintptr_t effect);
+uintptr_t bridgeNewAudioChannel(void);
+int bridgeAudioChannelAddSource(uintptr_t channel, uintptr_t source);
+int bridgeAudioChannelRemoveSource(uintptr_t channel, uintptr_t source);
+void bridgeAudioChannelSetVolume(uintptr_t channel, float volume);
+float bridgeAudioChannelVolume(uintptr_t channel);
+void bridgeAudioChannelSetPan(uintptr_t channel, float pan);
+int bridgeRemoveAudioChannel(uintptr_t channel);
+void bridgeFreeAudioChannel(uintptr_t channel);
+int bridgeAudioChannelAddEffect(uintptr_t channel, uintptr_t effect);
+int bridgeAudioChannelRemoveEffect(uintptr_t channel, uintptr_t effect);
+uintptr_t bridgeNewSynth(int waveform);
+void bridgeSynthSetWaveform(uintptr_t synth, int waveform);
+void bridgeSynthSetEnvelope(uintptr_t synth, float attack, float decay, float sustain, float release);
+void bridgeSynthSetTranspose(uintptr_t synth, float transpose);
+void bridgeSynthSetFrequencyModulator(uintptr_t synth, uintptr_t signal);
+void bridgeSynthSetAmplitudeModulator(uintptr_t synth, uintptr_t signal);
+void bridgeSynthPlayMIDINote(uintptr_t synth, float note, float velocity, float length, uint32_t when);
+void bridgeSynthNoteOff(uintptr_t synth, uint32_t when);
+void bridgeFreeSynth(uintptr_t synth);
+uintptr_t bridgeNewInstrument(void); int bridgeInstrumentAddVoice(uintptr_t,uintptr_t,int,int,float); void bridgeInstrumentSetPitchBend(uintptr_t,float); void bridgeInstrumentSetPitchBendRange(uintptr_t,float); void bridgeInstrumentSetTranspose(uintptr_t,float); void bridgeInstrumentNoteOff(uintptr_t,int,uint32_t); void bridgeInstrumentAllNotesOff(uintptr_t,uint32_t); void bridgeInstrumentSetVolume(uintptr_t,float,float); void bridgeInstrumentVolume(uintptr_t,float*,float*); int bridgeInstrumentActiveVoiceCount(uintptr_t); void bridgeFreeInstrument(uintptr_t);
+uintptr_t bridgeNewTrack(void); void bridgeTrackSetInstrument(uintptr_t,uintptr_t); void bridgeTrackAddNote(uintptr_t,uint32_t,uint32_t,int,float); void bridgeTrackRemoveNote(uintptr_t,uint32_t,int); void bridgeTrackClearNotes(uintptr_t); int bridgeTrackAddControlEvent(uintptr_t,int,int,float,int); int bridgeTrackRemoveControlEvent(uintptr_t,int,int); void bridgeTrackClearControlEvents(uintptr_t); void bridgeTrackSetMuted(uintptr_t,int); uint32_t bridgeTrackLength(uintptr_t); void bridgeFreeTrack(uintptr_t);
+uintptr_t bridgeNewSequence(void); int bridgeSequenceLoadMIDI(uintptr_t,const char*); void bridgeSequenceSetTempo(uintptr_t,float); float bridgeSequenceTempo(uintptr_t); void bridgeSequenceSetLoops(uintptr_t,int,int,int); void bridgeSequenceSetTrack(uintptr_t,unsigned int,uintptr_t); void bridgeSequencePlay(uintptr_t,uint32_t); void bridgeSequenceStop(uintptr_t); int bridgeSequenceIsPlaying(uintptr_t); uint32_t bridgeSequenceTime(uintptr_t); void bridgeSequenceSetTime(uintptr_t,uint32_t); uint32_t bridgeSequenceLength(uintptr_t); void bridgeFreeSequence(uintptr_t);
+unsigned int bridgeSequenceTrackCount(uintptr_t); uintptr_t bridgeSequenceAddTrack(uintptr_t);
+void bridgeEffectSetMix(uintptr_t,float); void bridgeEffectSetMixModulator(uintptr_t,uintptr_t); uintptr_t bridgeNewTwoPole(int); void bridgeTwoPoleSetFrequency(uintptr_t,float); void bridgeTwoPoleSetFrequencyModulator(uintptr_t,uintptr_t); void bridgeTwoPoleSetGain(uintptr_t,float); void bridgeTwoPoleSetResonance(uintptr_t,float); void bridgeTwoPoleSetResonanceModulator(uintptr_t,uintptr_t); void bridgeFreeTwoPole(uintptr_t); uintptr_t bridgeNewBitCrusher(void); void bridgeBitCrusherSetExponential(uintptr_t,int); void bridgeBitCrusherSetDepth(uintptr_t,float); void bridgeBitCrusherSetDepthModulator(uintptr_t,uintptr_t); void bridgeBitCrusherSetDownsampling(uintptr_t,float); void bridgeBitCrusherSetDownsamplingModulator(uintptr_t,uintptr_t); void bridgeFreeBitCrusher(uintptr_t); uintptr_t bridgeNewRingModulator(void); void bridgeRingSetFrequency(uintptr_t,float); void bridgeRingSetFrequencyModulator(uintptr_t,uintptr_t); void bridgeFreeRingModulator(uintptr_t); uintptr_t bridgeNewOverdrive(void); void bridgeOverdriveSetGain(uintptr_t,float); void bridgeOverdriveSetLimit(uintptr_t,float); void bridgeOverdriveSetLimitModulator(uintptr_t,uintptr_t); void bridgeOverdriveSetOffset(uintptr_t,float); void bridgeOverdriveSetOffsetModulator(uintptr_t,uintptr_t); void bridgeFreeOverdrive(uintptr_t); uintptr_t bridgeNewDelayLine(int,int); void bridgeDelaySetLength(uintptr_t,int); void bridgeDelaySetFeedback(uintptr_t,float); uintptr_t bridgeDelayAddTap(uintptr_t,int); void bridgeTapSetDelay(uintptr_t,int); void bridgeTapSetDelayModulator(uintptr_t,uintptr_t); void bridgeTapSetChannelsFlipped(uintptr_t,int); void bridgeFreeTap(uintptr_t); void bridgeFreeDelayLine(uintptr_t);
+void bridgeTwoPoleSetType(uintptr_t,int);
+uintptr_t bridgeNewLFO(int type);
+uintptr_t bridgeNewEnvelope(float attack, float decay, float sustain, float release);
+uintptr_t bridgeNewControlSignal(void);
+float bridgeSignalValue(uintptr_t signal);
+void bridgeSignalSetScale(uintptr_t signal, float scale);
+void bridgeSignalSetOffset(uintptr_t signal, float offset);
+void bridgeLFOSetRate(uintptr_t signal, float rate);
+void bridgeLFOSetPhase(uintptr_t signal, float phase);
+void bridgeLFOSetCenter(uintptr_t signal, float center);
+void bridgeLFOSetDepth(uintptr_t signal, float depth);
+void bridgeLFOSetRetrigger(uintptr_t signal, int retrigger);
+void bridgeLFOSetArpeggiation(uintptr_t signal, int count, float* steps);
+void bridgeEnvelopeSetAttack(uintptr_t signal, float value);
+void bridgeEnvelopeSetDecay(uintptr_t signal, float value);
+void bridgeEnvelopeSetSustain(uintptr_t signal, float value);
+void bridgeEnvelopeSetRelease(uintptr_t signal, float value);
+void bridgeEnvelopeSetLegato(uintptr_t signal, int value);
+void bridgeEnvelopeSetRetrigger(uintptr_t signal, int value);
+void bridgeControlSignalAddEvent(uintptr_t signal, int step, float value, int interpolate);
+void bridgeControlSignalRemoveEvent(uintptr_t signal, int step);
+void bridgeControlSignalClearEvents(uintptr_t signal);
+void bridgeFreeLFO(uintptr_t signal);
+void bridgeFreeEnvelope(uintptr_t signal);
+void bridgeFreeControlSignal(uintptr_t signal);
+void bridgeSourceStop(uintptr_t source);
+void bridgeSourceSetVolume(uintptr_t source, float left, float right);
+void bridgeSourceVolume(uintptr_t source, float* left, float* right);
+int bridgeSourceIsPlaying(uintptr_t source);
+int bridgeRequestMicAccess(const char* purpose);
+int bridgeStartMicrophone(int source);
+void bridgeStopMicrophone(void);
+*/
+import "C"
+import (
+	"unsafe"
+
+	sdkRuntime %q
+	sdkPlaydate %q
+	app %q
+)
+
+var activePlaydate *C.PlaydateAPI
+var gameContext playdateContext
+var debugMessages = sdkRuntime.NewDebugMessageQueue(8, 256)
+
+//export goSerialMessage
+func goSerialMessage(message *C.char) { if message != nil { debugMessages.Push(C.GoString(message)) } }
+//export goAudioCallback
+func goAudioCallback(callback C.uint32_t,oneShot C.int){sdkRuntime.InvokeAudioCallback(uint32(callback),oneShot!=0)}
+var microphonePermissionCallback func(bool)
+var microphoneRecordingCallback func([]int16)bool
+//export goMicrophonePermission
+func goMicrophonePermission(allowed C.int){callback:=microphonePermissionCallback;microphonePermissionCallback=nil;if callback!=nil{callback(allowed!=0)}}
+//export goMicrophoneSamples
+func goMicrophoneSamples(data *C.int16_t,length C.int)C.int{callback:=microphoneRecordingCallback;if callback==nil{return 0};if callback(unsafe.Slice((*int16)(unsafe.Pointer(data)),int(length))){return 1};microphoneRecordingCallback=nil;return 0}
+
+var application = mustApplication()
+
+func mustApplication() *sdkRuntime.Application {
+	application, err := sdkRuntime.NewApplication(app.New(), gameContext, func() {
+		C.bridgeRegisterUpdate(activePlaydate)
+	})
+	if err != nil {
+		panic(err)
+	}
+	return application
+}
+
+//export eventHandler
+func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t) C.int {
+	if sdkRuntime.Event(event) == sdkRuntime.EventInit {
+		activePlaydate = playdate
+	} else if activePlaydate == nil {
+		return -1
+	}
+	if err := application.Handle(sdkRuntime.Event(event), uint32(arg)); err != nil {
+		message := C.CString(err.Error())
+		C.bridgeLogError(message)
+		C.bridgeClear()
+		C.bridgeDrawText(message, C.size_t(len(err.Error())), 12, 12)
+		C.free(unsafe.Pointer(message))
+		return -1
+	}
+	return 0
+}
+
+//export goUpdate
+func goUpdate() C.int {
+	refresh, err := application.Update(sdkRuntime.RawInput{
+		Buttons: sdkPlaydate.Buttons(C.bridgeButtons()), CrankAngle: float32(C.bridgeCrankAngle()),
+		CrankDelta: float32(C.bridgeCrankDelta()), CrankDocked: C.bridgeCrankDocked() != 0,
+		DeltaSeconds: float32(C.bridgeFrameDelta()),
+	})
+	if err != nil { message := C.CString(err.Error()); C.bridgeLogError(message); C.free(unsafe.Pointer(message)) }
+	if err != nil {
+		return 0
+	}
+	return C.int(refresh)
+}
+
+type playdateContext struct{}
+
+var _ sdkPlaydate.PrimitiveGraphics = playdateContext{}
+var _ sdkPlaydate.GraphicsState = playdateContext{}
+var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
+var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
+var _ sdkPlaydate.Launcher = playdateContext{}
+var _ sdkPlaydate.FileSystem = playdateContext{}
+var _ sdkPlaydate.SystemMenu = playdateContext{}
+var _ sdkPlaydate.Localization = playdateContext{}
+var _ sdkPlaydate.Scoreboards = playdateContext{}
+var _ sdkPlaydate.DebugMessages = playdateContext{}
+var _ sdkPlaydate.AudioClock = playdateContext{}
+var _ sdkPlaydate.AudioChannels = playdateContext{}
+var _ sdkPlaydate.Synthesizers = playdateContext{}
+var _ sdkPlaydate.Microphones = playdateContext{}
+var _ sdkPlaydate.PCMPlayers = playdateContext{}
+var _ sdkPlaydate.Sequencers = playdateContext{}
+var _ sdkPlaydate.AudioEffects = playdateContext{}
+
+func (playdateContext) PollDebugMessage()(string,bool){return debugMessages.Poll()}
+
+var addScoreCallback func(sdkPlaydate.Score,string)
+var personalBestCallback func(sdkPlaydate.Score,string)
+var boardsCallback func(sdkPlaydate.BoardsList,string)
+var scoresCallback func(sdkPlaydate.ScoresList,string)
+func copiedNativeText(value *C.char)string{if value==nil{return ""};return C.GoString(value)}
+func copiedScore(pointer C.uintptr_t)sdkPlaydate.Score{return sdkPlaydate.Score{Rank:uint32(C.bridgeScoreNumber(pointer,0)),Value:uint32(C.bridgeScoreNumber(pointer,1)),Player:copiedNativeText(C.bridgeScoreText(pointer,0)),BoardID:copiedNativeText(C.bridgeScoreText(pointer,1))}}
+//export goScoreCallback
+func goScoreCallback(kind C.int,pointer C.uintptr_t,message *C.char){callback:=addScoreCallback;if kind==1{callback=personalBestCallback};if callback!=nil{callback(copiedScore(pointer),copiedNativeText(message))};if kind==0{addScoreCallback=nil}else{personalBestCallback=nil}}
+//export goBoardsCallback
+func goBoardsCallback(pointer C.uintptr_t,message *C.char){list:=sdkPlaydate.BoardsList{};if pointer!=0{list.LastUpdated=uint32(C.bridgeListNumber(pointer,1));count:=int(C.bridgeListNumber(pointer,0));list.Boards=make([]sdkPlaydate.Board,count);for i:=range list.Boards{list.Boards[i]=sdkPlaydate.Board{ID:copiedNativeText(C.bridgeListText(pointer,C.int(i),0)),Name:copiedNativeText(C.bridgeListText(pointer,C.int(i),1))}}};callback:=boardsCallback;boardsCallback=nil;if callback!=nil{callback(list,copiedNativeText(message))}}
+//export goScoresCallback
+func goScoresCallback(pointer C.uintptr_t,message *C.char){list:=sdkPlaydate.ScoresList{};if pointer!=0{list.BoardID=copiedNativeText(C.bridgeListText(pointer,-1,0));list.LastUpdated=uint32(C.bridgeListNumber(pointer,1));list.PlayerIncluded=C.bridgeListNumber(pointer,2)!=0;list.Limit=uint32(C.bridgeListNumber(pointer,3));count:=int(C.bridgeListNumber(pointer,0));list.Scores=make([]sdkPlaydate.ListScore,count);for i:=range list.Scores{list.Scores[i]=sdkPlaydate.ListScore{Rank:uint32(C.bridgeListItemNumber(pointer,C.int(i),0)),Value:uint32(C.bridgeListItemNumber(pointer,C.int(i),1)),Player:copiedNativeText(C.bridgeListText(pointer,C.int(i),2))}}};callback:=scoresCallback;scoresCallback=nil;if callback!=nil{callback(list,copiedNativeText(message))}}
+var scoreboardService=sdkRuntime.NewScoreboardService(sdkRuntime.ScoreboardDriver{
+	AddScore:func(board string,value uint32,callback func(sdkPlaydate.Score,string))bool{c:=C.CString(board);defer C.free(unsafe.Pointer(c));addScoreCallback=callback;if C.bridgeAddScore(c,C.uint32_t(value))==0{addScoreCallback=nil;return false};return true},
+	PersonalBest:func(board string,callback func(sdkPlaydate.Score,string))bool{c:=C.CString(board);defer C.free(unsafe.Pointer(c));personalBestCallback=callback;if C.bridgeGetPersonalBest(c)==0{personalBestCallback=nil;return false};return true},
+	Scoreboards:func(callback func(sdkPlaydate.BoardsList,string))bool{boardsCallback=callback;if C.bridgeGetScoreboards()==0{boardsCallback=nil;return false};return true},
+	Scores:func(board string,callback func(sdkPlaydate.ScoresList,string))bool{c:=C.CString(board);defer C.free(unsafe.Pointer(c));scoresCallback=callback;if C.bridgeGetScores(c)==0{scoresCallback=nil;return false};return true},
+})
+func (playdateContext) AddScore(board string,value uint32,callback func(sdkPlaydate.Score,error))error{return scoreboardService.AddScore(board,value,callback)}
+func (playdateContext) GetPersonalBest(board string,callback func(sdkPlaydate.Score,error))error{return scoreboardService.GetPersonalBest(board,callback)}
+func (playdateContext) GetScoreboards(callback func(sdkPlaydate.BoardsList,error))error{return scoreboardService.GetScoreboards(callback)}
+func (playdateContext) GetScores(board string,callback func(sdkPlaydate.ScoresList,error))error{return scoreboardService.GetScores(board,callback)}
+
+func (playdateContext) Clear() { C.bridgeClear() }
+func (playdateContext) WithFramebuffer(callback func(sdkPlaydate.Framebuffer) error) error {
+	data := unsafe.Slice((*byte)(unsafe.Pointer(C.bridgeGetFrame())), 52*240)
+	return sdkRuntime.WithFramebuffer(data, 400, 240, 52, func(start, end int) { C.bridgeMarkUpdatedRows(C.int(start), C.int(end)) }, callback)
+}
+func (playdateContext) DrawInto(bitmap sdkPlaydate.Bitmap, callback func() error) error {
+	if callback == nil { return sdkPlaydate.ErrOffscreenCallback }
+	handle, err := sdkRuntime.OwnedBitmapHandle(bitmap); if err != nil { return err }
+	C.bridgePushContext(C.uintptr_t(handle)); err = callback(); C.bridgePopContext()
+	return err
+}
+func (playdateContext) WithStencil(stencil sdkPlaydate.Bitmap, tiled bool, callback func() error) error {
+	if callback == nil { return sdkPlaydate.ErrGraphicsStencilCallback }
+	handle, err := sdkRuntime.ValidateStencil(stencil, tiled); if err != nil { return err }
+	tile := 0; if tiled { tile = 1 }; C.bridgeSetStencil(C.uintptr_t(handle), C.int(tile)); err = callback(); C.bridgeClearStencil()
+	return err
+}
+
+func (playdateContext) DrawText(text string, x, y int) {
+	cText := C.CString(text)
+	defer C.free(unsafe.Pointer(cText))
+	C.bridgeDrawText(cText, C.size_t(len(text)), C.int(x), C.int(y))
+}
+
+var fontDriver = sdkRuntime.FontDriver{
+	TextWidth: func(handle uintptr, text string) int { cText := C.CString(text); defer C.free(unsafe.Pointer(cText)); return int(C.bridgeTextWidth(C.uintptr_t(handle), cText, C.size_t(len(text)))) },
+	Height: func(handle uintptr) int { return int(C.bridgeFontHeight(C.uintptr_t(handle))) },
+	Free: func(handle uintptr) { C.bridgeFreeFont(C.uintptr_t(handle)) },
+}
+
+func (playdateContext) LoadFont(path string) (sdkPlaydate.Font, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); var message *C.char
+	handle := uintptr(C.bridgeLoadFont(cPath, (**C.char)(unsafe.Pointer(&message))))
+	if handle == 0 { if message != nil { return nil, sdkPlaydate.FontLoadError(C.GoString(message)) }; return nil, sdkPlaydate.FontLoadError("unknown error") }
+	return sdkRuntime.NewOwnedFont(handle, fontDriver), nil
+}
+func (playdateContext) DrawTextFont(font sdkPlaydate.Font, text string, x, y int) error {
+	handle, err := sdkRuntime.FontHandle(font); if err != nil { return err }
+	C.bridgeSetFont(C.uintptr_t(handle)); cText := C.CString(text); defer C.free(unsafe.Pointer(cText))
+	C.bridgeDrawText(cText, C.size_t(len(text)), C.int(x), C.int(y)); return nil
+}
+
+func (playdateContext) CurrentTimeMilliseconds() uint32 {
+	return uint32(C.bridgeCurrentTimeMilliseconds())
+}
+func (playdateContext) CurrentAudioTime() (uint32,error) { return uint32(C.bridgeCurrentAudioTime()),nil }
+
+func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }
+func (playdateContext) SetAccelerometerEnabled(enabled bool){value:=0;if enabled{value=1};C.bridgeSetAccelerometerEnabled(C.int(value))}
+func (playdateContext) AccelerometerXYZ()(float32,float32,float32){var x,y,z C.float;C.bridgeAccelerometer(&x,&y,&z);return float32(x),float32(y),float32(z)}
+func (playdateContext) PowerStatus()sdkPlaydate.PowerStatus{return sdkPlaydate.PowerStatus(C.bridgePowerStatus())}
+func (playdateContext) BatteryPercentage()float32{return float32(C.bridgeBatteryPercentage())}
+func (playdateContext) BatteryVoltage()float32{return float32(C.bridgeBatteryVoltage())}
+func (playdateContext) SystemVolume()float32{return float32(C.bridgeSystemVolume())}
+func (playdateContext) ReduceFlashing()bool{return C.bridgeReduceFlashing()!=0}
+func (playdateContext) TimezoneOffsetSeconds()int32{return int32(C.bridgeTimezoneOffsetSeconds())}
+func (playdateContext) Uses24HourTime()bool{return C.bridgeUses24HourTime()!=0}
+
+var menuCallbackIDs = map[uintptr]uint32{}
+//export goMenuCallback
+func goMenuCallback(id C.uint32_t) { sdkRuntime.InvokeMenuCallback(uint32(id)) }
+var menuDriver = sdkRuntime.MenuDriver{
+	SetTitle:func(handle uintptr,title string){value:=C.CString(title);defer C.free(unsafe.Pointer(value));C.bridgeSetMenuItemTitle(C.uintptr_t(handle),value)}, Title:func(handle uintptr)string{return C.GoString(C.bridgeMenuItemTitle(C.uintptr_t(handle)))},
+	Value:func(handle uintptr)int{return int(C.bridgeMenuItemValue(C.uintptr_t(handle)))}, SetValue:func(handle uintptr,value int){C.bridgeSetMenuItemValue(C.uintptr_t(handle),C.int(value))},
+	Remove:func(handle uintptr){C.bridgeRemoveMenuItem(C.uintptr_t(handle));sdkRuntime.ForgetMenuCallback(menuCallbackIDs[handle]);delete(menuCallbackIDs,handle)},
+}
+func addMenuItem(title string,kind int,options []string,value int,callback func()) (uintptr,error){if title==""{return 0,sdkPlaydate.ErrMenuTitle};if kind==2&&len(options)==0{return 0,sdkPlaydate.ErrMenuOptions};cTitle:=C.CString(title);defer C.free(unsafe.Pointer(cTitle));values:=make([]*C.char,len(options));for i:=range options{if options[i]==""{for _,v:=range values{if v!=nil{C.free(unsafe.Pointer(v))}};return 0,sdkPlaydate.ErrMenuOptions};values[i]=C.CString(options[i])};defer func(){for _,v:=range values{C.free(unsafe.Pointer(v))}}();id:=sdkRuntime.RegisterMenuCallback(callback);var pointer **C.char;if len(values)>0{pointer=(**C.char)(unsafe.Pointer(&values[0]))};handle:=uintptr(C.bridgeAddMenuItem(cTitle,C.int(kind),pointer,C.int(len(values)),C.int(value),C.uint32_t(id)));if handle==0{sdkRuntime.ForgetMenuCallback(id);return 0,sdkPlaydate.ErrMenuItemCreate};menuCallbackIDs[handle]=id;return handle,nil}
+func (playdateContext) AddActionMenuItem(title string,callback func())(sdkPlaydate.MenuItem,error){handle,err:=addMenuItem(title,0,nil,0,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedMenuItem(handle,0,menuDriver),nil}
+func (playdateContext) AddCheckmarkMenuItem(title string,value bool,callback func())(sdkPlaydate.CheckmarkMenuItem,error){native:=0;if value{native=1};handle,err:=addMenuItem(title,1,nil,native,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedCheckmarkMenuItem(handle,menuDriver),nil}
+func (playdateContext) AddOptionsMenuItem(title string,options []string,callback func())(sdkPlaydate.OptionsMenuItem,error){handle,err:=addMenuItem(title,2,options,0,callback);if err!=nil{return nil,err};return sdkRuntime.NewOwnedOptionsMenuItem(handle,len(options),menuDriver),nil}
+func (playdateContext) Language()sdkPlaydate.Language{return sdkPlaydate.Language(C.bridgeLanguage())}
+func (playdateContext) LocalizedText(key string,language sdkPlaydate.Language)(string,bool){if key==""{return "",false};value:=C.CString(key);defer C.free(unsafe.Pointer(value));localized:=C.bridgeLocalizedText(value,C.int(language));if localized==nil{return "",false};result:=C.GoString(localized);C.bridgeFree(unsafe.Pointer(localized));return result,true}
+
+func fileErrorMessage() string { message := C.bridgeFileError(); if message == nil { return "" }; return C.GoString(message) }
+var fileDriver = sdkRuntime.FileDriver{
+	Read: func(handle uintptr, buffer []byte) (int, string) { result:=int(C.bridgeFileRead(C.uintptr_t(handle),unsafe.Pointer(unsafe.SliceData(buffer)),C.uint(len(buffer))));if result<0{return result,fileErrorMessage()};return result,"" },
+	Write: func(handle uintptr, buffer []byte) (int, string) { result:=int(C.bridgeFileWrite(C.uintptr_t(handle),unsafe.Pointer(unsafe.SliceData(buffer)),C.uint(len(buffer))));if result<0{return result,fileErrorMessage()};return result,"" },
+	Flush: func(handle uintptr) (int, string) { result:=int(C.bridgeFileFlush(C.uintptr_t(handle)));if result<0{return result,fileErrorMessage()};return result,"" },
+	Tell: func(handle uintptr) (int, string) { result:=int(C.bridgeFileTell(C.uintptr_t(handle)));if result<0{return result,fileErrorMessage()};return result,"" },
+	Seek: func(handle uintptr,position int32,whence int)(int,string){result:=int(C.bridgeFileSeek(C.uintptr_t(handle),C.int(position),C.int(whence)));if result<0{return result,fileErrorMessage()};return result,""},
+	Close: func(handle uintptr)(int,string){result:=int(C.bridgeFileClose(C.uintptr_t(handle)));if result<0{return result,fileErrorMessage()};return result,""},
+}
+func (playdateContext) OpenFile(path string, options sdkPlaydate.FileOptions)(sdkPlaydate.File,error){if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return nil,err};if err:=sdkRuntime.ValidateFileOptions(options);err!=nil{return nil,err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));handle:=uintptr(C.bridgeFileOpen(cPath,C.int(options)));if handle==0{return nil,sdkPlaydate.FileOperationError{Operation:"open",Path:path,Message:fileErrorMessage()}};return sdkRuntime.NewOwnedFile(handle,path,fileDriver),nil}
+func (playdateContext) Stat(path string)(sdkPlaydate.FileInfo,error){if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return sdkPlaydate.FileInfo{},err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));var values [8]C.int;if C.bridgeFileStat(cPath,&values[0])<0{return sdkPlaydate.FileInfo{},sdkPlaydate.FileOperationError{Operation:"stat",Path:path,Message:fileErrorMessage()}};return sdkPlaydate.FileInfo{IsDir:values[0]!=0,Size:uint32(values[1]),Year:int(values[2]),Month:int(values[3]),Day:int(values[4]),Hour:int(values[5]),Minute:int(values[6]),Second:int(values[7])},nil}
+func (playdateContext) List(path string,showHidden bool)([]string,error){if err:=sdkRuntime.ValidateFilePath(path,true);err!=nil{return nil,err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));hidden:=0;if showHidden{hidden=1};var count,result C.int;list:=uintptr(C.bridgeFileList(cPath,C.int(hidden),&count,&result));if result<0{message:="";if result == -1 {message=fileErrorMessage()};C.bridgeFileListFree(C.uintptr_t(list));return nil,sdkPlaydate.FileOperationError{Operation:"list",Path:path,Message:message}};defer C.bridgeFileListFree(C.uintptr_t(list));items:=make([]string,int(count));for i:=range items{items[i]=C.GoString(C.bridgeFileListItem(C.uintptr_t(list),C.int(i)))};return items,nil}
+func filePathOperation(operation,path string,call func(*C.char)C.int)error{if err:=sdkRuntime.ValidateFilePath(path,false);err!=nil{return err};cPath:=C.CString(path);defer C.free(unsafe.Pointer(cPath));if call(cPath)<0{return sdkPlaydate.FileOperationError{Operation:operation,Path:path,Message:fileErrorMessage()}};return nil}
+func (playdateContext) Mkdir(path string)error{return filePathOperation("mkdir",path,func(value *C.char)C.int{return C.bridgeFileMkdir(value)})}
+func (playdateContext) Remove(path string,recursive bool)error{flag:=0;if recursive{flag=1};return filePathOperation("remove",path,func(value *C.char)C.int{return C.bridgeFileRemove(value,C.int(flag))})}
+func (playdateContext) Rename(from,to string)error{if err:=sdkRuntime.ValidateFilePath(from,false);err!=nil{return err};if err:=sdkRuntime.ValidateFilePath(to,false);err!=nil{return err};cFrom:=C.CString(from);defer C.free(unsafe.Pointer(cFrom));cTo:=C.CString(to);defer C.free(unsafe.Pointer(cTo));if C.bridgeFileRename(cFrom,cTo)<0{return sdkPlaydate.FileOperationError{Operation:"rename",Path:from,Message:fileErrorMessage()}};return nil}
+
+func (playdateContext) Input() sdkPlaydate.Input { return sdkPlaydate.Input{} }
+
+var bitmapDriver = sdkRuntime.BitmapDriver{
+	Dimensions: func(handle uintptr) (int, int) { var width, height C.int; C.bridgeBitmapSize(C.uintptr_t(handle), &width, &height); return int(width), int(height) },
+	Fill: func(handle uintptr, color sdkPlaydate.Color) { C.bridgeFillBitmap(C.uintptr_t(handle), C.int(color)) },
+	Free: func(handle uintptr) { C.bridgeFreeBitmap(C.uintptr_t(handle)) },
+}
+var bitmapTableDriver = sdkRuntime.BitmapTableDriver{
+	Frame: func(table uintptr, index int) uintptr { return uintptr(C.bridgeBitmapTableFrame(C.uintptr_t(table), C.int(index))) },
+	Free: func(table uintptr) { C.bridgeFreeBitmapTable(C.uintptr_t(table)) },
+}
+
+func (playdateContext) LoadBitmap(path string) (sdkPlaydate.Bitmap, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath))
+	var message *C.char
+	handle := uintptr(C.bridgeLoadBitmap(cPath, (**C.char)(unsafe.Pointer(&message))))
+	if handle == 0 { if message != nil { return nil, sdkPlaydate.BitmapLoadError(C.GoString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) LoadBitmapTable(path string) (sdkPlaydate.BitmapTable, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); var message *C.char
+	handle := uintptr(C.bridgeLoadBitmapTable(cPath, (**C.char)(unsafe.Pointer(&message))))
+	if handle == 0 { if message != nil { return nil, sdkPlaydate.BitmapLoadError(C.GoString(message)) }; return nil, sdkPlaydate.BitmapLoadError("unknown error") }
+	return sdkRuntime.NewOwnedBitmapTable(handle, bitmapTableDriver, bitmapDriver), nil
+}
+func (playdateContext) NewBitmap(width, height int) (sdkPlaydate.Bitmap, error) {
+	if err := sdkRuntime.ValidateBitmapSize(width, height); err != nil { return nil, err }
+	handle := uintptr(C.bridgeNewBitmap(C.int(width), C.int(height)))
+	if handle == 0 { return nil, sdkPlaydate.ErrBitmapCreate }
+	return sdkRuntime.NewOwnedBitmap(handle, bitmapDriver), nil
+}
+func (playdateContext) DrawBitmap(bitmap sdkPlaydate.Bitmap, x, y int) error {
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
+	C.bridgeDrawBitmap(C.uintptr_t(handle), C.int(x), C.int(y)); return nil
+}
+func (playdateContext) DrawScaledBitmap(bitmap sdkPlaydate.Bitmap, x, y int, scaleX, scaleY float32) error {
+	if err := sdkRuntime.ValidateBitmapScale(scaleX, scaleY); err != nil { return err }
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
+	C.bridgeDrawScaledBitmap(C.uintptr_t(handle), C.int(x), C.int(y), C.float(scaleX), C.float(scaleY)); return nil
+}
+func (playdateContext) DrawRotatedBitmap(bitmap sdkPlaydate.Bitmap, x, y int, degrees, centerX, centerY, scaleX, scaleY float32) error {
+	if err := sdkRuntime.ValidateBitmapTransform(degrees, centerX, centerY, scaleX, scaleY); err != nil { return err }
+	handle, err := sdkRuntime.BitmapHandle(bitmap); if err != nil { return err }
+	C.bridgeDrawRotatedBitmap(C.uintptr_t(handle), C.int(x), C.int(y), C.float(degrees), C.float(centerX), C.float(centerY), C.float(scaleX), C.float(scaleY)); return nil
+}
+
+func paintArgs(paint sdkPlaydate.Paint) (C.int, *C.uint8_t, C.int, [16]byte) {
+	solid, pattern, patterned := paint.Components(); flag := C.int(0); if patterned { flag = 1 }
+	return C.int(solid), (*C.uint8_t)(unsafe.Pointer(&pattern[0])), flag, pattern
+}
+func (playdateContext) DrawLine(x1, y1, x2, y2, width int, paint sdkPlaydate.Paint) error {
+	if err := sdkRuntime.ValidatePrimitiveGeometry(width, 1, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep
+	C.bridgeDrawLine(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(width), solid, pattern, flag); return nil
+}
+func (playdateContext) DrawRect(x, y, width, height int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawRect(C.int(x), C.int(y), C.int(width), C.int(height), solid, pattern, flag); return nil }
+func (playdateContext) FillRect(x, y, width, height int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillRect(C.int(x), C.int(y), C.int(width), C.int(height), solid, pattern, flag); return nil }
+func (playdateContext) DrawEllipse(x, y, width, height, lineWidth int, startAngle, endAngle float32, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, lineWidth, startAngle, endAngle); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawEllipse(C.int(x), C.int(y), C.int(width), C.int(height), C.int(lineWidth), C.float(startAngle), C.float(endAngle), solid, pattern, flag); return nil }
+func (playdateContext) FillEllipse(x, y, width, height int, startAngle, endAngle float32, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, startAngle, endAngle); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillEllipse(C.int(x), C.int(y), C.int(width), C.int(height), C.float(startAngle), C.float(endAngle), solid, pattern, flag); return nil }
+func (playdateContext) FillTriangle(x1, y1, x2, y2, x3, y3 int, paint sdkPlaydate.Paint) error { solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeFillTriangle(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(x3), C.int(y3), solid, pattern, flag); return nil }
+func (playdateContext) DrawTriangle(x1, y1, x2, y2, x3, y3, width int, paint sdkPlaydate.Paint) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, 1, 1, 0, 0); err != nil { return err }; solid, pattern, flag, keep := paintArgs(paint); _ = keep; C.bridgeDrawTriangle(C.int(x1), C.int(y1), C.int(x2), C.int(y2), C.int(x3), C.int(y3), C.int(width), solid, pattern, flag); return nil }
+func (playdateContext) SetClipRect(x, y, width, height int) error { if err := sdkRuntime.ValidatePrimitiveGeometry(width, height, 1, 0, 0); err != nil { return err }; C.bridgeSetClipRect(C.int(x), C.int(y), C.int(width), C.int(height)); return nil }
+func (playdateContext) ClearClipRect() { C.bridgeClearClipRect() }
+func (playdateContext) SetDrawOffset(dx, dy int) { C.bridgeSetDrawOffset(C.int(dx), C.int(dy)) }
+func (playdateContext) SetDrawMode(mode sdkPlaydate.DrawMode) error { if err := sdkRuntime.ValidateDrawMode(mode); err != nil { return err }; C.bridgeSetDrawMode(C.int(mode)); return nil }
+
+var spriteDriver = sdkRuntime.SpriteDriver{
+	SetBitmap: func(sprite, bitmap uintptr) { C.bridgeSpriteSetBitmap(C.uintptr_t(sprite), C.uintptr_t(bitmap)) },
+	MoveTo: func(sprite uintptr, x, y float32) { C.bridgeSpriteMoveTo(C.uintptr_t(sprite), C.float(x), C.float(y)) },
+	MoveBy: func(sprite uintptr, dx, dy float32) { C.bridgeSpriteMoveBy(C.uintptr_t(sprite), C.float(dx), C.float(dy)) },
+	SetVisible: func(sprite uintptr, visible bool) { value := C.int(0); if visible { value = 1 }; C.bridgeSpriteSetVisible(C.uintptr_t(sprite), value) },
+	SetZIndex: func(sprite uintptr, z int) { C.bridgeSpriteSetZIndex(C.uintptr_t(sprite), C.int(z)) },
+	SetCollideRect: func(sprite uintptr, rect sdkPlaydate.Rect) { C.bridgeSpriteSetCollideRect(C.uintptr_t(sprite), C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height)) },
+	ClearCollideRect: func(sprite uintptr) { C.bridgeSpriteClearCollideRect(C.uintptr_t(sprite)) },
+	SetTag: func(sprite uintptr, tag uint8) { C.bridgeSpriteSetTag(C.uintptr_t(sprite), C.uint8_t(tag)) },
+	MoveWithCollisions: moveWithCollisions,
+	Add: func(sprite uintptr) { C.bridgeSpriteAdd(C.uintptr_t(sprite)) },
+	Remove: func(sprite uintptr) { C.bridgeSpriteRemove(C.uintptr_t(sprite)) },
+	Free: func(sprite uintptr) { C.bridgeFreeSprite(C.uintptr_t(sprite)) },
+}
+func moveWithCollisions(sprite uintptr, x, y float32) (float32, float32, []sdkRuntime.NativeCollision) {
+	var actualX, actualY C.float; var count C.int
+	list := C.bridgeSpriteMoveWithCollisions(C.uintptr_t(sprite), C.float(x), C.float(y), &actualX, &actualY, &count)
+	defer C.bridgeFreeCollisionList(list)
+	result := make([]sdkRuntime.NativeCollision, int(count))
+	for index := range result { var other C.uintptr_t; var response, overlaps C.int; var ti C.float; var values [16]C.float; C.bridgeCollisionInfo(list, C.int(index), &other, &response, &overlaps, &ti, &values[0]); result[index] = sdkRuntime.NativeCollision{Other: uintptr(other), ResponseType: sdkPlaydate.CollisionResponse(response), Overlaps: overlaps != 0, Time: float32(ti), Move: sdkPlaydate.Point{X: float32(values[0]), Y: float32(values[1])}, Normal: sdkPlaydate.Point{X: float32(values[2]), Y: float32(values[3])}, Touch: sdkPlaydate.Point{X: float32(values[4]), Y: float32(values[5])}, SpriteRect: sdkPlaydate.Rect{X: float32(values[6]), Y: float32(values[7]), Width: float32(values[8]), Height: float32(values[9])}, OtherRect: sdkPlaydate.Rect{X: float32(values[10]), Y: float32(values[11]), Width: float32(values[12]), Height: float32(values[13])}} }
+	return float32(actualX), float32(actualY), result
+}
+func (playdateContext) NewSprite() (sdkPlaydate.Sprite, error) {
+	handle := uintptr(C.bridgeNewSprite()); if handle == 0 { return nil, sdkPlaydate.ErrSpriteCreate }
+	return sdkRuntime.NewOwnedSprite(handle, spriteDriver), nil
+}
+func querySprites(list unsafe.Pointer, count C.int) []sdkPlaydate.Sprite { defer C.bridgeFreeSpriteList(list); handles := make([]uintptr, int(count)); for index := range handles { handles[index] = uintptr(C.bridgeSpriteListItem(list, C.int(index))) }; return sdkRuntime.BorrowedSprites(handles, spriteDriver) }
+func (playdateContext) QuerySpritesAtPoint(x, y float32) []sdkPlaydate.Sprite { var count C.int; list := C.bridgeQuerySpritesAtPoint(C.float(x), C.float(y), &count); return querySprites(list, count) }
+func (playdateContext) QuerySpritesInRect(rect sdkPlaydate.Rect) []sdkPlaydate.Sprite { var count C.int; list := C.bridgeQuerySpritesInRect(C.float(rect.X), C.float(rect.Y), C.float(rect.Width), C.float(rect.Height), &count); return querySprites(list, count) }
+func (playdateContext) QueryOverlappingSprites(sprite sdkPlaydate.Sprite) ([]sdkPlaydate.Sprite, error) { handle, err := sdkRuntime.SpriteHandle(sprite); if err != nil { return nil, err }; var count C.int; list := C.bridgeOverlappingSprites(C.uintptr_t(handle), &count); return querySprites(list, count), nil }
+func (playdateContext) UpdateAndDrawSprites() { C.bridgeUpdateAndDrawSprites() }
+
+var soundEffectDriver = sdkRuntime.AudioDriver{
+	Source: func(handle uintptr) uintptr { return uintptr(C.bridgeSoundEffectSource(C.uintptr_t(handle))) },
+	Play: func(handle uintptr) bool { return C.bridgeSoundEffectPlay(C.uintptr_t(handle)) != 0 },
+	PlayRepeated: func(handle uintptr, repeat int, rate float32) bool { return C.bridgeSamplePlayerPlay(C.uintptr_t(handle), C.int(repeat), C.float(rate)) != 0 },
+	Stop: func(handle uintptr) { C.bridgeSoundEffectStop(C.uintptr_t(handle)) },
+	SetVolume: func(handle uintptr, left, right float32) { C.bridgeSoundEffectSetVolume(C.uintptr_t(handle), C.float(left), C.float(right)) },
+	Volume: func(handle uintptr) (float32, float32) { var left, right C.float; C.bridgeSoundEffectVolume(C.uintptr_t(handle), &left, &right); return float32(left), float32(right) },
+	IsPlaying: func(handle uintptr) bool { return C.bridgeSoundEffectIsPlaying(C.uintptr_t(handle)) != 0 },
+	Pause: func(handle uintptr, paused bool) { value := C.int(0); if paused { value = 1 }; C.bridgeSoundEffectPause(C.uintptr_t(handle), value) },
+	Length: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerLength(C.uintptr_t(handle))) },
+	SetOffset: func(handle uintptr, offset float32) { C.bridgeSamplePlayerSetOffset(C.uintptr_t(handle), C.float(offset)) },
+	Offset: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerOffset(C.uintptr_t(handle))) },
+	SetRate: func(handle uintptr, rate float32) { C.bridgeSamplePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
+	Rate: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerRate(C.uintptr_t(handle))) },
+	SetFinishCallback: func(handle uintptr,callback uint32){C.bridgeSoundEffectSetFinishCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	Free: func(handle uintptr) { C.bridgeFreeSoundEffect(C.uintptr_t(handle)) },
+}
+var filePlayerDriver = sdkRuntime.AudioDriver{
+	Source: func(handle uintptr) uintptr { return handle },
+	Play: func(handle uintptr) bool { return C.bridgeFilePlayerPlay(C.uintptr_t(handle)) != 0 },
+	Stop: func(handle uintptr) { C.bridgeFilePlayerStop(C.uintptr_t(handle)) },
+	SetVolume: func(handle uintptr, left, right float32) { C.bridgeFilePlayerSetVolume(C.uintptr_t(handle), C.float(left), C.float(right)) },
+	Volume: func(handle uintptr) (float32, float32) { var left, right C.float; C.bridgeFilePlayerVolume(C.uintptr_t(handle), &left, &right); return float32(left), float32(right) },
+	IsPlaying: func(handle uintptr) bool { return C.bridgeFilePlayerIsPlaying(C.uintptr_t(handle)) != 0 },
+	Pause: func(handle uintptr, _ bool) { C.bridgeFilePlayerPause(C.uintptr_t(handle), 1) },
+	SetRate: func(handle uintptr, rate float32) { C.bridgeFilePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
+	Rate: func(handle uintptr) float32 { return float32(C.bridgeFilePlayerRate(C.uintptr_t(handle))) },
+	SetFinishCallback: func(handle uintptr,callback uint32){C.bridgeFilePlayerSetFinishCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	FadeVolume: func(handle uintptr,left,right float32,frames,callback uint32){C.bridgeFilePlayerFadeVolume(C.uintptr_t(handle),C.float(left),C.float(right),C.uint32_t(frames),C.uint32_t(callback))},
+	Free: func(handle uintptr) { C.bridgeFreeFilePlayer(C.uintptr_t(handle)) },
+}
+func (playdateContext) LoadSoundEffect(path string) (sdkPlaydate.SoundEffect, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadSoundEffect(cPath))
+	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
+	return sdkRuntime.NewSoundEffect(handle, soundEffectDriver), nil
+}
+func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadSoundEffect(cPath))
+	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
+	return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil
+}
+func(playdateContext)NewPCMPlayer(samples []int16,rate uint32)(sdkPlaydate.SamplePlayer,error){if len(samples)==0||rate==0{return nil,sdkPlaydate.ErrAudioParameter};handle:=uintptr(C.bridgeNewPCMPlayer((*C.int16_t)(unsafe.Pointer(&samples[0])),C.int(len(samples)),C.uint32_t(rate)));if handle==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSamplePlayer(handle,soundEffectDriver),nil}
+func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) {
+	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadFilePlayer(cPath))
+	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }
+	return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil
+}
+
+var audioChannelDriver = sdkRuntime.AudioChannelDriver{
+	AddSource: func(channel, source uintptr) bool { return C.bridgeAudioChannelAddSource(C.uintptr_t(channel), C.uintptr_t(source)) != 0 },
+	RemoveSource: func(channel, source uintptr) bool { return C.bridgeAudioChannelRemoveSource(C.uintptr_t(channel), C.uintptr_t(source)) != 0 },
+	AddEffect: func(channel, effect uintptr) bool { return C.bridgeAudioChannelAddEffect(C.uintptr_t(channel), C.uintptr_t(effect)) != 0 },
+	RemoveEffect: func(channel, effect uintptr) bool { return C.bridgeAudioChannelRemoveEffect(C.uintptr_t(channel), C.uintptr_t(effect)) != 0 },
+	SetVolume: func(channel uintptr, volume float32) { C.bridgeAudioChannelSetVolume(C.uintptr_t(channel), C.float(volume)) },
+	Volume: func(channel uintptr) float32 { return float32(C.bridgeAudioChannelVolume(C.uintptr_t(channel))) },
+	SetPan: func(channel uintptr, pan float32) { C.bridgeAudioChannelSetPan(C.uintptr_t(channel), C.float(pan)) },
+	Remove: func(channel uintptr) bool { return C.bridgeRemoveAudioChannel(C.uintptr_t(channel)) != 0 },
+	Free: func(channel uintptr) { C.bridgeFreeAudioChannel(C.uintptr_t(channel)) },
+}
+func (playdateContext) NewAudioChannel() (sdkPlaydate.AudioChannel, error) { handle := uintptr(C.bridgeNewAudioChannel()); if handle == 0 { return nil, sdkPlaydate.ErrAudioCreate }; return sdkRuntime.NewAudioChannel(handle, audioChannelDriver), nil }
+
+var signalDriver = sdkRuntime.SignalDriver{Value: func(h uintptr) float32 { return float32(C.bridgeSignalValue(C.uintptr_t(h))) }, SetScale: func(h uintptr,v float32){C.bridgeSignalSetScale(C.uintptr_t(h),C.float(v))}, SetOffset: func(h uintptr,v float32){C.bridgeSignalSetOffset(C.uintptr_t(h),C.float(v))}}
+var lfoDriver = sdkRuntime.LFODriver{Signal: signalDriver, SetRate: func(h uintptr,v float32){C.bridgeLFOSetRate(C.uintptr_t(h),C.float(v))}, SetPhase: func(h uintptr,v float32){C.bridgeLFOSetPhase(C.uintptr_t(h),C.float(v))}, SetCenter: func(h uintptr,v float32){C.bridgeLFOSetCenter(C.uintptr_t(h),C.float(v))}, SetDepth: func(h uintptr,v float32){C.bridgeLFOSetDepth(C.uintptr_t(h),C.float(v))}, SetRetrigger: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeLFOSetRetrigger(C.uintptr_t(h),flag)}, SetArpeggiation:func(h uintptr,s []float32){C.bridgeLFOSetArpeggiation(C.uintptr_t(h),C.int(len(s)),(*C.float)(unsafe.Pointer(&s[0])))}}
+var envelopeDriver = sdkRuntime.EnvelopeDriver{Signal: signalDriver, SetAttack: func(h uintptr,v float32){C.bridgeEnvelopeSetAttack(C.uintptr_t(h),C.float(v))}, SetDecay: func(h uintptr,v float32){C.bridgeEnvelopeSetDecay(C.uintptr_t(h),C.float(v))}, SetSustain: func(h uintptr,v float32){C.bridgeEnvelopeSetSustain(C.uintptr_t(h),C.float(v))}, SetRelease: func(h uintptr,v float32){C.bridgeEnvelopeSetRelease(C.uintptr_t(h),C.float(v))}, SetLegato: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeEnvelopeSetLegato(C.uintptr_t(h),flag)}, SetRetrigger: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeEnvelopeSetRetrigger(C.uintptr_t(h),flag)}}
+var controlSignalDriver = sdkRuntime.ControlSignalDriver{Signal: signalDriver, AddEvent: func(h uintptr,step int,v float32,interpolate bool){var flag C.int;if interpolate{flag=1};C.bridgeControlSignalAddEvent(C.uintptr_t(h),C.int(step),C.float(v),flag)}, RemoveEvent: func(h uintptr,step int){C.bridgeControlSignalRemoveEvent(C.uintptr_t(h),C.int(step))}, ClearEvents: func(h uintptr){C.bridgeControlSignalClearEvents(C.uintptr_t(h))}}
+var synthDriver = sdkRuntime.SynthDriver{Audio: sdkRuntime.AudioDriver{Source: func(h uintptr)uintptr{return h}, Stop: func(h uintptr){C.bridgeSourceStop(C.uintptr_t(h))}, SetVolume: func(h uintptr,l,r float32){C.bridgeSourceSetVolume(C.uintptr_t(h),C.float(l),C.float(r))}, Volume: func(h uintptr)(float32,float32){var l,r C.float;C.bridgeSourceVolume(C.uintptr_t(h),&l,&r);return float32(l),float32(r)}, IsPlaying: func(h uintptr)bool{return C.bridgeSourceIsPlaying(C.uintptr_t(h))!=0}, Pause: func(uintptr,bool){}, Free: func(h uintptr){C.bridgeFreeSynth(C.uintptr_t(h))}}, SetWaveform: func(h uintptr,w sdkPlaydate.Waveform){C.bridgeSynthSetWaveform(C.uintptr_t(h),C.int(w))}, SetEnvelope: func(h uintptr,a,d,s,r float32){C.bridgeSynthSetEnvelope(C.uintptr_t(h),C.float(a),C.float(d),C.float(s),C.float(r))}, SetTranspose: func(h uintptr,v float32){C.bridgeSynthSetTranspose(C.uintptr_t(h),C.float(v))}, SetFrequencyModulator: func(h,m uintptr){C.bridgeSynthSetFrequencyModulator(C.uintptr_t(h),C.uintptr_t(m))}, SetAmplitudeModulator: func(h,m uintptr){C.bridgeSynthSetAmplitudeModulator(C.uintptr_t(h),C.uintptr_t(m))}, PlayMIDINote: func(h uintptr,n,v,l float32,w uint32){C.bridgeSynthPlayMIDINote(C.uintptr_t(h),C.float(n),C.float(v),C.float(l),C.uint32_t(w))}, NoteOff: func(h uintptr,w uint32){C.bridgeSynthNoteOff(C.uintptr_t(h),C.uint32_t(w))}}
+func (playdateContext) NewSynth(w sdkPlaydate.Waveform)(sdkPlaydate.Synth,error){if w>sdkPlaydate.WaveformPOVosim{return nil,sdkPlaydate.ErrAudioWaveform};h:=uintptr(C.bridgeNewSynth(C.int(w)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSynth(h,synthDriver),nil}
+func (playdateContext) NewLFO(t sdkPlaydate.LFOType)(sdkPlaydate.LFO,error){if t>sdkPlaydate.LFOTypeArpeggiator{return nil,sdkPlaydate.ErrAudioWaveform};h:=uintptr(C.bridgeNewLFO(C.int(t)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=lfoDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeLFO(C.uintptr_t(h))};return sdkRuntime.NewLFO(h,driver),nil}
+func (playdateContext) NewEnvelope(a,d,s,r float32)(sdkPlaydate.Envelope,error){if err:=sdkRuntime.ValidateEnvelope(a,d,s,r);err!=nil{return nil,err};h:=uintptr(C.bridgeNewEnvelope(C.float(a),C.float(d),C.float(s),C.float(r)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=envelopeDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeEnvelope(C.uintptr_t(h))};return sdkRuntime.NewEnvelope(h,driver),nil}
+func (playdateContext) NewControlSignal()(sdkPlaydate.ControlSignal,error){h:=uintptr(C.bridgeNewControlSignal());if h==0{return nil,sdkPlaydate.ErrAudioCreate};driver:=controlSignalDriver;driver.Signal.Free=func(h uintptr){C.bridgeFreeControlSignal(C.uintptr_t(h))};return sdkRuntime.NewControlSignal(h,driver),nil}
+var microphoneService=sdkRuntime.NewMicrophoneService(sdkRuntime.MicrophoneDriver{Request:func(purpose string,callback func(bool))sdkPlaydate.MicrophonePermission{microphonePermissionCallback=callback;cPurpose:=C.CString(purpose);defer C.free(unsafe.Pointer(cPurpose));return sdkPlaydate.MicrophonePermission(C.bridgeRequestMicAccess(cPurpose))},Start:func(source sdkPlaydate.MicrophoneSource,callback func([]int16)bool)sdkPlaydate.MicrophoneSource{microphoneRecordingCallback=callback;used:=sdkPlaydate.MicrophoneSource(C.bridgeStartMicrophone(C.int(source)));if used==sdkPlaydate.MicrophoneSourceAutomatic{microphoneRecordingCallback=nil};return used},Stop:func(){C.bridgeStopMicrophone();microphoneRecordingCallback=nil}})
+func(playdateContext)RequestMicrophoneAccess(purpose string,callback func(sdkPlaydate.MicrophonePermission))(sdkPlaydate.MicrophonePermission,error){return microphoneService.RequestMicrophoneAccess(purpose,callback)}
+func(playdateContext)StartMicrophoneRecording(source sdkPlaydate.MicrophoneSource,callback func(sdkPlaydate.MicrophoneSamples)bool)(sdkPlaydate.MicrophoneRecorder,error){return microphoneService.StartMicrophoneRecording(source,callback)}
+func(playdateContext)CloseMicrophone(){microphoneService.Close();microphonePermissionCallback=nil;microphoneRecordingCallback=nil}
+
+var instrumentDriver=sdkRuntime.InstrumentDriver{AddVoice:func(i,s uintptr,a,b uint8,t float32)bool{return C.bridgeInstrumentAddVoice(C.uintptr_t(i),C.uintptr_t(s),C.int(a),C.int(b),C.float(t))!=0},SetPitchBend:func(h uintptr,v float32){C.bridgeInstrumentSetPitchBend(C.uintptr_t(h),C.float(v))},SetPitchBendRange:func(h uintptr,v float32){C.bridgeInstrumentSetPitchBendRange(C.uintptr_t(h),C.float(v))},SetTranspose:func(h uintptr,v float32){C.bridgeInstrumentSetTranspose(C.uintptr_t(h),C.float(v))},NoteOff:func(h uintptr,n uint8,w uint32){C.bridgeInstrumentNoteOff(C.uintptr_t(h),C.int(n),C.uint32_t(w))},AllNotesOff:func(h uintptr,w uint32){C.bridgeInstrumentAllNotesOff(C.uintptr_t(h),C.uint32_t(w))},SetVolume:func(h uintptr,l,r float32){C.bridgeInstrumentSetVolume(C.uintptr_t(h),C.float(l),C.float(r))},Volume:func(h uintptr)(float32,float32){var l,r C.float;C.bridgeInstrumentVolume(C.uintptr_t(h),&l,&r);return float32(l),float32(r)},ActiveVoiceCount:func(h uintptr)int{return int(C.bridgeInstrumentActiveVoiceCount(C.uintptr_t(h)))},Free:func(h uintptr){C.bridgeFreeInstrument(C.uintptr_t(h))}}
+var trackDriver=sdkRuntime.TrackDriver{SetInstrument:func(h,i uintptr){C.bridgeTrackSetInstrument(C.uintptr_t(h),C.uintptr_t(i))},AddNote:func(h uintptr,s,l uint32,n uint8,v float32){C.bridgeTrackAddNote(C.uintptr_t(h),C.uint32_t(s),C.uint32_t(l),C.int(n),C.float(v))},RemoveNote:func(h uintptr,s uint32,n uint8){C.bridgeTrackRemoveNote(C.uintptr_t(h),C.uint32_t(s),C.int(n))},ClearNotes:func(h uintptr){C.bridgeTrackClearNotes(C.uintptr_t(h))},AddControlEvent:func(h uintptr,c,s int,v float32,i bool)bool{var f C.int;if i{f=1};return C.bridgeTrackAddControlEvent(C.uintptr_t(h),C.int(c),C.int(s),C.float(v),f)!=0},RemoveControlEvent:func(h uintptr,c,s int)bool{return C.bridgeTrackRemoveControlEvent(C.uintptr_t(h),C.int(c),C.int(s))!=0},ClearControlEvents:func(h uintptr){C.bridgeTrackClearControlEvents(C.uintptr_t(h))},SetMuted:func(h uintptr,v bool){var f C.int;if v{f=1};C.bridgeTrackSetMuted(C.uintptr_t(h),f)},Length:func(h uintptr)uint32{return uint32(C.bridgeTrackLength(C.uintptr_t(h)))},Free:func(h uintptr){C.bridgeFreeTrack(C.uintptr_t(h))}}
+var sequenceDriver=sdkRuntime.SequenceDriver{LoadMIDI:func(h uintptr,path string)bool{p:=C.CString(path);defer C.free(unsafe.Pointer(p));return C.bridgeSequenceLoadMIDI(C.uintptr_t(h),p)!=0},SetTempo:func(h uintptr,v float32){C.bridgeSequenceSetTempo(C.uintptr_t(h),C.float(v))},Tempo:func(h uintptr)float32{return float32(C.bridgeSequenceTempo(C.uintptr_t(h)))},SetLoops:func(h uintptr,a,b,c int){C.bridgeSequenceSetLoops(C.uintptr_t(h),C.int(a),C.int(b),C.int(c))},SetTrack:func(h uintptr,i uint,t uintptr){C.bridgeSequenceSetTrack(C.uintptr_t(h),C.uint(i),C.uintptr_t(t))},Play:func(h uintptr,c uint32){C.bridgeSequencePlay(C.uintptr_t(h),C.uint32_t(c))},Stop:func(h uintptr){C.bridgeSequenceStop(C.uintptr_t(h))},IsPlaying:func(h uintptr)bool{return C.bridgeSequenceIsPlaying(C.uintptr_t(h))!=0},Time:func(h uintptr)uint32{return uint32(C.bridgeSequenceTime(C.uintptr_t(h)))},SetTime:func(h uintptr,v uint32){C.bridgeSequenceSetTime(C.uintptr_t(h),C.uint32_t(v))},Length:func(h uintptr)uint32{return uint32(C.bridgeSequenceLength(C.uintptr_t(h)))},Free:func(h uintptr){C.bridgeFreeSequence(C.uintptr_t(h))}}
+func init(){sequenceDriver.TrackCount=func(h uintptr)uint{return uint(C.bridgeSequenceTrackCount(C.uintptr_t(h)))};sequenceDriver.AddTrack=func(h uintptr)uintptr{return uintptr(C.bridgeSequenceAddTrack(C.uintptr_t(h)))}}
+func(playdateContext)NewInstrument()(sdkPlaydate.Instrument,error){h:=uintptr(C.bridgeNewInstrument());if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewInstrument(h,instrumentDriver),nil}
+func(playdateContext)NewSequenceTrack()(sdkPlaydate.SequenceTrack,error){h:=uintptr(C.bridgeNewTrack());if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSequenceTrack(h,trackDriver),nil}
+func(playdateContext)NewSequence()(sdkPlaydate.Sequence,error){h:=uintptr(C.bridgeNewSequence());if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSequence(h,sequenceDriver),nil}
+
+func effectDriver(free func(uintptr))sdkRuntime.EffectDriver{return sdkRuntime.EffectDriver{SetMix:func(h uintptr,v float32){C.bridgeEffectSetMix(C.uintptr_t(h),C.float(v))},SetMixModulator:func(h,m uintptr){C.bridgeEffectSetMixModulator(C.uintptr_t(h),C.uintptr_t(m))},Free:free}}
+func(playdateContext)NewTwoPoleFilter(k sdkPlaydate.FilterType)(sdkPlaydate.TwoPoleFilter,error){if k>sdkPlaydate.FilterHighShelf{return nil,sdkPlaydate.ErrAudioParameter};h:=uintptr(C.bridgeNewTwoPole(C.int(k)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.TwoPoleFilterDriver{Effect:effectDriver(func(h uintptr){C.bridgeFreeTwoPole(C.uintptr_t(h))}),SetType:func(uintptr,sdkPlaydate.FilterType){},SetFrequency:func(h uintptr,v float32){C.bridgeTwoPoleSetFrequency(C.uintptr_t(h),C.float(v))},SetFrequencyModulator:func(h,m uintptr){C.bridgeTwoPoleSetFrequencyModulator(C.uintptr_t(h),C.uintptr_t(m))},SetGain:func(h uintptr,v float32){C.bridgeTwoPoleSetGain(C.uintptr_t(h),C.float(v))},SetResonance:func(h uintptr,v float32){C.bridgeTwoPoleSetResonance(C.uintptr_t(h),C.float(v))},SetResonanceModulator:func(h,m uintptr){C.bridgeTwoPoleSetResonanceModulator(C.uintptr_t(h),C.uintptr_t(m))}};return sdkRuntime.NewTwoPoleFilter(h,d),nil}
+func(playdateContext)NewBitCrusher()(sdkPlaydate.BitCrusher,error){h:=uintptr(C.bridgeNewBitCrusher());if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.BitCrusherDriver{Effect:effectDriver(func(h uintptr){C.bridgeFreeBitCrusher(C.uintptr_t(h))}),SetExponential:func(h uintptr,v bool){var f C.int;if v{f=1};C.bridgeBitCrusherSetExponential(C.uintptr_t(h),f)},SetDepth:func(h uintptr,v float32){C.bridgeBitCrusherSetDepth(C.uintptr_t(h),C.float(v))},SetDepthModulator:func(h,m uintptr){C.bridgeBitCrusherSetDepthModulator(C.uintptr_t(h),C.uintptr_t(m))},SetDownsampling:func(h uintptr,v float32){C.bridgeBitCrusherSetDownsampling(C.uintptr_t(h),C.float(v))},SetDownsamplingModulator:func(h,m uintptr){C.bridgeBitCrusherSetDownsamplingModulator(C.uintptr_t(h),C.uintptr_t(m))}};return sdkRuntime.NewBitCrusher(h,d),nil}
+func(playdateContext)NewRingModulator()(sdkPlaydate.RingModulator,error){h:=uintptr(C.bridgeNewRingModulator());if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.RingModulatorDriver{Effect:effectDriver(func(h uintptr){C.bridgeFreeRingModulator(C.uintptr_t(h))}),SetFrequency:func(h uintptr,v float32){C.bridgeRingSetFrequency(C.uintptr_t(h),C.float(v))},SetFrequencyModulator:func(h,m uintptr){C.bridgeRingSetFrequencyModulator(C.uintptr_t(h),C.uintptr_t(m))}};return sdkRuntime.NewRingModulator(h,d),nil}
+func(playdateContext)NewOverdrive()(sdkPlaydate.Overdrive,error){h:=uintptr(C.bridgeNewOverdrive());if h==0{return nil,sdkPlaydate.ErrAudioCreate};d:=sdkRuntime.OverdriveDriver{Effect:effectDriver(func(h uintptr){C.bridgeFreeOverdrive(C.uintptr_t(h))}),SetGain:func(h uintptr,v float32){C.bridgeOverdriveSetGain(C.uintptr_t(h),C.float(v))},SetLimit:func(h uintptr,v float32){C.bridgeOverdriveSetLimit(C.uintptr_t(h),C.float(v))},SetLimitModulator:func(h,m uintptr){C.bridgeOverdriveSetLimitModulator(C.uintptr_t(h),C.uintptr_t(m))},SetOffset:func(h uintptr,v float32){C.bridgeOverdriveSetOffset(C.uintptr_t(h),C.float(v))},SetOffsetModulator:func(h,m uintptr){C.bridgeOverdriveSetOffsetModulator(C.uintptr_t(h),C.uintptr_t(m))}};return sdkRuntime.NewOverdrive(h,d),nil}
+func(playdateContext)NewDelayLine(length int,stereo bool)(sdkPlaydate.DelayLine,error){if length<1{return nil,sdkPlaydate.ErrAudioParameter};var flag C.int;if stereo{flag=1};h:=uintptr(C.bridgeNewDelayLine(C.int(length),flag));if h==0{return nil,sdkPlaydate.ErrAudioCreate};tap:=sdkRuntime.AudioDriver{Source:func(h uintptr)uintptr{return h},Stop:func(h uintptr){C.bridgeSourceStop(C.uintptr_t(h))},SetVolume:func(h uintptr,l,r float32){C.bridgeSourceSetVolume(C.uintptr_t(h),C.float(l),C.float(r))},Volume:func(h uintptr)(float32,float32){var l,r C.float;C.bridgeSourceVolume(C.uintptr_t(h),&l,&r);return float32(l),float32(r)},IsPlaying:func(h uintptr)bool{return C.bridgeSourceIsPlaying(C.uintptr_t(h))!=0},Pause:func(uintptr,bool){},Free:func(h uintptr){C.bridgeFreeTap(C.uintptr_t(h))}};d:=sdkRuntime.DelayLineDriver{Effect:effectDriver(func(h uintptr){C.bridgeFreeDelayLine(C.uintptr_t(h))}),SetLength:func(h uintptr,v int){C.bridgeDelaySetLength(C.uintptr_t(h),C.int(v))},SetFeedback:func(h uintptr,v float32){C.bridgeDelaySetFeedback(C.uintptr_t(h),C.float(v))},AddTap:func(h uintptr,v int)uintptr{return uintptr(C.bridgeDelayAddTap(C.uintptr_t(h),C.int(v)))},Tap:tap,SetTapDelay:func(h uintptr,v int){C.bridgeTapSetDelay(C.uintptr_t(h),C.int(v))},SetTapDelayModulator:func(h,m uintptr){C.bridgeTapSetDelayModulator(C.uintptr_t(h),C.uintptr_t(m))},SetTapChannelsFlipped:func(h uintptr,v bool){var f C.int;if v{f=1};C.bridgeTapSetChannelsFlipped(C.uintptr_t(h),f)}};return sdkRuntime.NewDelayLine(h,d),nil}
+
+func main() {}

@@ -1,0 +1,274 @@
+#include %q
+#include <stddef.h>
+#include <string.h>
+
+_Static_assert(sizeof(PDSystemEvent) <= 4, "PDSystemEvent must fit a 32-bit call slot");
+_Static_assert(kEventMirrorEnded <= INT32_MAX, "PDSystemEvent values must fit int32_t");
+_Static_assert(sizeof(uint32_t) == 4, "event argument must be 32-bit");
+_Static_assert(sizeof(int) == 4, "Playdate callback result must be 32-bit");
+
+extern int goUpdate(void);
+
+static PlaydateAPI* bridgePlaydate;
+void bridgeLogError(const char* message){if(bridgePlaydate&&message)bridgePlaydate->system->logToConsole("gopdsdk: %%s",message);}
+extern void goMenuCallback(uint32_t id);
+static void bridgeMenuCallback(void* userdata) { goMenuCallback((uint32_t)(uintptr_t)userdata); }
+extern void goSerialMessage(const char* message);
+extern void goAudioCallback(uint32_t callback,int oneShot);
+extern void goMicrophonePermission(int allowed);
+extern int goMicrophoneSamples(int16_t* data,int length);
+extern void goScoreCallback(int kind, uintptr_t score, const char* error);
+extern void goBoardsCallback(uintptr_t list, const char* error);
+extern void goScoresCallback(uintptr_t list, const char* error);
+static void bridgeSerialMessage(const char* message){goSerialMessage(message);}
+static void bridgeAddScoreCallback(PDScore* score,const char* error){goScoreCallback(0,(uintptr_t)score,error);if(score)bridgePlaydate->scoreboards->freeScore(score);}
+static void bridgePersonalBestCallback(PDScore* score,const char* error){goScoreCallback(1,(uintptr_t)score,error);if(score)bridgePlaydate->scoreboards->freeScore(score);}
+static void bridgeBoardsCallback(PDBoardsList* list,const char* error){goBoardsCallback((uintptr_t)list,error);if(list)bridgePlaydate->scoreboards->freeBoardsList(list);}
+static void bridgeScoresCallback(PDScoresList* list,const char* error){goScoresCallback((uintptr_t)list,error);if(list)bridgePlaydate->scoreboards->freeScoresList(list);}
+
+static int bridgeUpdate(void* userdata)
+{
+	(void)userdata;
+	return goUpdate();
+}
+
+void bridgeRegisterUpdate(PlaydateAPI* playdate)
+{
+	bridgePlaydate = playdate;
+	playdate->system->setUpdateCallback(bridgeUpdate, NULL);
+	playdate->system->setSerialMessageCallback(bridgeSerialMessage);
+	playdate->system->resetElapsedTime();
+}
+
+int bridgeAddScore(const char* board,uint32_t value){return bridgePlaydate->scoreboards->addScore(board,value,bridgeAddScoreCallback);}
+int bridgeGetPersonalBest(const char* board){return bridgePlaydate->scoreboards->getPersonalBest(board,bridgePersonalBestCallback);}
+int bridgeGetScoreboards(void){return bridgePlaydate->scoreboards->getScoreboards(bridgeBoardsCallback);}
+int bridgeGetScores(const char* board){return bridgePlaydate->scoreboards->getScores(board,bridgeScoresCallback);}
+uint32_t bridgeScoreNumber(uintptr_t value,int field){PDScore* score=(PDScore*)value;if(!score)return 0;return field==0?score->rank:score->value;}
+const char* bridgeScoreText(uintptr_t value,int field){PDScore* score=(PDScore*)value;if(!score)return NULL;return field==0?score->player:score->boardID;}
+uint32_t bridgeListNumber(uintptr_t value,int field){if(!value)return 0;if(field==0)return ((PDBoardsList*)value)->count;if(field==1)return ((PDBoardsList*)value)->lastUpdated;PDScoresList* list=(PDScoresList*)value;return field==2?(uint32_t)list->playerIncluded:list->limit;}
+const char* bridgeListText(uintptr_t value,int index,int field){if(!value)return NULL;if(index<0)return ((PDScoresList*)value)->boardID;if(field==0)return ((PDBoardsList*)value)->boards[index].boardID;if(field==1)return ((PDBoardsList*)value)->boards[index].name;return ((PDScoresList*)value)->scores[index].player;}
+uint32_t bridgeListItemNumber(uintptr_t value,int index,int field){PDListScore* score=&((PDScoresList*)value)->scores[index];return field==0?score->rank:score->value;}
+
+void bridgeDrawText(const char* text, size_t length, int x, int y)
+{
+	bridgePlaydate->graphics->drawText(text, length, kUTF8Encoding, x, y);
+}
+
+uintptr_t bridgeLoadFont(const char* path, const char** error) { return (uintptr_t)bridgePlaydate->graphics->loadFont(path, error); }
+void bridgeSetFont(uintptr_t font) { bridgePlaydate->graphics->setFont((LCDFont*)font); }
+int bridgeTextWidth(uintptr_t font, const char* text, size_t length) { return bridgePlaydate->graphics->getTextWidth((LCDFont*)font, text, length, kUTF8Encoding, 0); }
+int bridgeFontHeight(uintptr_t font) { return bridgePlaydate->graphics->getFontHeight((LCDFont*)font); }
+void bridgeFreeFont(uintptr_t font) { bridgePlaydate->system->realloc((void*)font, 0); }
+
+void bridgeClear(void)
+{
+	bridgePlaydate->graphics->clear(kColorWhite);
+}
+
+uint8_t* bridgeGetFrame(void) { return bridgePlaydate->graphics->getFrame(); }
+void bridgeMarkUpdatedRows(int start, int end) { bridgePlaydate->graphics->markUpdatedRows(start, end); }
+
+uint32_t bridgeCurrentTimeMilliseconds(void)
+{
+	return bridgePlaydate->system->getCurrentTimeMilliseconds();
+}
+uint32_t bridgeCurrentAudioTime(void){return bridgePlaydate->sound->getCurrentTime();}
+
+void bridgeExitToLauncher(void) { bridgePlaydate->system->exitToLauncher(); }
+void bridgeSetAccelerometerEnabled(int enabled) { bridgePlaydate->system->setPeripheralsEnabled(enabled ? kAccelerometer : kNone); }
+void bridgeAccelerometer(float* x,float* y,float* z) { bridgePlaydate->system->getAccelerometer(x,y,z); }
+int bridgePowerStatus(void) { return bridgePlaydate->system->getPowerStatus(); }
+float bridgeBatteryPercentage(void) { return bridgePlaydate->system->getBatteryPercentage(); }
+float bridgeBatteryVoltage(void) { return bridgePlaydate->system->getBatteryVoltage(); }
+float bridgeSystemVolume(void) { return bridgePlaydate->system->getVolume(); }
+int bridgeReduceFlashing(void) { return bridgePlaydate->system->getReduceFlashing(); }
+int bridgeTimezoneOffsetSeconds(void) { return bridgePlaydate->system->getTimezoneOffset(); }
+int bridgeUses24HourTime(void) { return bridgePlaydate->system->shouldDisplay24HourTime(); }
+int bridgeLanguage(void) { return bridgePlaydate->system->getLanguage(); }
+char* bridgeLocalizedText(const char* key,int language) { return bridgePlaydate->system->getLocalizedText(key,(PDLanguage)language); }
+void bridgeFree(void* pointer) { bridgePlaydate->system->realloc(pointer,0); }
+uintptr_t bridgeAddMenuItem(const char* title,int kind,const char** options,int count,int value,uint32_t callback) { PDMenuItem* item; void* userdata=(void*)(uintptr_t)callback; if(kind==1)item=bridgePlaydate->system->addCheckmarkMenuItem(title,value,bridgeMenuCallback,userdata);else if(kind==2)item=bridgePlaydate->system->addOptionsMenuItem(title,options,count,bridgeMenuCallback,userdata);else item=bridgePlaydate->system->addMenuItem(title,bridgeMenuCallback,userdata);return(uintptr_t)item; }
+void bridgeRemoveMenuItem(uintptr_t item) { bridgePlaydate->system->removeMenuItem((PDMenuItem*)item); }
+const char* bridgeMenuItemTitle(uintptr_t item) { return bridgePlaydate->system->getMenuItemTitle((PDMenuItem*)item); }
+void bridgeSetMenuItemTitle(uintptr_t item,const char* title) { bridgePlaydate->system->setMenuItemTitle((PDMenuItem*)item,title); }
+int bridgeMenuItemValue(uintptr_t item) { return bridgePlaydate->system->getMenuItemValue((PDMenuItem*)item); }
+void bridgeSetMenuItemValue(uintptr_t item,int value) { bridgePlaydate->system->setMenuItemValue((PDMenuItem*)item,value); }
+const char* bridgeFileError(void){return bridgePlaydate->file->geterr();}
+uintptr_t bridgeFileOpen(const char* path,int options){return(uintptr_t)bridgePlaydate->file->open(path,(FileOptions)options);}
+int bridgeFileClose(uintptr_t file){return bridgePlaydate->file->close((SDFile*)file);}
+int bridgeFileRead(uintptr_t file,void* buffer,unsigned int length){return bridgePlaydate->file->read((SDFile*)file,buffer,length);}
+int bridgeFileWrite(uintptr_t file,const void* buffer,unsigned int length){return bridgePlaydate->file->write((SDFile*)file,buffer,length);}
+int bridgeFileFlush(uintptr_t file){return bridgePlaydate->file->flush((SDFile*)file);}
+int bridgeFileTell(uintptr_t file){return bridgePlaydate->file->tell((SDFile*)file);}
+int bridgeFileSeek(uintptr_t file,int position,int whence){return bridgePlaydate->file->seek((SDFile*)file,position,whence);}
+int bridgeFileStat(const char* path,int* values){FileStat value;int result=bridgePlaydate->file->stat(path,&value);if(result<0)return result;values[0]=value.isdir;values[1]=(int)value.size;values[2]=value.m_year;values[3]=value.m_month;values[4]=value.m_day;values[5]=value.m_hour;values[6]=value.m_minute;values[7]=value.m_second;return 0;}
+typedef struct{char** items;int count;int failed;}BridgeFileList;
+static void bridgeCollectFile(const char* name,void* userdata){BridgeFileList* list=userdata;if(list->failed)return;char* copy=bridgePlaydate->system->realloc(NULL,strlen(name)+1);if(!copy){list->failed=1;return;}strcpy(copy,name);char** items=bridgePlaydate->system->realloc(list->items,sizeof(char*)*(list->count+1));if(!items){bridgePlaydate->system->realloc(copy,0);list->failed=1;return;}list->items=items;list->items[list->count++]=copy;}
+uintptr_t bridgeFileList(const char* path,int showHidden,int* count,int* result){BridgeFileList* list=bridgePlaydate->system->realloc(NULL,sizeof(BridgeFileList));if(!list){*count=0;*result=-2;return 0;}list->items=NULL;list->count=0;list->failed=0;*result=bridgePlaydate->file->listfiles(path,bridgeCollectFile,list,showHidden);if(list->failed)*result=-2;*count=list->count;return(uintptr_t)list;}
+const char* bridgeFileListItem(uintptr_t list,int index){return((BridgeFileList*)list)->items[index];}
+void bridgeFileListFree(uintptr_t value){BridgeFileList* list=(BridgeFileList*)value;if(!list)return;for(int i=0;i<list->count;i++)bridgePlaydate->system->realloc(list->items[i],0);bridgePlaydate->system->realloc(list->items,0);bridgePlaydate->system->realloc(list,0);}
+int bridgeFileMkdir(const char* path){return bridgePlaydate->file->mkdir(path);}
+int bridgeFileRemove(const char* path,int recursive){return bridgePlaydate->file->unlink(path,recursive);}
+int bridgeFileRename(const char* from,const char* to){return bridgePlaydate->file->rename(from,to);}
+
+uint32_t bridgeButtons(void)
+{
+	PDButtons current = 0;
+	bridgePlaydate->system->getButtonState(&current, NULL, NULL);
+	return (uint32_t)current;
+}
+
+float bridgeCrankAngle(void) { return bridgePlaydate->system->getCrankAngle(); }
+float bridgeCrankDelta(void) { return bridgePlaydate->system->getCrankChange(); }
+int bridgeCrankDocked(void) { return bridgePlaydate->system->isCrankDocked(); }
+
+float bridgeFrameDelta(void)
+{
+	float elapsed = bridgePlaydate->system->getElapsedTime();
+	bridgePlaydate->system->resetElapsedTime();
+	return elapsed;
+}
+
+uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)bridgePlaydate->graphics->loadBitmap(path, error); }
+uintptr_t bridgeLoadBitmapTable(const char* path, const char** error) { return (uintptr_t)bridgePlaydate->graphics->loadBitmapTable(path, error); }
+uintptr_t bridgeBitmapTableFrame(uintptr_t table, int index) { return (uintptr_t)bridgePlaydate->graphics->getTableBitmap((LCDBitmapTable*)table, index); }
+void bridgeFreeBitmapTable(uintptr_t table) { bridgePlaydate->graphics->freeBitmapTable((LCDBitmapTable*)table); }
+uintptr_t bridgeNewBitmap(int width, int height) { return (uintptr_t)bridgePlaydate->graphics->newBitmap(width, height, kColorClear); }
+void bridgeFreeBitmap(uintptr_t bitmap) { bridgePlaydate->graphics->freeBitmap((LCDBitmap*)bitmap); }
+void bridgeBitmapSize(uintptr_t bitmap, int* width, int* height) { bridgePlaydate->graphics->getBitmapData((LCDBitmap*)bitmap, width, height, NULL, NULL, NULL); }
+static LCDColor bridgeBitmapColor(int color) { return color == 1 ? kColorWhite : color == 2 ? kColorBlack : kColorClear; }
+void bridgeFillBitmap(uintptr_t bitmap, int color) { bridgePlaydate->graphics->clearBitmap((LCDBitmap*)bitmap, bridgeBitmapColor(color)); }
+void bridgeDrawBitmap(uintptr_t bitmap, int x, int y) { bridgePlaydate->graphics->drawBitmap((LCDBitmap*)bitmap, x, y, kBitmapUnflipped); }
+void bridgeDrawScaledBitmap(uintptr_t bitmap, int x, int y, float scaleX, float scaleY) { bridgePlaydate->graphics->drawScaledBitmap((LCDBitmap*)bitmap, x, y, scaleX, scaleY); }
+void bridgeDrawRotatedBitmap(uintptr_t bitmap, int x, int y, float degrees, float centerX, float centerY, float scaleX, float scaleY) { bridgePlaydate->graphics->drawRotatedBitmap((LCDBitmap*)bitmap, x, y, degrees, centerX, centerY, scaleX, scaleY); }
+static LCDColor bridgePaint(int solid, const uint8_t* pattern, int patterned) { if (patterned) return (LCDColor)pattern; return solid == 1 ? kColorWhite : solid == 2 ? kColorBlack : solid == 3 ? kColorXOR : kColorClear; }
+void bridgeDrawLine(int x1, int y1, int x2, int y2, int width, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->drawLine(x1, y1, x2, y2, width, bridgePaint(solid, pattern, patterned)); }
+void bridgeDrawRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->drawRect(x, y, width, height, bridgePaint(solid, pattern, patterned)); }
+void bridgeFillRect(int x, int y, int width, int height, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillRect(x, y, width, height, bridgePaint(solid, pattern, patterned)); }
+void bridgeDrawEllipse(int x, int y, int width, int height, int lineWidth, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->drawEllipse(x, y, width, height, lineWidth, startAngle, endAngle, bridgePaint(solid, pattern, patterned)); }
+void bridgeFillEllipse(int x, int y, int width, int height, float startAngle, float endAngle, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillEllipse(x, y, width, height, startAngle, endAngle, bridgePaint(solid, pattern, patterned)); }
+void bridgeFillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int solid, const uint8_t* pattern, int patterned) { bridgePlaydate->graphics->fillTriangle(x1, y1, x2, y2, x3, y3, bridgePaint(solid, pattern, patterned)); }
+void bridgeDrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, int width, int solid, const uint8_t* pattern, int patterned) { LCDColor color=bridgePaint(solid,pattern,patterned); bridgePlaydate->graphics->drawLine(x1,y1,x2,y2,width,color); bridgePlaydate->graphics->drawLine(x2,y2,x3,y3,width,color); bridgePlaydate->graphics->drawLine(x3,y3,x1,y1,width,color); }
+void bridgeSetClipRect(int x, int y, int width, int height) { bridgePlaydate->graphics->setClipRect(x, y, width, height); }
+void bridgeClearClipRect(void) { bridgePlaydate->graphics->clearClipRect(); }
+void bridgeSetDrawOffset(int dx, int dy) { bridgePlaydate->graphics->setDrawOffset(dx, dy); }
+void bridgeSetDrawMode(int mode) { bridgePlaydate->graphics->setDrawMode((LCDBitmapDrawMode)mode); }
+void bridgePushContext(uintptr_t bitmap) { bridgePlaydate->graphics->pushContext((LCDBitmap*)bitmap); }
+void bridgePopContext(void) { bridgePlaydate->graphics->popContext(); }
+void bridgeSetStencil(uintptr_t bitmap, int tiled) { bridgePlaydate->graphics->setStencilImage((LCDBitmap*)bitmap, tiled); }
+void bridgeClearStencil(void) { bridgePlaydate->graphics->setStencil(NULL); }
+uintptr_t bridgeNewSprite(void) { return (uintptr_t)bridgePlaydate->sprite->newSprite(); }
+void bridgeFreeSprite(uintptr_t sprite) { bridgePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
+void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { bridgePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
+void bridgeSpriteMoveTo(uintptr_t sprite, float x, float y) { bridgePlaydate->sprite->moveTo((LCDSprite*)sprite, x, y); }
+void bridgeSpriteMoveBy(uintptr_t sprite, float dx, float dy) { bridgePlaydate->sprite->moveBy((LCDSprite*)sprite, dx, dy); }
+void bridgeSpriteSetVisible(uintptr_t sprite, int visible) { bridgePlaydate->sprite->setVisible((LCDSprite*)sprite, visible); }
+void bridgeSpriteSetZIndex(uintptr_t sprite, int z) { bridgePlaydate->sprite->setZIndex((LCDSprite*)sprite, z); }
+void bridgeSpriteSetCollideRect(uintptr_t sprite, float x, float y, float width, float height) { bridgePlaydate->sprite->setCollideRect((LCDSprite*)sprite, (PDRect){x, y, width, height}); }
+void bridgeSpriteClearCollideRect(uintptr_t sprite) { bridgePlaydate->sprite->clearCollideRect((LCDSprite*)sprite); }
+void bridgeSpriteSetTag(uintptr_t sprite, uint8_t tag) { bridgePlaydate->sprite->setTag((LCDSprite*)sprite, tag); }
+void* bridgeSpriteMoveWithCollisions(uintptr_t sprite, float x, float y, float* actualX, float* actualY, int* count) { return bridgePlaydate->sprite->moveWithCollisions((LCDSprite*)sprite, x, y, actualX, actualY, count); }
+void bridgeCollisionInfo(void* collisions, int index, uintptr_t* other, int* response, int* overlaps, float* ti, float* v) { SpriteCollisionInfo* c = &((SpriteCollisionInfo*)collisions)[index]; *other=(uintptr_t)c->other; *response=c->responseType; *overlaps=c->overlaps; *ti=c->ti; v[0]=c->move.x; v[1]=c->move.y; v[2]=c->normal.x; v[3]=c->normal.y; v[4]=c->touch.x; v[5]=c->touch.y; v[6]=c->spriteRect.x; v[7]=c->spriteRect.y; v[8]=c->spriteRect.width; v[9]=c->spriteRect.height; v[10]=c->otherRect.x; v[11]=c->otherRect.y; v[12]=c->otherRect.width; v[13]=c->otherRect.height; }
+void bridgeFreeCollisionList(void* collisions) { if (collisions) bridgePlaydate->system->realloc(collisions, 0); }
+void* bridgeQuerySpritesAtPoint(float x, float y, int* count) { return bridgePlaydate->sprite->querySpritesAtPoint(x, y, count); }
+void* bridgeQuerySpritesInRect(float x, float y, float width, float height, int* count) { return bridgePlaydate->sprite->querySpritesInRect(x, y, width, height, count); }
+void* bridgeOverlappingSprites(uintptr_t sprite, int* count) { return bridgePlaydate->sprite->overlappingSprites((LCDSprite*)sprite, count); }
+uintptr_t bridgeSpriteListItem(void* sprites, int index) { return (uintptr_t)((LCDSprite**)sprites)[index]; }
+void bridgeFreeSpriteList(void* sprites) { if (sprites) bridgePlaydate->system->realloc(sprites, 0); }
+void bridgeSpriteAdd(uintptr_t sprite) { bridgePlaydate->sprite->addSprite((LCDSprite*)sprite); }
+void bridgeSpriteRemove(uintptr_t sprite) { bridgePlaydate->sprite->removeSprite((LCDSprite*)sprite); }
+void bridgeUpdateAndDrawSprites(void) { bridgePlaydate->sprite->updateAndDrawSprites(); }
+
+typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
+static void bridgeAudioFinishCallback(SoundSource* source,void* userdata){(void)source;goAudioCallback((uint32_t)(uintptr_t)userdata,0);}
+static void bridgeAudioFadeCallback(SoundSource* source,void* userdata){(void)source;goAudioCallback((uint32_t)(uintptr_t)userdata,1);}
+uintptr_t bridgeLoadSoundEffect(const char* path)
+{
+	AudioSample* sample = bridgePlaydate->sound->sample->load(path);
+	if (!sample) return 0;
+	SamplePlayer* player = bridgePlaydate->sound->sampleplayer->newPlayer();
+	if (!player) { bridgePlaydate->sound->sample->freeSample(sample); return 0; }
+	BridgeSoundEffect* effect = bridgePlaydate->system->realloc(NULL, sizeof(BridgeSoundEffect));
+	if (!effect) { bridgePlaydate->sound->sampleplayer->freePlayer(player); bridgePlaydate->sound->sample->freeSample(sample); return 0; }
+	effect->sample = sample; effect->player = player;
+	bridgePlaydate->sound->sampleplayer->setSample(player, sample);
+	return (uintptr_t)effect;
+}
+uintptr_t bridgeNewPCMPlayer(const int16_t* samples,int count,uint32_t sampleRate){if(!samples||count<=0||sampleRate==0)return 0;int bytes=count*(int)sizeof(int16_t);uint8_t* copy=bridgePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,samples,(size_t)bytes);AudioSample* sample=bridgePlaydate->sound->sample->newSampleFromData(copy,kSound16bitMono,sampleRate,bytes,1);if(!sample){bridgePlaydate->system->realloc(copy,0);return 0;}SamplePlayer* player=bridgePlaydate->sound->sampleplayer->newPlayer();if(!player){bridgePlaydate->sound->sample->freeSample(sample);return 0;}BridgeSoundEffect* effect=bridgePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!effect){bridgePlaydate->sound->sampleplayer->freePlayer(player);bridgePlaydate->sound->sample->freeSample(sample);return 0;}effect->sample=sample;effect->player=player;bridgePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect;}
+static BridgeSoundEffect* bridgeEffect(uintptr_t effect) { return (BridgeSoundEffect*)effect; }
+int bridgeSoundEffectPlay(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, 1, 1.0f); }
+int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, repeat, rate); }
+void bridgeSoundEffectStop(uintptr_t effect) { bridgePlaydate->sound->sampleplayer->stop(bridgeEffect(effect)->player); }
+void bridgeSoundEffectSetVolume(uintptr_t effect, float left, float right) { bridgePlaydate->sound->sampleplayer->setVolume(bridgeEffect(effect)->player, left, right); }
+void bridgeSoundEffectVolume(uintptr_t effect, float* left, float* right) { bridgePlaydate->sound->sampleplayer->getVolume(bridgeEffect(effect)->player, left, right); }
+int bridgeSoundEffectIsPlaying(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->isPlaying(bridgeEffect(effect)->player); }
+void bridgeSoundEffectPause(uintptr_t effect, int paused) { bridgePlaydate->sound->sampleplayer->setPaused(bridgeEffect(effect)->player, paused); }
+float bridgeSamplePlayerLength(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getLength(bridgeEffect(effect)->player); }
+void bridgeSamplePlayerSetOffset(uintptr_t effect, float offset) { bridgePlaydate->sound->sampleplayer->setOffset(bridgeEffect(effect)->player, offset); }
+float bridgeSamplePlayerOffset(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getOffset(bridgeEffect(effect)->player); }
+void bridgeSamplePlayerSetRate(uintptr_t effect, float rate) { bridgePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player, rate); }
+float bridgeSamplePlayerRate(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player); }
+void bridgeSoundEffectSetFinishCallback(uintptr_t effect,uint32_t callback){bridgePlaydate->sound->sampleplayer->setFinishCallback(bridgeEffect(effect)->player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
+void bridgeFreeSoundEffect(uintptr_t effect) { BridgeSoundEffect* value = bridgeEffect(effect); bridgePlaydate->sound->sampleplayer->freePlayer(value->player); bridgePlaydate->sound->sample->freeSample(value->sample); bridgePlaydate->system->realloc(value, 0); }
+
+uintptr_t bridgeLoadFilePlayer(const char* path) { FilePlayer* player = bridgePlaydate->sound->fileplayer->newPlayer(); if (!player) return 0; if (!bridgePlaydate->sound->fileplayer->loadIntoPlayer(player, path)) { bridgePlaydate->sound->fileplayer->freePlayer(player); return 0; } return (uintptr_t)player; }
+int bridgeFilePlayerPlay(uintptr_t player) { return bridgePlaydate->sound->fileplayer->play((FilePlayer*)player, 1); }
+void bridgeFilePlayerStop(uintptr_t player) { bridgePlaydate->sound->fileplayer->stop((FilePlayer*)player); }
+void bridgeFilePlayerSetVolume(uintptr_t player, float left, float right) { bridgePlaydate->sound->fileplayer->setVolume((FilePlayer*)player, left, right); }
+void bridgeFilePlayerVolume(uintptr_t player, float* left, float* right) { bridgePlaydate->sound->fileplayer->getVolume((FilePlayer*)player, left, right); }
+int bridgeFilePlayerIsPlaying(uintptr_t player) { return bridgePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player); }
+void bridgeFilePlayerPause(uintptr_t player, int paused) { (void)paused; bridgePlaydate->sound->fileplayer->pause((FilePlayer*)player); }
+void bridgeFilePlayerSetRate(uintptr_t player, float rate) { bridgePlaydate->sound->fileplayer->setRate((FilePlayer*)player, rate); }
+float bridgeFilePlayerRate(uintptr_t player) { return bridgePlaydate->sound->fileplayer->getRate((FilePlayer*)player); }
+void bridgeFilePlayerSetFinishCallback(uintptr_t player,uint32_t callback){bridgePlaydate->sound->fileplayer->setFinishCallback((FilePlayer*)player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
+void bridgeFilePlayerFadeVolume(uintptr_t player,float left,float right,uint32_t frames,uint32_t callback){bridgePlaydate->sound->fileplayer->fadeVolume((FilePlayer*)player,left,right,(int32_t)frames,callback?bridgeAudioFadeCallback:NULL,(void*)(uintptr_t)callback);}
+void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player); }
+uintptr_t bridgeSoundEffectSource(uintptr_t effect){return(uintptr_t)bridgeEffect(effect)->player;}
+uintptr_t bridgeNewAudioChannel(void){SoundChannel* channel=bridgePlaydate->sound->channel->newChannel();if(!channel)return 0;bridgePlaydate->sound->addChannel(channel);return(uintptr_t)channel;}
+int bridgeAudioChannelAddSource(uintptr_t channel,uintptr_t source){bridgePlaydate->sound->removeSource((SoundSource*)source);return bridgePlaydate->sound->channel->addSource((SoundChannel*)channel,(SoundSource*)source);}
+int bridgeAudioChannelRemoveSource(uintptr_t channel,uintptr_t source){return bridgePlaydate->sound->channel->removeSource((SoundChannel*)channel,(SoundSource*)source);}
+void bridgeAudioChannelSetVolume(uintptr_t channel,float volume){bridgePlaydate->sound->channel->setVolume((SoundChannel*)channel,volume);}
+float bridgeAudioChannelVolume(uintptr_t channel){return bridgePlaydate->sound->channel->getVolume((SoundChannel*)channel);}
+void bridgeAudioChannelSetPan(uintptr_t channel,float pan){bridgePlaydate->sound->channel->setPan((SoundChannel*)channel,pan);}
+int bridgeRemoveAudioChannel(uintptr_t channel){bridgePlaydate->sound->removeChannel((SoundChannel*)channel);return 1;}
+void bridgeFreeAudioChannel(uintptr_t channel){bridgePlaydate->sound->channel->freeChannel((SoundChannel*)channel);}
+int bridgeAudioChannelAddEffect(uintptr_t channel,uintptr_t effect){return bridgePlaydate->sound->channel->addEffect((SoundChannel*)channel,(SoundEffect*)effect);}
+int bridgeAudioChannelRemoveEffect(uintptr_t channel,uintptr_t effect){return bridgePlaydate->sound->channel->removeEffect((SoundChannel*)channel,(SoundEffect*)effect);}
+void bridgeSourceStop(uintptr_t source){bridgePlaydate->sound->synth->stop((PDSynth*)source);}
+void bridgeSourceSetVolume(uintptr_t source,float left,float right){bridgePlaydate->sound->source->setVolume((SoundSource*)source,left,right);}
+void bridgeSourceVolume(uintptr_t source,float* left,float* right){bridgePlaydate->sound->source->getVolume((SoundSource*)source,left,right);}
+int bridgeSourceIsPlaying(uintptr_t source){return bridgePlaydate->sound->source->isPlaying((SoundSource*)source);}
+uintptr_t bridgeNewSynth(int waveform){PDSynth* synth=bridgePlaydate->sound->synth->newSynth();if(synth)bridgePlaydate->sound->synth->setWaveform(synth,(SoundWaveform)waveform);return(uintptr_t)synth;}
+void bridgeSynthSetWaveform(uintptr_t synth,int waveform){bridgePlaydate->sound->synth->setWaveform((PDSynth*)synth,(SoundWaveform)waveform);}
+void bridgeSynthSetEnvelope(uintptr_t synth,float a,float d,float s,float r){bridgePlaydate->sound->synth->setAttackTime((PDSynth*)synth,a);bridgePlaydate->sound->synth->setDecayTime((PDSynth*)synth,d);bridgePlaydate->sound->synth->setSustainLevel((PDSynth*)synth,s);bridgePlaydate->sound->synth->setReleaseTime((PDSynth*)synth,r);}
+void bridgeSynthSetTranspose(uintptr_t synth,float value){bridgePlaydate->sound->synth->setTranspose((PDSynth*)synth,value);}
+void bridgeSynthSetFrequencyModulator(uintptr_t synth,uintptr_t signal){bridgePlaydate->sound->synth->setFrequencyModulator((PDSynth*)synth,(PDSynthSignalValue*)signal);}
+void bridgeSynthSetAmplitudeModulator(uintptr_t synth,uintptr_t signal){bridgePlaydate->sound->synth->setAmplitudeModulator((PDSynth*)synth,(PDSynthSignalValue*)signal);}
+void bridgeSynthPlayMIDINote(uintptr_t synth,float note,float velocity,float length,uint32_t when){bridgePlaydate->sound->synth->playMIDINote((PDSynth*)synth,note,velocity,length,when);}
+void bridgeSynthNoteOff(uintptr_t synth,uint32_t when){bridgePlaydate->sound->synth->noteOff((PDSynth*)synth,when);}
+void bridgeFreeSynth(uintptr_t synth){bridgePlaydate->sound->synth->freeSynth((PDSynth*)synth);}
+uintptr_t bridgeNewInstrument(void){return(uintptr_t)bridgePlaydate->sound->instrument->newInstrument();}
+int bridgeInstrumentAddVoice(uintptr_t i,uintptr_t s,int a,int b,float t){return bridgePlaydate->sound->instrument->addVoice((PDSynthInstrument*)i,(PDSynth*)s,(MIDINote)a,(MIDINote)b,t);}
+void bridgeInstrumentSetPitchBend(uintptr_t i,float v){bridgePlaydate->sound->instrument->setPitchBend((PDSynthInstrument*)i,v);} void bridgeInstrumentSetPitchBendRange(uintptr_t i,float v){bridgePlaydate->sound->instrument->setPitchBendRange((PDSynthInstrument*)i,v);} void bridgeInstrumentSetTranspose(uintptr_t i,float v){bridgePlaydate->sound->instrument->setTranspose((PDSynthInstrument*)i,v);} void bridgeInstrumentNoteOff(uintptr_t i,int n,uint32_t w){bridgePlaydate->sound->instrument->noteOff((PDSynthInstrument*)i,(MIDINote)n,w);} void bridgeInstrumentAllNotesOff(uintptr_t i,uint32_t w){bridgePlaydate->sound->instrument->allNotesOff((PDSynthInstrument*)i,w);} void bridgeInstrumentSetVolume(uintptr_t i,float l,float r){bridgePlaydate->sound->instrument->setVolume((PDSynthInstrument*)i,l,r);} void bridgeInstrumentVolume(uintptr_t i,float*l,float*r){bridgePlaydate->sound->instrument->getVolume((PDSynthInstrument*)i,l,r);} int bridgeInstrumentActiveVoiceCount(uintptr_t i){return bridgePlaydate->sound->instrument->activeVoiceCount((PDSynthInstrument*)i);} void bridgeFreeInstrument(uintptr_t i){bridgePlaydate->sound->instrument->freeInstrument((PDSynthInstrument*)i);}
+uintptr_t bridgeNewTrack(void){return(uintptr_t)bridgePlaydate->sound->track->newTrack();} void bridgeTrackSetInstrument(uintptr_t t,uintptr_t i){bridgePlaydate->sound->track->setInstrument((SequenceTrack*)t,(PDSynthInstrument*)i);} void bridgeTrackAddNote(uintptr_t t,uint32_t s,uint32_t l,int n,float v){bridgePlaydate->sound->track->addNoteEvent((SequenceTrack*)t,s,l,(MIDINote)n,v);} void bridgeTrackRemoveNote(uintptr_t t,uint32_t s,int n){bridgePlaydate->sound->track->removeNoteEvent((SequenceTrack*)t,s,(MIDINote)n);} void bridgeTrackClearNotes(uintptr_t t){bridgePlaydate->sound->track->clearNotes((SequenceTrack*)t);} int bridgeTrackAddControlEvent(uintptr_t t,int c,int s,float v,int i){ControlSignal*x=bridgePlaydate->sound->track->getSignalForController((SequenceTrack*)t,c,1);if(!x)return 0;bridgePlaydate->sound->controlsignal->addEvent(x,s,v,i);return 1;} int bridgeTrackRemoveControlEvent(uintptr_t t,int c,int s){ControlSignal*x=bridgePlaydate->sound->track->getSignalForController((SequenceTrack*)t,c,0);if(!x)return 0;bridgePlaydate->sound->controlsignal->removeEvent(x,s);return 1;} void bridgeTrackClearControlEvents(uintptr_t t){bridgePlaydate->sound->track->clearControlEvents((SequenceTrack*)t);} void bridgeTrackSetMuted(uintptr_t t,int v){bridgePlaydate->sound->track->setMuted((SequenceTrack*)t,v);} uint32_t bridgeTrackLength(uintptr_t t){return bridgePlaydate->sound->track->getLength((SequenceTrack*)t);} void bridgeFreeTrack(uintptr_t t){bridgePlaydate->sound->track->freeTrack((SequenceTrack*)t);}
+static void bridgeSequenceFinished(SoundSequence*s,void*u){(void)s;goAudioCallback((uint32_t)(uintptr_t)u,1);} uintptr_t bridgeNewSequence(void){return(uintptr_t)bridgePlaydate->sound->sequence->newSequence();} int bridgeSequenceLoadMIDI(uintptr_t s,const char*p){return bridgePlaydate->sound->sequence->loadMIDIFile((SoundSequence*)s,p);} void bridgeSequenceSetTempo(uintptr_t s,float v){bridgePlaydate->sound->sequence->setTempo((SoundSequence*)s,v);} float bridgeSequenceTempo(uintptr_t s){return bridgePlaydate->sound->sequence->getTempo((SoundSequence*)s);} void bridgeSequenceSetLoops(uintptr_t s,int a,int b,int c){bridgePlaydate->sound->sequence->setLoops((SoundSequence*)s,a,b,c);} void bridgeSequenceSetTrack(uintptr_t s,unsigned int i,uintptr_t t){bridgePlaydate->sound->sequence->setTrackAtIndex((SoundSequence*)s,(SequenceTrack*)t,i);} void bridgeSequencePlay(uintptr_t s,uint32_t c){bridgePlaydate->sound->sequence->play((SoundSequence*)s,c?bridgeSequenceFinished:NULL,(void*)(uintptr_t)c);} void bridgeSequenceStop(uintptr_t s){bridgePlaydate->sound->sequence->stop((SoundSequence*)s);} int bridgeSequenceIsPlaying(uintptr_t s){return bridgePlaydate->sound->sequence->isPlaying((SoundSequence*)s);} uint32_t bridgeSequenceTime(uintptr_t s){return bridgePlaydate->sound->sequence->getTime((SoundSequence*)s);} void bridgeSequenceSetTime(uintptr_t s,uint32_t v){bridgePlaydate->sound->sequence->setTime((SoundSequence*)s,v);} uint32_t bridgeSequenceLength(uintptr_t s){return bridgePlaydate->sound->sequence->getLength((SoundSequence*)s);} void bridgeFreeSequence(uintptr_t s){bridgePlaydate->sound->sequence->freeSequence((SoundSequence*)s);}
+unsigned int bridgeSequenceTrackCount(uintptr_t s){return(unsigned int)bridgePlaydate->sound->sequence->getTrackCount((SoundSequence*)s);} uintptr_t bridgeSequenceAddTrack(uintptr_t s){return(uintptr_t)bridgePlaydate->sound->sequence->addTrack((SoundSequence*)s);}
+void bridgeEffectSetMix(uintptr_t e,float v){bridgePlaydate->sound->effect->setMix((SoundEffect*)e,v);} void bridgeEffectSetMixModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->setMixModulator((SoundEffect*)e,(PDSynthSignalValue*)m);}
+uintptr_t bridgeNewTwoPole(int k){TwoPoleFilter*e=bridgePlaydate->sound->effect->twopolefilter->newFilter();if(e)bridgePlaydate->sound->effect->twopolefilter->setType(e,(TwoPoleFilterType)k);return(uintptr_t)e;} void bridgeTwoPoleSetType(uintptr_t e,int k){bridgePlaydate->sound->effect->twopolefilter->setType((TwoPoleFilter*)e,(TwoPoleFilterType)k);} void bridgeTwoPoleSetFrequency(uintptr_t e,float v){bridgePlaydate->sound->effect->twopolefilter->setFrequency((TwoPoleFilter*)e,v);} void bridgeTwoPoleSetFrequencyModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->twopolefilter->setFrequencyModulator((TwoPoleFilter*)e,(PDSynthSignalValue*)m);} void bridgeTwoPoleSetGain(uintptr_t e,float v){bridgePlaydate->sound->effect->twopolefilter->setGain((TwoPoleFilter*)e,v);} void bridgeTwoPoleSetResonance(uintptr_t e,float v){bridgePlaydate->sound->effect->twopolefilter->setResonance((TwoPoleFilter*)e,v);} void bridgeTwoPoleSetResonanceModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->twopolefilter->setResonanceModulator((TwoPoleFilter*)e,(PDSynthSignalValue*)m);} void bridgeFreeTwoPole(uintptr_t e){bridgePlaydate->sound->effect->twopolefilter->freeFilter((TwoPoleFilter*)e);}
+uintptr_t bridgeNewBitCrusher(void){return(uintptr_t)bridgePlaydate->sound->effect->bitcrusher->newBitCrusher();} void bridgeBitCrusherSetExponential(uintptr_t e,int v){bridgePlaydate->sound->effect->bitcrusher->setExponential((BitCrusher*)e,v);} void bridgeBitCrusherSetDepth(uintptr_t e,float v){bridgePlaydate->sound->effect->bitcrusher->setDepth((BitCrusher*)e,v);} void bridgeBitCrusherSetDepthModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->bitcrusher->setDepthModulator((BitCrusher*)e,(PDSynthSignalValue*)m);} void bridgeBitCrusherSetDownsampling(uintptr_t e,float v){bridgePlaydate->sound->effect->bitcrusher->setDownsampling((BitCrusher*)e,v);} void bridgeBitCrusherSetDownsamplingModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->bitcrusher->setDownsamplingModulator((BitCrusher*)e,(PDSynthSignalValue*)m);} void bridgeFreeBitCrusher(uintptr_t e){bridgePlaydate->sound->effect->bitcrusher->freeBitCrusher((BitCrusher*)e);}
+uintptr_t bridgeNewRingModulator(void){return(uintptr_t)bridgePlaydate->sound->effect->ringmodulator->newRingmod();} void bridgeRingSetFrequency(uintptr_t e,float v){bridgePlaydate->sound->effect->ringmodulator->setFrequency((RingModulator*)e,v);} void bridgeRingSetFrequencyModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->ringmodulator->setFrequencyModulator((RingModulator*)e,(PDSynthSignalValue*)m);} void bridgeFreeRingModulator(uintptr_t e){bridgePlaydate->sound->effect->ringmodulator->freeRingmod((RingModulator*)e);}
+uintptr_t bridgeNewOverdrive(void){return(uintptr_t)bridgePlaydate->sound->effect->overdrive->newOverdrive();} void bridgeOverdriveSetGain(uintptr_t e,float v){bridgePlaydate->sound->effect->overdrive->setGain((Overdrive*)e,v);} void bridgeOverdriveSetLimit(uintptr_t e,float v){bridgePlaydate->sound->effect->overdrive->setLimit((Overdrive*)e,v);} void bridgeOverdriveSetLimitModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->overdrive->setLimitModulator((Overdrive*)e,(PDSynthSignalValue*)m);} void bridgeOverdriveSetOffset(uintptr_t e,float v){bridgePlaydate->sound->effect->overdrive->setOffset((Overdrive*)e,v);} void bridgeOverdriveSetOffsetModulator(uintptr_t e,uintptr_t m){bridgePlaydate->sound->effect->overdrive->setOffsetModulator((Overdrive*)e,(PDSynthSignalValue*)m);} void bridgeFreeOverdrive(uintptr_t e){bridgePlaydate->sound->effect->overdrive->freeOverdrive((Overdrive*)e);}
+uintptr_t bridgeNewDelayLine(int l,int s){return(uintptr_t)bridgePlaydate->sound->effect->delayline->newDelayLine(l,s);} void bridgeDelaySetLength(uintptr_t e,int v){bridgePlaydate->sound->effect->delayline->setLength((DelayLine*)e,v);} void bridgeDelaySetFeedback(uintptr_t e,float v){bridgePlaydate->sound->effect->delayline->setFeedback((DelayLine*)e,v);} uintptr_t bridgeDelayAddTap(uintptr_t e,int v){return(uintptr_t)bridgePlaydate->sound->effect->delayline->addTap((DelayLine*)e,v);} void bridgeTapSetDelay(uintptr_t t,int v){bridgePlaydate->sound->effect->delayline->setTapDelay((DelayLineTap*)t,v);} void bridgeTapSetDelayModulator(uintptr_t t,uintptr_t m){bridgePlaydate->sound->effect->delayline->setTapDelayModulator((DelayLineTap*)t,(PDSynthSignalValue*)m);} void bridgeTapSetChannelsFlipped(uintptr_t t,int v){bridgePlaydate->sound->effect->delayline->setTapChannelsFlipped((DelayLineTap*)t,v);} void bridgeFreeTap(uintptr_t t){bridgePlaydate->sound->effect->delayline->freeTap((DelayLineTap*)t);} void bridgeFreeDelayLine(uintptr_t e){bridgePlaydate->sound->effect->delayline->freeDelayLine((DelayLine*)e);}
+uintptr_t bridgeNewLFO(int type){return(uintptr_t)bridgePlaydate->sound->lfo->newLFO((LFOType)type);}
+uintptr_t bridgeNewEnvelope(float a,float d,float s,float r){return(uintptr_t)bridgePlaydate->sound->envelope->newEnvelope(a,d,s,r);}
+uintptr_t bridgeNewControlSignal(void){return(uintptr_t)bridgePlaydate->sound->controlsignal->newSignal();}
+float bridgeSignalValue(uintptr_t signal){return bridgePlaydate->sound->signal->getValue((PDSynthSignal*)signal);}
+void bridgeSignalSetScale(uintptr_t signal,float value){bridgePlaydate->sound->signal->setValueScale((PDSynthSignal*)signal,value);}
+void bridgeSignalSetOffset(uintptr_t signal,float value){bridgePlaydate->sound->signal->setValueOffset((PDSynthSignal*)signal,value);}
+void bridgeLFOSetRate(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setRate((PDSynthLFO*)signal,value);} void bridgeLFOSetPhase(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setPhase((PDSynthLFO*)signal,value);} void bridgeLFOSetCenter(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setCenter((PDSynthLFO*)signal,value);} void bridgeLFOSetDepth(uintptr_t signal,float value){bridgePlaydate->sound->lfo->setDepth((PDSynthLFO*)signal,value);} void bridgeLFOSetRetrigger(uintptr_t signal,int value){bridgePlaydate->sound->lfo->setRetrigger((PDSynthLFO*)signal,value);}
+void bridgeLFOSetArpeggiation(uintptr_t signal,int count,float* steps){bridgePlaydate->sound->lfo->setArpeggiation((PDSynthLFO*)signal,count,steps);}
+void bridgeEnvelopeSetAttack(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setAttack((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetDecay(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setDecay((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetSustain(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setSustain((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetRelease(uintptr_t signal,float value){bridgePlaydate->sound->envelope->setRelease((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetLegato(uintptr_t signal,int value){bridgePlaydate->sound->envelope->setLegato((PDSynthEnvelope*)signal,value);} void bridgeEnvelopeSetRetrigger(uintptr_t signal,int value){bridgePlaydate->sound->envelope->setRetrigger((PDSynthEnvelope*)signal,value);}
+void bridgeControlSignalAddEvent(uintptr_t signal,int step,float value,int interpolate){bridgePlaydate->sound->controlsignal->addEvent((ControlSignal*)signal,step,value,interpolate);} void bridgeControlSignalRemoveEvent(uintptr_t signal,int step){bridgePlaydate->sound->controlsignal->removeEvent((ControlSignal*)signal,step);} void bridgeControlSignalClearEvents(uintptr_t signal){bridgePlaydate->sound->controlsignal->clearEvents((ControlSignal*)signal);}
+void bridgeFreeLFO(uintptr_t signal){bridgePlaydate->sound->lfo->freeLFO((PDSynthLFO*)signal);} void bridgeFreeEnvelope(uintptr_t signal){bridgePlaydate->sound->envelope->freeEnvelope((PDSynthEnvelope*)signal);} void bridgeFreeControlSignal(uintptr_t signal){bridgePlaydate->sound->controlsignal->freeSignal((ControlSignal*)signal);}
+static void bridgeMicrophonePermissionCallback(bool allowed,void* userdata){(void)userdata;goMicrophonePermission(allowed?1:0);} static int bridgeMicrophoneSamplesCallback(void* context,int16_t* data,int length){(void)context;return goMicrophoneSamples(data,length);} int bridgeRequestMicAccess(const char* purpose){return(int)bridgePlaydate->sound->requestMicAccess(purpose,bridgeMicrophonePermissionCallback,NULL);} int bridgeStartMicrophone(int source){return bridgePlaydate->sound->setMicCallback(bridgeMicrophoneSamplesCallback,NULL,(enum MicSource)source);} void bridgeStopMicrophone(void){bridgePlaydate->sound->setMicCallback(NULL,NULL,kMicInputAutodetect);}

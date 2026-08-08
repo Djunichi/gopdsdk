@@ -19,6 +19,11 @@ Every package needs a `// Package <name>` comment in its primary implementation
 file; do not add a comment-only `doc.go`. Prefer the standard library and record
 the reason for every dependency.
 
+Project-owned Simulator and device bridge sources are package-owned `go:embed`
+assets. Keep changes to those assets together with their deterministic ABI
+tests. Official Playdate headers, setup sources, and linker scripts must remain
+external inputs resolved from the installed SDK.
+
 Before opening a pull request, run:
 
 ```sh

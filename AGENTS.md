@@ -16,6 +16,10 @@ preserve unrelated user edits, and do not commit or publish unless requested.
 - Optional `playdate.Context` capabilities must exist in every native ABI
   context, forward through runtime `applicationContext`, and have regression
   coverage through `NewApplication` (ABI-only tests are insufficient).
+- Keep project-owned Simulator and device bridge sources as package-owned
+  `go:embed` assets. Update their deterministic ABI tests in the same change;
+  continue resolving official headers, setup sources, and linker scripts from
+  the installed Playdate SDK.
 
 Prefer feature cohesion; never add `util`, `common`, `helpers`, or `misc`.
 Default to the standard library; justify new dependencies.

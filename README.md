@@ -215,6 +215,11 @@ portable `${WORK}` and `${PACKAGE}` tokens, and explicit artifact retention.
 Temporary workspaces are marked `cleanup`; published `.pdx` outputs are marked
 `preserve`. Cleanup rejects unresolved, relative, and filesystem-root paths.
 
+The CLI carries its project-owned Simulator and device ABI bridge sources as
+package-owned `go:embed` assets. It materializes those version-matched sources
+only inside the temporary workspace. Official `pd_api.h`, `setup.c`, and
+`link_map.ld` remain external inputs read from the selected Playdate SDK.
+
 Build and launch the example, replacing its previous build artifact, with:
 
 ```sh
