@@ -115,14 +115,15 @@ P7 completes offline drawing, bitmap, font, text, and presentation behavior.
 - Cover the complete slice through the repository-owned `examples/bitmapdata`
   scene on both native adapters.
 
-### P7.3 — text and fonts
+### P7.3 — text and fonts — Implemented
 
-- Add bounded-rectangle text drawing, wrapping-height measurement, tracking,
+- Added bounded-rectangle text drawing, wrapping-height measurement, tracking,
   leading, glyph metrics, kerning, and the font page/glyph access necessary for
   custom text renderers.
-- Add font creation from game-owned data only if the official lifetime can be
-  represented safely on Simulator and device; otherwise document the exact
-  packaged-font replacement and prove that it preserves offline game behavior.
+- Kept font creation package-backed because the official opaque `LCDFontData`
+  API does not define a portable lifetime for Go-owned bytes. The
+  `examples/fontsui` acceptance scene proves packaged `.fnt` behavior offline
+  on Simulator and physical device.
 
 ### P7.4 — display introspection and release
 

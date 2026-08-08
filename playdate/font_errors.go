@@ -19,4 +19,6 @@ var (
 	ErrFontLoad error = fontError("font could not be loaded")
 	// ErrFontInvalid indicates a font not created by this runtime.
 	ErrFontInvalid error = fontError("font handle was not created by this runtime")
+	// ErrFontGlyph indicates that a font does not contain the requested glyph.
+	ErrFontGlyph error = fontError("font glyph is unavailable")
 )
