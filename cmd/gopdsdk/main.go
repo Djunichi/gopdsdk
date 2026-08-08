@@ -8,7 +8,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/features/build"
 	"github.com/Djunichi/gopdsdk/internal/features/deviceconnect"
-	"github.com/Djunichi/gopdsdk/internal/features/devicecrashlog"
+	"github.com/Djunichi/gopdsdk/internal/features/devicelog"
 	"github.com/Djunichi/gopdsdk/internal/features/deviceprobe"
 	"github.com/Djunichi/gopdsdk/internal/features/doctor"
 	"github.com/Djunichi/gopdsdk/internal/features/initproject"
@@ -29,8 +29,8 @@ func main() {
 			} else {
 				err = build.Run(context.Background(), args, os.Stdout, os.Stderr)
 			}
-		case "crashlog":
-			err = devicecrashlog.Run(context.Background(), args, os.Stdout, os.Stderr)
+		case "crashlog", "errorlog":
+			err = devicelog.Run(context.Background(), args, os.Stdout, os.Stderr)
 		case "doctor":
 			err = doctor.Run(context.Background(), args, os.Stdout, os.Stderr, doctor.Options{
 				SimulatorProbe: func(ctx context.Context, sdkPath string) error {

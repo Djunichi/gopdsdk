@@ -33,6 +33,14 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	runTestCommand(t, project, "go", "mod", "tidy")
 	runTestCommand(t, project, "go", "test", "./...")
 
+	for _, commandName := range []string{"crashlog", "errorlog"} {
+		command := exec.Command(binary, commandName, "--sdk", filepath.Join(project, "fake sdk"))
+		output, runErr := command.CombinedOutput()
+		if runErr == nil || !strings.Contains(string(output), "required file") {
+			t.Fatalf("%s routing: error = %v, output = %q; want missing pdutil error", commandName, runErr, output)
+		}
+	}
+
 	for _, test := range []struct {
 		arguments []string
 		target    string

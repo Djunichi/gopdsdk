@@ -18,6 +18,7 @@ import (
 
 	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
 	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 	"github.com/Djunichi/gopdsdk/internal/shared/pdxsource"
 )
 
@@ -87,11 +88,11 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	setupSource := filepath.Join(sdkPath, "C_API", "buildsupport", "setup.c")
 	linkerScript := filepath.Join(sdkPath, "C_API", "buildsupport", "link_map.ld")
-	pdcName := "pdc"
-	if runtime.GOOS == "windows" {
-		pdcName += ".exe"
+	policy, err := hostpolicy.For(runtime.GOOS)
+	if err != nil {
+		return Result{}, err
 	}
-	pdc := filepath.Join(sdkPath, "bin", pdcName)
+	pdc := filepath.Join(sdkPath, "bin", policy.PDCName)
 	for _, path := range []string{filepath.Join(sdkPath, "C_API", "pd_api.h"), setupSource, linkerScript, pdc} {
 		if info, statErr := os.Stat(path); statErr != nil || info.IsDir() {
 			return Result{}, fmt.Errorf("required file %s is unavailable", path)
@@ -312,11 +313,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		pending = "device deployment, hardware execution, and conservative-GC soak"
 	}
 	if config.Install || config.Run {
-		pdutilName := "pdutil"
-		if runtime.GOOS == "windows" {
-			pdutilName += ".exe"
-		}
-		pdutil := filepath.Join(sdkPath, "bin", pdutilName)
+		pdutil := filepath.Join(sdkPath, "bin", policy.PDUtilName)
 		if info, statErr := os.Stat(pdutil); statErr != nil || info.IsDir() {
 			return Result{}, fmt.Errorf("required file %s is unavailable", pdutil)
 		}

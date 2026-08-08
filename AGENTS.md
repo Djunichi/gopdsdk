@@ -13,6 +13,9 @@ preserve unrelated user edits, and do not commit or publish unless requested.
 - `cmd/<binary>`: input parsing, dependency composition, and exit codes only.
 - `internal/features/<feature>`: feature-owned logic, models, and tests.
 - `internal/shared/<component>`: only after two real feature consumers exist.
+- Keep native public capabilities in the common `playdate` package and organize
+  declarations and sentinel errors by feature-owned files. Add a `playdate/<x>`
+  package only for a distinct higher-level layer such as `playdate/store`.
 - Optional `playdate.Context` capabilities must exist in every native ABI
   context, forward through runtime `applicationContext`, and have regression
   coverage through `NewApplication` (ABI-only tests are insufficient).
@@ -39,4 +42,5 @@ Default to the standard library; justify new dependencies.
 Name the actual verification level: unit, external-consumer CLI, native CI, SDK
 integration, or physical device. CI, cross-compilation, dry-runs, and Docker do
 not prove SDK, Simulator, USB, or hardware readiness. Physical-device acceptance
-requires a connected Playdate; check its post-run crashlog only when requested.
+requires a connected Playdate; inspect post-run `crashlog.txt` or `errorlog.txt`
+only when requested.

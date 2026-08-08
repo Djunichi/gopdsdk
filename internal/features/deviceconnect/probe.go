@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
 // ErrNoDevice indicates that pdutil could not detect a connected Playdate.
@@ -35,11 +37,11 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("resolve Playdate SDK path: %w", err)
 	}
-	pdutilName := "pdutil"
-	if runtime.GOOS == "windows" {
-		pdutilName += ".exe"
+	policy, err := hostpolicy.For(runtime.GOOS)
+	if err != nil {
+		return Result{}, err
 	}
-	pdutil := filepath.Join(sdkPath, "bin", pdutilName)
+	pdutil := filepath.Join(sdkPath, "bin", policy.PDUtilName)
 	if info, statErr := os.Stat(pdutil); statErr != nil || info.IsDir() {
 		return Result{}, fmt.Errorf("required file %s is unavailable", pdutil)
 	}

@@ -10,6 +10,11 @@ Keep changes feature-cohesive under `internal/features/<feature>`. Move code to
 `cmd/gopdsdk` package is a composition root, and public `playdate` API additions
 require a concrete example.
 
+Keep native public capabilities in the common `playdate` package, with
+declarations and sentinel errors grouped in feature-owned files. Introduce a
+`playdate/<area>` package only for a distinct higher-level layer with concrete
+consumers; `playdate/store` is the accepted persistence example.
+
 Importable application packages keep `pdxinfo` beside their Go source and put
 all packageable assets below `resources/`. The contents of that directory are
 staged at the PDX root; for example, `resources/images/player.png` is loaded as

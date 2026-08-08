@@ -8,6 +8,8 @@ that out.
 
 ### Added
 
+- A read-only `gopdsdk errorlog` command alongside `crashlog`, backed by one
+  cohesive device-log feature and the shared cross-platform host tool policy.
 - Optional `playdate.BitmapCompositor` transformed-bitmap and callback-scoped
   stencil composition, forwarded through `NewApplication` and both native ABI
   contexts.
@@ -16,6 +18,17 @@ that out.
 - A deterministic `examples/composition` P6.1 scene with owned offscreen source
   and screen-aligned stencil bitmaps, a transparent composition canvas,
   crank-controlled rotation, and termination cleanup.
+
+### Changed
+
+- Project-owned Simulator and device Go/C/assembly/target bridge sources now
+  ship as package-owned `go:embed` assets while official headers, setup code,
+  and linker scripts remain inputs from the selected Playdate SDK.
+- Public `playdate` sentinel declarations are organized by API-area files, and
+  `playdate/store` separates its operations, error domain, and binary codec.
+  Exported identifiers, error identity, and import paths are unchanged.
+- Device connection, log retrieval, build, and deployment features now resolve
+  `pdc` and `pdutil` names through the shared cross-platform host policy.
 
 ### Compatibility
 

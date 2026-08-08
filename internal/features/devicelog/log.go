@@ -1,5 +1,5 @@
-// Package devicecrashlog retrieves crash reports from a connected Playdate.
-package devicecrashlog
+// Package devicelog retrieves diagnostic logs from a connected Playdate.
+package devicelog
 
 import (
 	"context"
@@ -9,10 +9,25 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
 )
 
-// Read mounts the Playdate data disk and returns its crash log.
-func Read(ctx context.Context, sdkPath string) ([]byte, string, error) {
+// Kind identifies a diagnostic log stored at the Playdate data-disk root.
+type Kind string
+
+const (
+	// CrashLog identifies crashlog.txt.
+	CrashLog Kind = "crashlog.txt"
+	// ErrorLog identifies errorlog.txt.
+	ErrorLog Kind = "errorlog.txt"
+)
+
+// Read mounts the Playdate data disk and returns the requested diagnostic log.
+func Read(ctx context.Context, sdkPath string, kind Kind) ([]byte, string, error) {
+	if kind != CrashLog && kind != ErrorLog {
+		return nil, "", fmt.Errorf("unsupported Playdate log %q", kind)
+	}
 	if sdkPath == "" {
 		return nil, "", fmt.Errorf("Playdate SDK path is required")
 	}
@@ -20,16 +35,16 @@ func Read(ctx context.Context, sdkPath string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("resolve Playdate SDK path: %w", err)
 	}
-	pdutilName := "pdutil"
-	if runtime.GOOS == "windows" {
-		pdutilName += ".exe"
+	policy, err := hostpolicy.For(runtime.GOOS)
+	if err != nil {
+		return nil, "", err
 	}
-	pdutil := filepath.Join(sdkPath, "bin", pdutilName)
+	pdutil := filepath.Join(sdkPath, "bin", policy.PDUtilName)
 	if info, statErr := os.Stat(pdutil); statErr != nil || info.IsDir() {
 		return nil, "", fmt.Errorf("required file %s is unavailable", pdutil)
 	}
 	if mountPath, ok := findMountedPlaydate(); ok {
-		return readCrashlog(mountPath)
+		return readLog(mountPath, kind)
 	}
 	output, err := exec.CommandContext(ctx, pdutil, "datadisk").CombinedOutput()
 	if err != nil {
@@ -39,16 +54,16 @@ func Read(ctx context.Context, sdkPath string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	return readCrashlog(mountPath)
+	return readLog(mountPath, kind)
 }
 
-func readCrashlog(mountPath string) ([]byte, string, error) {
-	crashlogPath := filepath.Join(mountPath, "crashlog.txt")
-	contents, err := os.ReadFile(crashlogPath)
+func readLog(mountPath string, kind Kind) ([]byte, string, error) {
+	logPath := filepath.Join(mountPath, string(kind))
+	contents, err := os.ReadFile(logPath)
 	if err != nil {
-		return nil, "", fmt.Errorf("read Playdate crash log %s: %w", crashlogPath, err)
+		return nil, "", fmt.Errorf("read Playdate %s %s: %w", logLabel(kind), logPath, err)
 	}
-	return contents, crashlogPath, nil
+	return contents, logPath, nil
 }
 
 func findMountedPlaydate() (string, bool) {
@@ -91,8 +106,12 @@ func isPlaydateRoot(root string) bool {
 			return false
 		}
 	}
-	info, err := os.Stat(filepath.Join(root, "crashlog.txt"))
-	return err == nil && !info.IsDir()
+	for _, kind := range []Kind{CrashLog, ErrorLog} {
+		if info, err := os.Stat(filepath.Join(root, string(kind))); err == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 func parseMountPath(output string) (string, error) {
@@ -116,4 +135,11 @@ func commandError(err error, output []byte) error {
 		return fmt.Errorf("mount Playdate data disk: %w", err)
 	}
 	return fmt.Errorf("mount Playdate data disk: %w: %s", err, detail)
+}
+
+func logLabel(kind Kind) string {
+	if kind == ErrorLog {
+		return "error log"
+	}
+	return "crash log"
 }
