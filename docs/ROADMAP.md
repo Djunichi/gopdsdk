@@ -1,6 +1,6 @@
 # Product roadmap
 
-Status: `v0.6.0` released; the remaining offline official-SDK capability gaps
+Status: `v0.7.0` released; the remaining offline official-SDK capability gaps
 are allocated through `v0.12.0`, followed by the `v1.0.0` contract release,
 updated 2026-08-08.
 
@@ -50,7 +50,6 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P7 | `v0.7.0` | Complete offline bitmap, drawing, text, and display facilities | In progress |
 | P8 | `v0.8.0` | Complete offline sprite and collision facilities | Planned |
 | P9 | `v0.9.0` | Complete offline sound, sample, and output facilities | Planned |
 | P10 | `v0.10.0` | Complete offline system and lifecycle facilities | Planned |
@@ -69,7 +68,7 @@ cross-build does not promote a capability to device-ready.
 
 ## Offline official-SDK completion policy
 
-P7 through P11 close every known official C SDK gap that can materially block
+P8 through P11 close every remaining known official C SDK gap that can materially block
 an offline game. Selection is based on lost capability, not anticipated
 popularity: a feature is in scope even when uncommon if omitting it prevents a
 game design that the official C SDK supports.
@@ -91,52 +90,6 @@ both native contexts, deterministic tests, a repository-owned acceptance
 consumer, official Simulator integration, device build, and applicable physical
 device behavior. Callback APIs additionally require bounded queues, no unsafe
 re-entry into Go, termination suppression, and overflow behavior.
-
-## P7 — complete graphics and display — `v0.7.0`
-
-P7 completes offline drawing, bitmap, font, text, and presentation behavior.
-
-### P7.1 — drawing and graphics state — Implemented
-
-- Add filled polygons, rounded rectangles, line-cap style, background color,
-  screen clipping, and the remaining drawing-state operations.
-- Add only non-deprecated primitive variants; equivalent Go value types replace
-  C pointer-oriented representations.
-
-### P7.2 — bitmap data, masks, and collision — Implemented
-
-- Add owned-bitmap pixel/data access with explicit callback lifetime and dirty
-  tracking, bitmap copy, loading into existing bitmaps and tables, masks,
-  bitmap mask collision, and rotated-bitmap creation.
-- Add display-buffer copying when it provides a persistent owned snapshot not
-  supplied by the callback-scoped framebuffer API.
-- Preserve owned, borrowed, mask, and drawing-context lifetimes across every
-  operation.
-- Cover the complete slice through the repository-owned `examples/bitmapdata`
-  scene on both native adapters.
-
-### P7.3 — text and fonts — Implemented
-
-- Added bounded-rectangle text drawing, wrapping-height measurement, tracking,
-  leading, glyph metrics, kerning, and the font page/glyph access necessary for
-  custom text renderers.
-- Kept font creation package-backed because the official opaque `LCDFontData`
-  API does not define a portable lifetime for Go-owned bytes. The
-  `examples/fontsui` acceptance scene proves packaged `.fnt` behavior offline
-  on Simulator and physical device.
-
-### P7.4 — display introspection and release
-
-The display-introspection API and both native adapters passed matching
-Simulator and physical-device acceptance on 2026-08-08. The release gates
-below remain in progress.
-
-- Add display width, height, refresh-rate, and FPS introspection where the value
-  is not already an invariant of the public platform contract.
-- Keep debug framebuffer and explicit display-flush entry points internal or
-  intentionally omitted when the update return contract is equivalent.
-- Run graphics regression, performance, bounded-memory, soak, and device-log
-  gates before releasing `v0.7.0`.
 
 ## P8 — complete sprites and collisions — `v0.8.0`
 

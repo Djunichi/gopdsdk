@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release"
+  short_description: "Prepare and verify a gopdsdk release"
+  default_prompt: "Use $release to prepare and verify the next gopdsdk release."
