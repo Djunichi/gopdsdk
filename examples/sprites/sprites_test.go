@@ -70,6 +70,15 @@ func (s *testSprite) MoveWithCollisions(float32, float32) (playdate.MoveResult, 
 func (s *testSprite) CheckCollisions(float32, float32) (playdate.MoveResult, error) {
 	return playdate.MoveResult{}, nil
 }
+func (s *testSprite) SetDrawCallback(playdate.SpriteDrawCallback) error {
+	return s.record("drawCallback")
+}
+func (s *testSprite) SetUpdateCallback(playdate.SpriteUpdateCallback) error {
+	return s.record("updateCallback")
+}
+func (s *testSprite) SetCollisionResponseCallback(playdate.SpriteCollisionResponseCallback) error {
+	return s.record("collisionCallback")
+}
 func (s *testSprite) Add() error    { return s.record("add") }
 func (s *testSprite) Remove() error { return s.record("remove") }
 func (s *testSprite) Close() error  { return s.record("close") }

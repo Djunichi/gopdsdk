@@ -259,6 +259,12 @@ func bridgeSetBackgroundColor(color int32)
 func bridgeSetScreenClipRect(x,y,width,height int32)
 //go:linkname bridgeNewSprite bridgeNewSprite
 func bridgeNewSprite() uintptr
+//go:linkname bridgeSpriteSetDrawCallback bridgeSpriteSetDrawCallback
+func bridgeSpriteSetDrawCallback(uintptr,int32)
+//go:linkname bridgeSpriteSetUpdateCallback bridgeSpriteSetUpdateCallback
+func bridgeSpriteSetUpdateCallback(uintptr,int32)
+//go:linkname bridgeSpriteSetCollisionCallback bridgeSpriteSetCollisionCallback
+func bridgeSpriteSetCollisionCallback(uintptr,int32)
 //go:linkname bridgeFreeSprite bridgeFreeSprite
 func bridgeFreeSprite(sprite uintptr)
 //go:linkname bridgeSpriteSetBitmap bridgeSpriteSetBitmap
@@ -649,6 +655,13 @@ var _ sdkPlaydate.AudioEffects = playdateContext{}
 
 //export goAudioCallback
 func goAudioCallback(callback uint32, oneShot int32){sdkRuntime.InvokeAudioCallback(callback,oneShot!=0)}
+
+//export goSpriteDraw
+func goSpriteDraw(s uintptr,bx,by,bw,bh,dx,dy,dw,dh uint32){spriteDisplayList.InvokeSpriteDraw(s,sdkPlaydate.Rect{X:float32FromBits(bx),Y:float32FromBits(by),Width:float32FromBits(bw),Height:float32FromBits(bh)},sdkPlaydate.Rect{X:float32FromBits(dx),Y:float32FromBits(dy),Width:float32FromBits(dw),Height:float32FromBits(dh)})}
+//export goSpriteUpdate
+func goSpriteUpdate(s uintptr){spriteDisplayList.InvokeSpriteUpdate(s)}
+//export goSpriteCollision
+func goSpriteCollision(s,o uintptr)int32{return int32(spriteDisplayList.InvokeSpriteCollision(s,o))}
 var microphonePermissionCallback func(bool)
 var microphoneRecordingCallback func([]int16)bool
 var microphonePollBuffer [256]int16
@@ -875,6 +888,9 @@ var spriteDriver = sdkRuntime.SpriteDriver{
 	MarkDirtyRect: func(sprite uintptr,rect sdkPlaydate.Rect){bridgeSpriteMarkDirtyRectBits(sprite,float32Bits(rect.X),float32Bits(rect.Y),float32Bits(rect.Width),float32Bits(rect.Height))},
 	MoveWithCollisions: moveWithCollisions,
 	CheckCollisions: checkCollisions,
+	SetDrawCallback: func(s uintptr,v bool){bridgeSpriteSetDrawCallback(s,boolInt32(v))},
+	SetUpdateCallback: func(s uintptr,v bool){bridgeSpriteSetUpdateCallback(s,boolInt32(v))},
+	SetCollisionCallback: func(s uintptr,v bool){bridgeSpriteSetCollisionCallback(s,boolInt32(v))},
 	Add: bridgeSpriteAdd, Remove: bridgeSpriteRemove, Free: bridgeFreeSprite,
 }
 var spriteTileMapDriver=sdkRuntime.SpriteTileMapDriver{SetImageTable:bridgeSpriteTileMapSetImageTable,SetSize:func(m uintptr,w,h int){bridgeSpriteTileMapSetSize(m,int32(w),int32(h))},Size:func(m uintptr)(int,int){var w,h int32;bridgeSpriteTileMapSize(m,&w,&h);return int(w),int(h)},PixelSize:func(m uintptr)(int,int){var w,h uint32;bridgeSpriteTileMapPixelSize(m,&w,&h);return int(w),int(h)},SetTiles:func(m uintptr,v []uint16,row int){bridgeSpriteTileMapSetTiles(m,&v[0],int32(len(v)),int32(row))},SetTile:func(m uintptr,x,y int,v uint16){bridgeSpriteTileMapSetTile(m,int32(x),int32(y),v)},Tile:func(m uintptr,x,y int)uint16{return uint16(bridgeSpriteTileMapTile(m,int32(x),int32(y)))},Free:bridgeFreeSpriteTileMap}
@@ -982,6 +998,7 @@ func mustApplication() *sdkRuntime.Application {
 
 //export goEventHandler
 func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
+	if sdkRuntime.Event(event) == sdkRuntime.EventTerminate { spriteDisplayList.TerminateSpriteCallbacks() }
 	if err := application.Handle(sdkRuntime.Event(event), arg); err != nil {
 		return -1
 	}

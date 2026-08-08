@@ -198,6 +198,15 @@ void bridgeDisplaySetMosaic(unsigned int x, unsigned int y) { bridgePlaydate->di
 void bridgeDisplaySetFlipped(int x, int y) { bridgePlaydate->display->setFlipped(x, y); }
 void bridgeDisplaySetOffset(int x, int y) { bridgePlaydate->display->setOffset(x, y); }
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)bridgePlaydate->sprite->newSprite(); }
+extern void goSpriteDraw(uintptr_t,float,float,float,float,float,float,float,float);
+extern void goSpriteUpdate(uintptr_t);
+extern int goSpriteCollision(uintptr_t,uintptr_t);
+static void bridgeSpriteDraw(LCDSprite*s,PDRect b,PDRect d){goSpriteDraw((uintptr_t)s,b.x,b.y,b.width,b.height,d.x,d.y,d.width,d.height);}
+static void bridgeSpriteUpdate(LCDSprite*s){goSpriteUpdate((uintptr_t)s);}
+static SpriteCollisionResponseType bridgeSpriteCollision(LCDSprite*s,LCDSprite*o){return(SpriteCollisionResponseType)goSpriteCollision((uintptr_t)s,(uintptr_t)o);}
+void bridgeSpriteSetDrawCallback(uintptr_t s,int v){bridgePlaydate->sprite->setDrawFunction((LCDSprite*)s,v?bridgeSpriteDraw:NULL);}
+void bridgeSpriteSetUpdateCallback(uintptr_t s,int v){bridgePlaydate->sprite->setUpdateFunction((LCDSprite*)s,v?bridgeSpriteUpdate:NULL);}
+void bridgeSpriteSetCollisionCallback(uintptr_t s,int v){bridgePlaydate->sprite->setCollisionResponseFunction((LCDSprite*)s,v?bridgeSpriteCollision:NULL);}
 void bridgeFreeSprite(uintptr_t sprite) { bridgePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { bridgePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
 void bridgeSpriteSetCenter(uintptr_t s,float x,float y){bridgePlaydate->sprite->setCenter((LCDSprite*)s,x,y);} void bridgeSpriteGetCenter(uintptr_t s,float*x,float*y){bridgePlaydate->sprite->getCenter((LCDSprite*)s,x,y);}

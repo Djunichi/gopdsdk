@@ -6,6 +6,23 @@ that out.
 
 ## Unreleased
 
+- Implemented P8.3 per-sprite procedural draw, update, and pair-specific
+  collision-response callbacks on both native adapters. Callback registration
+  is bounded to 64 per context, clearing and `Close` deterministically release
+  slots, and lifecycle termination suppresses later delivery. The expanded
+  `examples/spritepresentation` acceptance scene exercises all three callback
+  kinds. Deterministic tests, the official Windows SDK 3.1.1 Simulator build,
+  and the conservative hard-float device build pass; the device artifact uses
+  283,104 bytes of static RAM and produces a 1,479,780-byte ELF and a
+  73,656-byte PDX. On 2026-08-09 the official Windows SDK 3.1.1 Simulator
+  displayed `P8.3 PASS`; the startup collision-response self-check succeeded
+  and the visible update-callback counter increased continuously. USB
+  installation through COM3 and launch then passed on a physical Playdate;
+  user-confirmed execution showed matching `P8.3 PASS`, a continuously
+  increasing update counter, and the procedural draw. Conservative-GC soak,
+  memory-growth measurement, and post-run device-log inspection remain
+  unverified.
+
 - Completed P8.2 with line and detailed sprite-hit queries, non-mutating
   collision checks, sprite count, bulk add/remove, remove-all, and
   collision-world reset across Simulator and device adapters. Batch operations

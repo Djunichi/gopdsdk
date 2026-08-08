@@ -41,10 +41,24 @@ type Sprite interface {
 	MarkDirtyRect(Rect) error
 	MoveWithCollisions(goalX, goalY float32) (MoveResult, error)
 	CheckCollisions(goalX, goalY float32) (MoveResult, error)
+	SetDrawCallback(SpriteDrawCallback) error
+	SetUpdateCallback(SpriteUpdateCallback) error
+	SetCollisionResponseCallback(SpriteCollisionResponseCallback) error
 	Add() error
 	Remove() error
 	Close() error
 }
+
+// SpriteDrawCallback draws a procedural sprite. Bounds is the sprite's current
+// bounds and drawRect is the dirty portion requested for this frame. A nil
+// callback restores the SDK's default bitmap drawing behavior.
+type SpriteDrawCallback func(sprite Sprite, bounds, drawRect Rect)
+
+// SpriteUpdateCallback runs in display-list order during the sprite frame pass.
+type SpriteUpdateCallback func(sprite Sprite)
+
+// SpriteCollisionResponseCallback selects the response for one ordered pair.
+type SpriteCollisionResponseCallback func(sprite, other Sprite) CollisionResponse
 
 // Sprites exposes sprite creation and the global display-list frame pass.
 type Sprites interface {

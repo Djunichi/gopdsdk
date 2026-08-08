@@ -214,6 +214,18 @@ presentation state. `Add` and `Remove` are idempotent. Each frame,
 move game objects and call `UpdateAndDrawSprites` once to update and render the
 global Playdate display list.
 
+Procedural sprites install `SetDrawCallback`, `SetUpdateCallback`, and
+`SetCollisionResponseCallback` directly on an owned `Sprite`; passing `nil`
+clears a callback. Draw and update callbacks run synchronously in native
+display-list order, and collision callbacks synchronously select the response
+for the ordered sprite pair. A context retains at most 64 installed callback
+slots across the three kinds and returns `ErrSpriteCallbackLimit` before
+changing native state when full. `Close` releases every slot, and lifecycle
+termination suppresses subsequent delivery. Callback code must not panic and
+must not close either sprite during the active native callback; mutations to
+other sprite state take effect according to the official SDK's current frame
+pass.
+
 `ClearStencil` uses a fully open stencil pattern on SDK 3.1.1. This preserves
 the documented drawing result while avoiding the SDK Simulator's rejection of
 the null bitmap used by its native sprite-clear path. Sprite stencil images use

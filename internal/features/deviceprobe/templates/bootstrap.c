@@ -195,6 +195,11 @@ void bridgeDisplaySetMosaic(uint32_t x,uint32_t y){activePlaydate->display->setM
 void bridgeDisplaySetFlipped(int32_t x,int32_t y){activePlaydate->display->setFlipped(x,y);}
 void bridgeDisplaySetOffset(int32_t x,int32_t y){activePlaydate->display->setOffset(x,y);}
 uintptr_t bridgeNewSprite(void) { return (uintptr_t)activePlaydate->sprite->newSprite(); }
+extern void goSpriteDraw(uintptr_t,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t);
+extern void goSpriteUpdate(uintptr_t); extern int32_t goSpriteCollision(uintptr_t,uintptr_t);
+static void bridgeSpriteDraw(LCDSprite*s,PDRect b,PDRect d){goSpriteDraw((uintptr_t)s,bridgeFloatBits(b.x),bridgeFloatBits(b.y),bridgeFloatBits(b.width),bridgeFloatBits(b.height),bridgeFloatBits(d.x),bridgeFloatBits(d.y),bridgeFloatBits(d.width),bridgeFloatBits(d.height));}
+static void bridgeSpriteUpdate(LCDSprite*s){goSpriteUpdate((uintptr_t)s);} static SpriteCollisionResponseType bridgeSpriteCollision(LCDSprite*s,LCDSprite*o){return(SpriteCollisionResponseType)goSpriteCollision((uintptr_t)s,(uintptr_t)o);}
+void bridgeSpriteSetDrawCallback(uintptr_t s,int32_t v){activePlaydate->sprite->setDrawFunction((LCDSprite*)s,v?bridgeSpriteDraw:NULL);} void bridgeSpriteSetUpdateCallback(uintptr_t s,int32_t v){activePlaydate->sprite->setUpdateFunction((LCDSprite*)s,v?bridgeSpriteUpdate:NULL);} void bridgeSpriteSetCollisionCallback(uintptr_t s,int32_t v){activePlaydate->sprite->setCollisionResponseFunction((LCDSprite*)s,v?bridgeSpriteCollision:NULL);}
 void bridgeFreeSprite(uintptr_t sprite) { activePlaydate->sprite->freeSprite((LCDSprite*)sprite); }
 void bridgeSpriteSetBitmap(uintptr_t sprite, uintptr_t bitmap) { activePlaydate->sprite->setImage((LCDSprite*)sprite, (LCDBitmap*)bitmap, kBitmapUnflipped); }
 void bridgeSpriteSetCenterBits(uintptr_t s,uint32_t x,uint32_t y){union{uint32_t bits;float value;}a={.bits=x},b={.bits=y};activePlaydate->sprite->setCenter((LCDSprite*)s,a.value,b.value);} void bridgeSpriteGetPointBits(uintptr_t s,int32_t center,uint32_t*x,uint32_t*y){union{float value;uint32_t bits;}a,b;if(center)activePlaydate->sprite->getCenter((LCDSprite*)s,&a.value,&b.value);else activePlaydate->sprite->getPosition((LCDSprite*)s,&a.value,&b.value);*x=a.bits;*y=b.bits;}
