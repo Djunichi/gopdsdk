@@ -47,5 +47,11 @@ var (
 	// ErrAudioWaveform indicates a waveform outside the native enumeration.
 	ErrAudioWaveform error = audioError("audio waveform is invalid")
 	// ErrAudioEventStep indicates a negative control-signal step.
-	ErrAudioEventStep error = audioError("audio event step must be non-negative")
+	ErrAudioEventStep    error = audioError("audio event step must be non-negative")
+	ErrAudioSampleClosed error = audioError("audio sample is closed")
+	ErrAudioSampleInUse  error = audioError("audio sample is attached to a player")
+	ErrAudioSampleSize   error = audioError("audio sample size must be between one and 2147483647 bytes")
+	ErrAudioFormat       error = audioError("audio sample format is invalid")
+	ErrAudioRange        error = audioError("audio playback range is invalid")
+	ErrAudioBufferLength error = audioError("audio buffer length must be finite and positive")
 )

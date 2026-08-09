@@ -161,6 +161,7 @@ void bridgeAddDirtyRect(int x, int y, int width, int height);
 void bridgeUpdateAndDrawSprites(void);
 uintptr_t bridgeLoadSoundEffect(const char* path);
 uintptr_t bridgeNewPCMPlayer(const int16_t* samples, int count, uint32_t sampleRate);
+uintptr_t bridgeNewSample(int); uintptr_t bridgeLoadSample(const char*); uintptr_t bridgeNewSampleFromData(const uint8_t*,int,int,uint32_t); int bridgeSampleLoad(uintptr_t,const char*); void bridgeSampleData(uintptr_t,uint8_t**,int*,uint32_t*,uint32_t*); float bridgeSampleLength(uintptr_t); int bridgeSampleDecompress(uintptr_t); void bridgeFreeSample(uintptr_t); uintptr_t bridgeNewEmptySamplePlayer(void);
 int bridgeSoundEffectPlay(uintptr_t effect);
 int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate);
 void bridgeSoundEffectStop(uintptr_t effect);
@@ -184,8 +185,10 @@ void bridgeFilePlayerPause(uintptr_t player, int paused);
 void bridgeFilePlayerSetRate(uintptr_t player, float rate);
 float bridgeFilePlayerRate(uintptr_t player);
 void bridgeSoundEffectSetFinishCallback(uintptr_t effect, uint32_t callback);
+void bridgeSoundEffectSetLoopCallback(uintptr_t,uint32_t); void bridgeSamplePlayerSetSample(uintptr_t,uintptr_t); void bridgeSamplePlayerSetPlayRange(uintptr_t,int,int);
 void bridgeFilePlayerSetFinishCallback(uintptr_t player, uint32_t callback);
 void bridgeFilePlayerFadeVolume(uintptr_t player, float left, float right, uint32_t frames, uint32_t callback);
+int bridgeFilePlayerLoad(uintptr_t,const char*); void bridgeFilePlayerSetBufferLength(uintptr_t,float); void bridgeFilePlayerSetLoopRange(uintptr_t,float,float); int bridgeFilePlayerDidUnderrun(uintptr_t); void bridgeFilePlayerSetStopOnUnderrun(uintptr_t,int); void bridgeFilePlayerSetLoopCallback(uintptr_t,uint32_t);
 void bridgeFreeFilePlayer(uintptr_t player);
 uintptr_t bridgeSoundEffectSource(uintptr_t effect);
 uintptr_t bridgeNewAudioChannel(void);
@@ -662,6 +665,9 @@ var soundEffectDriver = sdkRuntime.AudioDriver{
 	SetRate: func(handle uintptr, rate float32) { C.bridgeSamplePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
 	Rate: func(handle uintptr) float32 { return float32(C.bridgeSamplePlayerRate(C.uintptr_t(handle))) },
 	SetFinishCallback: func(handle uintptr,callback uint32){C.bridgeSoundEffectSetFinishCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	SetLoopCallback: func(handle uintptr,callback uint32){C.bridgeSoundEffectSetLoopCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	SetSample: func(handle,sample uintptr){C.bridgeSamplePlayerSetSample(C.uintptr_t(handle),C.uintptr_t(sample))},
+	SetPlayRange: func(handle uintptr,start,end int){C.bridgeSamplePlayerSetPlayRange(C.uintptr_t(handle),C.int(start),C.int(end))},
 	Free: func(handle uintptr) { C.bridgeFreeSoundEffect(C.uintptr_t(handle)) },
 }
 var filePlayerDriver = sdkRuntime.AudioDriver{
@@ -675,6 +681,12 @@ var filePlayerDriver = sdkRuntime.AudioDriver{
 	SetRate: func(handle uintptr, rate float32) { C.bridgeFilePlayerSetRate(C.uintptr_t(handle), C.float(rate)) },
 	Rate: func(handle uintptr) float32 { return float32(C.bridgeFilePlayerRate(C.uintptr_t(handle))) },
 	SetFinishCallback: func(handle uintptr,callback uint32){C.bridgeFilePlayerSetFinishCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	SetLoopCallback: func(handle uintptr,callback uint32){C.bridgeFilePlayerSetLoopCallback(C.uintptr_t(handle),C.uint32_t(callback))},
+	Load: func(handle uintptr,path string)bool{p:=C.CString(path);defer C.free(unsafe.Pointer(p));return C.bridgeFilePlayerLoad(C.uintptr_t(handle),p)!=0},
+	SetBufferLength: func(handle uintptr,n float32){C.bridgeFilePlayerSetBufferLength(C.uintptr_t(handle),C.float(n))},
+	SetLoopRange: func(handle uintptr,s,e float32){C.bridgeFilePlayerSetLoopRange(C.uintptr_t(handle),C.float(s),C.float(e))},
+	DidUnderrun: func(handle uintptr)bool{return C.bridgeFilePlayerDidUnderrun(C.uintptr_t(handle))!=0},
+	SetStopOnUnderrun: func(handle uintptr,v bool){flag:=C.int(0);if v{flag=1};C.bridgeFilePlayerSetStopOnUnderrun(C.uintptr_t(handle),flag)},
 	FadeVolume: func(handle uintptr,left,right float32,frames,callback uint32){C.bridgeFilePlayerFadeVolume(C.uintptr_t(handle),C.float(left),C.float(right),C.uint32_t(frames),C.uint32_t(callback))},
 	Free: func(handle uintptr) { C.bridgeFreeFilePlayer(C.uintptr_t(handle)) },
 }
@@ -689,6 +701,11 @@ func (playdateContext) LoadSamplePlayer(path string) (sdkPlaydate.SamplePlayer, 
 	return sdkRuntime.NewSamplePlayer(handle, soundEffectDriver), nil
 }
 func(playdateContext)NewPCMPlayer(samples []int16,rate uint32)(sdkPlaydate.SamplePlayer,error){if len(samples)==0||rate==0{return nil,sdkPlaydate.ErrAudioParameter};handle:=uintptr(C.bridgeNewPCMPlayer((*C.int16_t)(unsafe.Pointer(&samples[0])),C.int(len(samples)),C.uint32_t(rate)));if handle==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewSamplePlayer(handle,soundEffectDriver),nil}
+var audioSampleDriver=sdkRuntime.AudioSampleDriver{Load:func(h uintptr,path string)bool{p:=C.CString(path);defer C.free(unsafe.Pointer(p));return C.bridgeSampleLoad(C.uintptr_t(h),p)!=0},Data:func(h uintptr)([]byte,sdkPlaydate.SoundFormat,uint32){var p *C.uint8_t;var f C.int;var r,n C.uint32_t;C.bridgeSampleData(C.uintptr_t(h),&p,&f,&r,&n);return unsafe.Slice((*byte)(unsafe.Pointer(p)),int(n)),sdkPlaydate.SoundFormat(f),uint32(r)},Length:func(h uintptr)float32{return float32(C.bridgeSampleLength(C.uintptr_t(h)))},Decompress:func(h uintptr)bool{return C.bridgeSampleDecompress(C.uintptr_t(h))!=0},Free:func(h uintptr){C.bridgeFreeSample(C.uintptr_t(h))}}
+func(playdateContext)NewSample(n int)(sdkPlaydate.AudioSample,error){if n<1||n>2147483647{return nil,sdkPlaydate.ErrAudioSampleSize};h:=uintptr(C.bridgeNewSample(C.int(n)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewAudioSample(h,audioSampleDriver),nil}
+func(playdateContext)LoadSample(path string)(sdkPlaydate.AudioSample,error){p:=C.CString(path);defer C.free(unsafe.Pointer(p));h:=uintptr(C.bridgeLoadSample(p));if h==0{return nil,sdkPlaydate.AudioLoadError(path)};return sdkRuntime.NewAudioSample(h,audioSampleDriver),nil}
+func(playdateContext)NewSampleFromData(data []byte,format sdkPlaydate.SoundFormat,rate uint32)(sdkPlaydate.AudioSample,error){if len(data)==0||len(data)>2147483647||rate==0||format>sdkPlaydate.SoundADPCMStereo{return nil,sdkPlaydate.ErrAudioParameter};h:=uintptr(C.bridgeNewSampleFromData((*C.uint8_t)(unsafe.Pointer(&data[0])),C.int(len(data)),C.int(format),C.uint32_t(rate)));if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewAudioSample(h,audioSampleDriver),nil}
+func(playdateContext)NewSamplePlayer(sample sdkPlaydate.AudioSample)(sdkPlaydate.SamplePlayer,error){h:=uintptr(C.bridgeNewEmptySamplePlayer());if h==0{return nil,sdkPlaydate.ErrAudioCreate};p:=sdkRuntime.NewSamplePlayer(h,soundEffectDriver);if err:=p.(sdkPlaydate.SamplePlayerControls).SetSample(sample);err!=nil{_ = p.Close();return nil,err};return p,nil}
 func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) {
 	cPath := C.CString(path); defer C.free(unsafe.Pointer(cPath)); handle := uintptr(C.bridgeLoadFilePlayer(cPath))
 	if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }

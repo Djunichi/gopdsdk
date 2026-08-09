@@ -254,7 +254,7 @@ void bridgeSetAlwaysRedraw(int flag) { bridgePlaydate->sprite->setAlwaysRedraw(f
 void bridgeAddDirtyRect(int x, int y, int width, int height) { bridgePlaydate->sprite->addDirtyRect(LCDMakeRect(x, y, width, height)); }
 void bridgeUpdateAndDrawSprites(void) { bridgePlaydate->sprite->updateAndDrawSprites(); }
 
-typedef struct { AudioSample* sample; SamplePlayer* player; } BridgeSoundEffect;
+typedef struct { AudioSample* sample; SamplePlayer* player; int ownsSample; } BridgeSoundEffect;
 static void bridgeAudioFinishCallback(SoundSource* source,void* userdata){(void)source;goAudioCallback((uint32_t)(uintptr_t)userdata,0);}
 static void bridgeAudioFadeCallback(SoundSource* source,void* userdata){(void)source;goAudioCallback((uint32_t)(uintptr_t)userdata,1);}
 uintptr_t bridgeLoadSoundEffect(const char* path)
@@ -265,11 +265,20 @@ uintptr_t bridgeLoadSoundEffect(const char* path)
 	if (!player) { bridgePlaydate->sound->sample->freeSample(sample); return 0; }
 	BridgeSoundEffect* effect = bridgePlaydate->system->realloc(NULL, sizeof(BridgeSoundEffect));
 	if (!effect) { bridgePlaydate->sound->sampleplayer->freePlayer(player); bridgePlaydate->sound->sample->freeSample(sample); return 0; }
-	effect->sample = sample; effect->player = player;
+	effect->sample = sample; effect->player = player; effect->ownsSample = 1;
 	bridgePlaydate->sound->sampleplayer->setSample(player, sample);
 	return (uintptr_t)effect;
 }
-uintptr_t bridgeNewPCMPlayer(const int16_t* samples,int count,uint32_t sampleRate){if(!samples||count<=0||sampleRate==0)return 0;int bytes=count*(int)sizeof(int16_t);uint8_t* copy=bridgePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,samples,(size_t)bytes);AudioSample* sample=bridgePlaydate->sound->sample->newSampleFromData(copy,kSound16bitMono,sampleRate,bytes,1);if(!sample){bridgePlaydate->system->realloc(copy,0);return 0;}SamplePlayer* player=bridgePlaydate->sound->sampleplayer->newPlayer();if(!player){bridgePlaydate->sound->sample->freeSample(sample);return 0;}BridgeSoundEffect* effect=bridgePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!effect){bridgePlaydate->sound->sampleplayer->freePlayer(player);bridgePlaydate->sound->sample->freeSample(sample);return 0;}effect->sample=sample;effect->player=player;bridgePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect;}
+uintptr_t bridgeNewPCMPlayer(const int16_t* samples,int count,uint32_t sampleRate){if(!samples||count<=0||sampleRate==0)return 0;int bytes=count*(int)sizeof(int16_t);uint8_t* copy=bridgePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,samples,(size_t)bytes);AudioSample* sample=bridgePlaydate->sound->sample->newSampleFromData(copy,kSound16bitMono,sampleRate,bytes,1);if(!sample){bridgePlaydate->system->realloc(copy,0);return 0;}SamplePlayer* player=bridgePlaydate->sound->sampleplayer->newPlayer();if(!player){bridgePlaydate->sound->sample->freeSample(sample);return 0;}BridgeSoundEffect* effect=bridgePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!effect){bridgePlaydate->sound->sampleplayer->freePlayer(player);bridgePlaydate->sound->sample->freeSample(sample);return 0;}effect->sample=sample;effect->player=player;effect->ownsSample=1;bridgePlaydate->sound->sampleplayer->setSample(player,sample);return(uintptr_t)effect;}
+uintptr_t bridgeNewSample(int bytes){return(uintptr_t)bridgePlaydate->sound->sample->newSampleBuffer(bytes);}
+uintptr_t bridgeLoadSample(const char*path){return(uintptr_t)bridgePlaydate->sound->sample->load(path);}
+uintptr_t bridgeNewSampleFromData(const uint8_t*data,int bytes,int format,uint32_t rate){uint8_t*copy=bridgePlaydate->system->realloc(NULL,(size_t)bytes);if(!copy)return 0;memcpy(copy,data,(size_t)bytes);AudioSample*s=bridgePlaydate->sound->sample->newSampleFromData(copy,(SoundFormat)format,rate,bytes,1);if(!s)bridgePlaydate->system->realloc(copy,0);return(uintptr_t)s;}
+int bridgeSampleLoad(uintptr_t s,const char*p){return bridgePlaydate->sound->sample->loadIntoSample((AudioSample*)s,p);}
+void bridgeSampleData(uintptr_t s,uint8_t**d,int*f,uint32_t*r,uint32_t*n){SoundFormat format;bridgePlaydate->sound->sample->getData((AudioSample*)s,d,&format,r,n);*f=(int)format;}
+float bridgeSampleLength(uintptr_t s){return bridgePlaydate->sound->sample->getLength((AudioSample*)s);}
+int bridgeSampleDecompress(uintptr_t s){return bridgePlaydate->sound->sample->decompress((AudioSample*)s);}
+void bridgeFreeSample(uintptr_t s){bridgePlaydate->sound->sample->freeSample((AudioSample*)s);}
+uintptr_t bridgeNewEmptySamplePlayer(void){SamplePlayer*p=bridgePlaydate->sound->sampleplayer->newPlayer();if(!p)return 0;BridgeSoundEffect*e=bridgePlaydate->system->realloc(NULL,sizeof(BridgeSoundEffect));if(!e){bridgePlaydate->sound->sampleplayer->freePlayer(p);return 0;}e->sample=NULL;e->player=p;e->ownsSample=0;return(uintptr_t)e;}
 static BridgeSoundEffect* bridgeEffect(uintptr_t effect) { return (BridgeSoundEffect*)effect; }
 int bridgeSoundEffectPlay(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, 1, 1.0f); }
 int bridgeSamplePlayerPlay(uintptr_t effect, int repeat, float rate) { return bridgePlaydate->sound->sampleplayer->play(bridgeEffect(effect)->player, repeat, rate); }
@@ -284,7 +293,10 @@ float bridgeSamplePlayerOffset(uintptr_t effect) { return bridgePlaydate->sound-
 void bridgeSamplePlayerSetRate(uintptr_t effect, float rate) { bridgePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player, rate); }
 float bridgeSamplePlayerRate(uintptr_t effect) { return bridgePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player); }
 void bridgeSoundEffectSetFinishCallback(uintptr_t effect,uint32_t callback){bridgePlaydate->sound->sampleplayer->setFinishCallback(bridgeEffect(effect)->player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
-void bridgeFreeSoundEffect(uintptr_t effect) { BridgeSoundEffect* value = bridgeEffect(effect); bridgePlaydate->sound->sampleplayer->freePlayer(value->player); bridgePlaydate->sound->sample->freeSample(value->sample); bridgePlaydate->system->realloc(value, 0); }
+void bridgeSoundEffectSetLoopCallback(uintptr_t effect,uint32_t callback){bridgePlaydate->sound->sampleplayer->setLoopCallback(bridgeEffect(effect)->player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
+void bridgeSamplePlayerSetSample(uintptr_t effect,uintptr_t sample){BridgeSoundEffect*e=bridgeEffect(effect);if(e->ownsSample&&e->sample)bridgePlaydate->sound->sample->freeSample(e->sample);e->sample=(AudioSample*)sample;e->ownsSample=0;bridgePlaydate->sound->sampleplayer->setSample(e->player,e->sample);}
+void bridgeSamplePlayerSetPlayRange(uintptr_t effect,int start,int end){bridgePlaydate->sound->sampleplayer->setPlayRange(bridgeEffect(effect)->player,start,end);}
+void bridgeFreeSoundEffect(uintptr_t effect) { BridgeSoundEffect* value = bridgeEffect(effect); bridgePlaydate->sound->sampleplayer->freePlayer(value->player); if(value->ownsSample&&value->sample)bridgePlaydate->sound->sample->freeSample(value->sample); bridgePlaydate->system->realloc(value, 0); }
 
 uintptr_t bridgeLoadFilePlayer(const char* path) { FilePlayer* player = bridgePlaydate->sound->fileplayer->newPlayer(); if (!player) return 0; if (!bridgePlaydate->sound->fileplayer->loadIntoPlayer(player, path)) { bridgePlaydate->sound->fileplayer->freePlayer(player); return 0; } return (uintptr_t)player; }
 int bridgeFilePlayerPlay(uintptr_t player) { return bridgePlaydate->sound->fileplayer->play((FilePlayer*)player, 1); }
@@ -296,6 +308,12 @@ void bridgeFilePlayerPause(uintptr_t player, int paused) { (void)paused; bridgeP
 void bridgeFilePlayerSetRate(uintptr_t player, float rate) { bridgePlaydate->sound->fileplayer->setRate((FilePlayer*)player, rate); }
 float bridgeFilePlayerRate(uintptr_t player) { return bridgePlaydate->sound->fileplayer->getRate((FilePlayer*)player); }
 void bridgeFilePlayerSetFinishCallback(uintptr_t player,uint32_t callback){bridgePlaydate->sound->fileplayer->setFinishCallback((FilePlayer*)player,callback?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)callback);}
+int bridgeFilePlayerLoad(uintptr_t p,const char*path){return bridgePlaydate->sound->fileplayer->loadIntoPlayer((FilePlayer*)p,path);}
+void bridgeFilePlayerSetBufferLength(uintptr_t p,float n){bridgePlaydate->sound->fileplayer->setBufferLength((FilePlayer*)p,n);}
+void bridgeFilePlayerSetLoopRange(uintptr_t p,float s,float e){bridgePlaydate->sound->fileplayer->setLoopRange((FilePlayer*)p,s,e);}
+int bridgeFilePlayerDidUnderrun(uintptr_t p){return bridgePlaydate->sound->fileplayer->didUnderrun((FilePlayer*)p);}
+void bridgeFilePlayerSetStopOnUnderrun(uintptr_t p,int v){bridgePlaydate->sound->fileplayer->setStopOnUnderrun((FilePlayer*)p,v);}
+void bridgeFilePlayerSetLoopCallback(uintptr_t p,uint32_t c){bridgePlaydate->sound->fileplayer->setLoopCallback((FilePlayer*)p,c?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)c);}
 void bridgeFilePlayerFadeVolume(uintptr_t player,float left,float right,uint32_t frames,uint32_t callback){bridgePlaydate->sound->fileplayer->fadeVolume((FilePlayer*)player,left,right,(int32_t)frames,callback?bridgeAudioFadeCallback:NULL,(void*)(uintptr_t)callback);}
 void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player); }
 uintptr_t bridgeSoundEffectSource(uintptr_t effect){return(uintptr_t)bridgeEffect(effect)->player;}

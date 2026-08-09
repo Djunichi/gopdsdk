@@ -39,10 +39,65 @@ type SamplePlayer interface {
 	Rate() (float32, error)
 }
 
+// SamplePlayerControls changes the sample and frame range of an owned player.
+type SamplePlayerControls interface {
+	SetSample(AudioSample) error
+	SetPlayRange(startFrame, endFrame int) error
+}
+
+// LoopCallbackPlayer reports each completed playback loop. A nil callback
+// clears the registration.
+type LoopCallbackPlayer interface{ SetLoopCallback(callback func()) error }
+
 // SamplePlayers loads advanced memory-backed sample players. Games should
 // capability-assert this optional interface from Context.
 type SamplePlayers interface {
 	LoadSamplePlayer(path string) (SamplePlayer, error)
+}
+
+// SamplePlayerFactory creates an empty player and attaches an existing sample.
+type SamplePlayerFactory interface {
+	NewSamplePlayer(sample AudioSample) (SamplePlayer, error)
+}
+
+// SoundFormat describes the storage layout of an AudioSample.
+type SoundFormat uint8
+
+const (
+	Sound8BitMono    SoundFormat = 0
+	Sound8BitStereo  SoundFormat = 1
+	Sound16BitMono   SoundFormat = 2
+	Sound16BitStereo SoundFormat = 3
+	SoundADPCMMono   SoundFormat = 4
+	SoundADPCMStereo SoundFormat = 5
+)
+
+// SampleData is a borrowed view of native sample storage. CopyTo is valid only
+// while the originating AudioSample remains open and copies at most len(dst)
+// bytes without retaining dst.
+type SampleData interface {
+	Len() int
+	Format() SoundFormat
+	SampleRate() uint32
+	CopyTo(dst []byte) (int, error)
+}
+
+// AudioSample owns a native sample buffer. Players borrow attached samples;
+// callers must keep a sample open until it is replaced or the player is closed.
+type AudioSample interface {
+	Load(path string) error
+	Data() (SampleData, error)
+	Length() (float32, error)
+	Decompress() error
+	Close() error
+}
+
+// AudioSamples creates native-owned samples. NewSampleFromData copies data, so
+// the caller may immediately reuse or release its input slice.
+type AudioSamples interface {
+	NewSample(byteCount int) (AudioSample, error)
+	LoadSample(path string) (AudioSample, error)
+	NewSampleFromData(data []byte, format SoundFormat, sampleRate uint32) (AudioSample, error)
 }
 
 // PCMPlayers copies caller-owned mono signed 16-bit PCM into a native-owned
@@ -386,6 +441,16 @@ type FilePlayer interface {
 	Pause() error
 	Resume() error
 	Close() error
+}
+
+// StreamingPlayerControls configures file reload, buffering, looping, and
+// underrun behavior without widening the base FilePlayer contract.
+type StreamingPlayerControls interface {
+	Load(path string) error
+	SetBufferLength(seconds float32) error
+	SetLoopRange(start, end float32) error
+	DidUnderrun() (bool, error)
+	SetStopOnUnderrun(bool) error
 }
 
 // Audio loads the two accepted audio use cases.

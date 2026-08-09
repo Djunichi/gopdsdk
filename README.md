@@ -794,6 +794,36 @@ COM3, and launch. The device artifact used 268,940 bytes of static RAM and
 produced a 125,340-byte PDX. Extended soak, memory-growth measurement, lifecycle
 stress, and post-run device-log inspection remain unverified.
 
+## Owned samples and streaming control
+
+`AudioSamples` creates empty buffers, loads packaged samples, or copies
+caller-provided PCM/ADPCM bytes into native-owned storage. `AudioSample.Data`
+exposes format, rate, length, and bounded copying through a borrowed view that
+expires when its sample closes. `SamplePlayerFactory` attaches an owned sample
+to a player without transferring ownership; `SamplePlayerControls` and
+`LoopCallbackPlayer` expose frame ranges and callbacks without widening the
+base player contract. `StreamingPlayerControls` adds file reload, buffer sizing,
+loop ranges, underrun status, and stop-on-underrun behavior.
+
+The separate `examples/samples` game generates mono PCM, verifies its borrowed
+metadata view, attaches it to a player, and maps A to repeated range playback
+and B to stop. Run it without changing the broader audio acceptance game:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/samples
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/samples
+```
+
+Deterministic runtime and generated-adapter tests cover ownership, stale views,
+range forwarding, buffering, and underrun control. On 2026-08-09 the example
+built with the official Windows SDK 3.1.1; its conservative-GC hard-float build
+uses 282,280 bytes of static RAM and produces a 1,346,904-byte ELF and a
+53,617-byte PDX. On 2026-08-09 the user confirmed visible initialization and
+audible range playback with A, followed by stop with B, in the official Windows
+Simulator. Loop-callback behavior, final-package device deployment/execution,
+physical-device behavior, soak, memory-growth measurement, and post-run device
+logs remain unverified.
+
 ## Timed fades and completion
 
 Owned sample and file players optionally expose `CompletionPlayer`; replacing

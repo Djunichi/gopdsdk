@@ -6,6 +6,23 @@ that out.
 
 ## Unreleased
 
+- Implemented P9.2 owned `AudioSample` buffers, packaged and caller-data
+  loading, in-place reload, borrowed data inspection/copying, length and
+  decompression, sample attachment and frame ranges, sample/file loop
+  callbacks, and file-player reload, buffering, loop ranges, and underrun
+  status/control. Caller data is synchronously copied into native-owned memory;
+  borrowed views expire with their sample, and attached samples reject close.
+  The new isolated `examples/samples` game generates and plays its own PCM
+  without extending `examples/audio`. Unit, public-API snapshot, runtime, and
+  generated Simulator/device adapter tests pass. On 2026-08-09 the scene built
+  with the official Windows SDK 3.1.1. Its conservative-GC hard-float device
+  build uses 282,280 bytes of static RAM and produces a 1,346,904-byte ELF and
+  a 53,617-byte PDX. On 2026-08-09 the user confirmed visible initialization,
+  audible range playback with A, and stop with B in the official Windows
+  Simulator. Loop-callback behavior, final-package device deployment/execution,
+  audible/visible physical-device behavior, soak, memory-growth measurement,
+  and post-run device-log inspection remain unverified.
+
 - Started P9.1 with the optional `AudioOutputs` capability on Simulator and
   device native adapters. Games can access the borrowed default channel, query
   headphone and headset-microphone presence, and activate headphone and speaker
