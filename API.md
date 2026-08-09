@@ -292,8 +292,15 @@ After close, operations return `ErrAudioClosed`; invalid volume returns
 return `AudioLoadError`.
 
 Advanced games may separately capability-assert `AudioChannels`,
-`Synthesizers`, `Sequencers`, and `AudioEffects`; these optional slices do not
-widen the base `Context`.
+`AudioOutputs`, `Synthesizers`, `Sequencers`, and `AudioEffects`; these optional
+slices do not widen the base `Context`. `AudioOutputs.DefaultAudioChannel`
+returns a borrowed default-channel wrapper: closing the wrapper detaches graph
+edges tracked through it but never removes or frees the native default channel.
+`AudioOutputState` synchronously reports headphone and headset-microphone
+presence at the time of the call; poll it during updates when the UI or routing
+must react to connection changes. `SetAudioOutputsActive` selects headphone and
+speaker output; a Simulator may accept the selection without an observable
+host-routing change.
 
 Microphone games capability-assert `Microphones`. Request permission before
 recording, handle pending/denied/granted explicitly, and close the owned

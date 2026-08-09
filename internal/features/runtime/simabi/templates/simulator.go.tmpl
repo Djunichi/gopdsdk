@@ -189,6 +189,9 @@ void bridgeFilePlayerFadeVolume(uintptr_t player, float left, float right, uint3
 void bridgeFreeFilePlayer(uintptr_t player);
 uintptr_t bridgeSoundEffectSource(uintptr_t effect);
 uintptr_t bridgeNewAudioChannel(void);
+uintptr_t bridgeDefaultAudioChannel(void);
+void bridgeAudioOutputState(int* headphones, int* headsetMic);
+void bridgeSetAudioOutputsActive(int headphones, int speaker);
 int bridgeAudioChannelAddSource(uintptr_t channel, uintptr_t source);
 int bridgeAudioChannelRemoveSource(uintptr_t channel, uintptr_t source);
 void bridgeAudioChannelSetVolume(uintptr_t channel, float volume);
@@ -704,6 +707,9 @@ var audioChannelDriver = sdkRuntime.AudioChannelDriver{
 	Free: func(channel uintptr) { C.bridgeFreeAudioChannel(C.uintptr_t(channel)) },
 }
 func (playdateContext) NewAudioChannel() (sdkPlaydate.AudioChannel, error) { handle := uintptr(C.bridgeNewAudioChannel()); if handle == 0 { return nil, sdkPlaydate.ErrAudioCreate }; return sdkRuntime.NewAudioChannel(handle, audioChannelDriver), nil }
+func(playdateContext)DefaultAudioChannel()(sdkPlaydate.AudioChannel,error){h:=uintptr(C.bridgeDefaultAudioChannel());if h==0{return nil,sdkPlaydate.ErrAudioUnavailable};return sdkRuntime.DefaultAudioChannel(h,audioChannelDriver),nil}
+func(playdateContext)AudioOutputState()(sdkPlaydate.AudioOutputState,error){var h,m C.int;C.bridgeAudioOutputState(&h,&m);return sdkPlaydate.AudioOutputState{Headphones:h!=0,HeadsetMicrophone:m!=0},nil}
+func(playdateContext)SetAudioOutputsActive(headphones,speaker bool)error{var h,s C.int;if headphones{h=1};if speaker{s=1};C.bridgeSetAudioOutputsActive(h,s);return nil}
 
 var signalDriver = sdkRuntime.SignalDriver{Value: func(h uintptr) float32 { return float32(C.bridgeSignalValue(C.uintptr_t(h))) }, SetScale: func(h uintptr,v float32){C.bridgeSignalSetScale(C.uintptr_t(h),C.float(v))}, SetOffset: func(h uintptr,v float32){C.bridgeSignalSetOffset(C.uintptr_t(h),C.float(v))}}
 var lfoDriver = sdkRuntime.LFODriver{Signal: signalDriver, SetRate: func(h uintptr,v float32){C.bridgeLFOSetRate(C.uintptr_t(h),C.float(v))}, SetPhase: func(h uintptr,v float32){C.bridgeLFOSetPhase(C.uintptr_t(h),C.float(v))}, SetCenter: func(h uintptr,v float32){C.bridgeLFOSetCenter(C.uintptr_t(h),C.float(v))}, SetDepth: func(h uintptr,v float32){C.bridgeLFOSetDepth(C.uintptr_t(h),C.float(v))}, SetRetrigger: func(h uintptr,v bool){var flag C.int;if v{flag=1};C.bridgeLFOSetRetrigger(C.uintptr_t(h),flag)}, SetArpeggiation:func(h uintptr,s []float32){C.bridgeLFOSetArpeggiation(C.uintptr_t(h),C.int(len(s)),(*C.float)(unsafe.Pointer(&s[0])))}}

@@ -217,6 +217,22 @@ type AudioChannels interface {
 	NewAudioChannel() (AudioChannel, error)
 }
 
+// AudioOutputState reports the currently connected physical audio outputs.
+// HeadsetMicrophone is meaningful only when Headphones is true.
+type AudioOutputState struct {
+	Headphones        bool
+	HeadsetMicrophone bool
+}
+
+// AudioOutputs controls the device audio outputs and exposes the default
+// channel. Output activation is hardware state: Simulator implementations may
+// accept it without producing an observable host-routing change.
+type AudioOutputs interface {
+	DefaultAudioChannel() (AudioChannel, error)
+	AudioOutputState() (AudioOutputState, error)
+	SetAudioOutputsActive(headphones, speaker bool) error
+}
+
 // Waveform selects a native oscillator shape.
 type Waveform uint8
 

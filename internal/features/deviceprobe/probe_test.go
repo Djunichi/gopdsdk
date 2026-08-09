@@ -126,7 +126,7 @@ func TestBothDeviceAdaptersContainOnlineAndDebugBridges(t *testing.T) {
 
 func TestBothDeviceAdaptersContainSystemStatusBridge(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"bridgeSetAccelerometerEnabled", "bridgeAccelerometer", "bridgePowerStatus", "bridgeBatteryPercentageBits", "bridgeBatteryVoltageBits", "bridgeSystemVolumeBits", "float32FromBits(bridgeBatteryPercentageBits())", "bridgeReduceFlashing", "bridgeTimezoneOffsetSeconds", "bridgeUses24HourTime"} {
+	for _, want := range []string{"bridgeSetAccelerometerEnabled", "bridgeAccelerometer", "bridgePowerStatus", "bridgeBatteryPercentageBits", "bridgeBatteryVoltageBits", "bridgeSystemVolumeBits", "float32FromBits(bridgeBatteryPercentageBits())", "bridgeReduceFlashing", "bridgeTimezoneOffsetSeconds", "bridgeUses24HourTime", "bridgeDefaultAudioChannel", "bridgeAudioOutputState", "bridgeSetAudioOutputsActive", "sdkRuntime.DefaultAudioChannel"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}

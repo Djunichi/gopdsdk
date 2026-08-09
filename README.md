@@ -819,9 +819,11 @@ stress, and post-run device-log inspection remain unverified.
 
 ## Routing, synthesizers, and signals
 
-Games can capability-assert `AudioChannels` and `Synthesizers` without widening
-the base `Context`. Explicitly owned channels route sample, file, and synth
-sources and expose channel volume and pan. Synths support native waveforms,
+Games can capability-assert `AudioChannels`, `AudioOutputs`, and `Synthesizers`
+without widening the base `Context`. `AudioOutputs` exposes the borrowed default
+channel, current headphone/headset-microphone state, and headphone/speaker
+activation. Explicitly owned channels route sample, file, and synth sources and
+expose channel volume and pan. Synths support native waveforms,
 ADSR parameters, transpose, audio-clock note scheduling, and frequency or
 amplitude modulation by owned LFOs, envelopes, and control-signal timelines.
 
@@ -830,6 +832,10 @@ source or signal detaches every retained edge before freeing it; closing a
 channel detaches its sources without closing them. Unit tests cover duplicate
 attachments, close ordering, invalid parameters, graph forwarding through
 `NewApplication`, and generated Simulator/device bridge symbols.
+
+The audio acceptance scene polls `AudioOutputState` while running and displays
+`Output H/M` as connection state. This makes headphone insertion/removal visible
+without requiring an audio-thread callback.
 
 `examples/audio` exercises the complete audio graph. A starts an indefinite
 scheduled synth note and release schedules `NoteOff`; B plays the routed sample

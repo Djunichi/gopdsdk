@@ -412,6 +412,15 @@ type AudioChannelDriver struct {
 	Free         func(uintptr)
 }
 
+// AudioOutputDriver contains native operations for the process-wide output
+// graph. The default channel is borrowed and must never be removed or freed.
+type AudioOutputDriver struct {
+	DefaultChannel   func() uintptr
+	OutputState      func() (headphones, headsetMicrophone bool)
+	SetOutputsActive func(headphones, speaker bool)
+	Channel          AudioChannelDriver
+}
+
 type audioChannel struct {
 	handle  uintptr
 	driver  AudioChannelDriver
@@ -423,6 +432,14 @@ type audioChannel struct {
 // NewAudioChannel wraps a native channel already added to the sound graph.
 func NewAudioChannel(handle uintptr, driver AudioChannelDriver) playdate.AudioChannel {
 	return &audioChannel{handle: handle, driver: driver, sources: make(map[*audioPlayer]struct{}), effects: make(map[*effectNode]struct{})}
+}
+
+// DefaultAudioChannel wraps the borrowed native default channel. Closing the
+// wrapper detaches its tracked graph edges but does not remove or free it.
+func DefaultAudioChannel(handle uintptr, driver AudioChannelDriver) playdate.AudioChannel {
+	driver.Remove = nil
+	driver.Free = nil
+	return NewAudioChannel(handle, driver)
 }
 
 func (c *audioChannel) AddEffect(value playdate.AudioEffect) error {
@@ -610,10 +627,12 @@ func (c *audioChannel) Close() error {
 		delete(effect.channels, c)
 	}
 	c.effects = nil
-	if !c.driver.Remove(handle) {
+	if c.driver.Remove != nil && !c.driver.Remove(handle) {
 		return playdate.ErrAudioRoute
 	}
-	c.driver.Free(handle)
+	if c.driver.Free != nil {
+		c.driver.Free(handle)
+	}
 	c.handle = 0
 	c.closed = true
 	return nil
@@ -2458,6 +2477,30 @@ func (context *applicationContext) NewAudioChannel() (playdate.AudioChannel, err
 		return nil, playdate.ErrAudioUnavailable
 	}
 	return channels.NewAudioChannel()
+}
+
+func (context *applicationContext) DefaultAudioChannel() (playdate.AudioChannel, error) {
+	outputs, _ := context.Context.(playdate.AudioOutputs)
+	if outputs == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return outputs.DefaultAudioChannel()
+}
+
+func (context *applicationContext) AudioOutputState() (playdate.AudioOutputState, error) {
+	outputs, _ := context.Context.(playdate.AudioOutputs)
+	if outputs == nil || context.terminated {
+		return playdate.AudioOutputState{}, playdate.ErrAudioUnavailable
+	}
+	return outputs.AudioOutputState()
+}
+
+func (context *applicationContext) SetAudioOutputsActive(headphones, speaker bool) error {
+	outputs, _ := context.Context.(playdate.AudioOutputs)
+	if outputs == nil || context.terminated {
+		return playdate.ErrAudioUnavailable
+	}
+	return outputs.SetAudioOutputsActive(headphones, speaker)
 }
 
 func (context *applicationContext) NewSynth(waveform playdate.Waveform) (playdate.Synth, error) {

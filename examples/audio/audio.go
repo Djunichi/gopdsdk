@@ -1,4 +1,4 @@
-// Package audio exercises the combined P5 playback and dynamic-music graph.
+// Package audio exercises playback, dynamic music, and P9 output control.
 package audio
 
 import (
@@ -19,6 +19,9 @@ type game struct {
 	musicRatePlayer  playdate.VariableRatePlayer
 	musicFader       playdate.FadingPlayer
 	audioClock       playdate.AudioClock
+	outputs          playdate.AudioOutputs
+	defaultChannel   playdate.AudioChannel
+	outputState      playdate.AudioOutputState
 	channel          playdate.AudioChannel
 	delayChannel     playdate.AudioChannel
 	synth            playdate.Synth
@@ -56,7 +59,7 @@ type game struct {
 	closed           bool
 }
 
-// New creates the P5 audio acceptance game.
+// New creates the audio acceptance game.
 func New() playdate.Game { return &game{} }
 
 func (g *game) Init(context playdate.Context) error {
@@ -115,9 +118,22 @@ func (g *game) Init(context playdate.Context) error {
 		return errors.Join(err, g.close())
 	}
 	channels, channelsOK := context.(playdate.AudioChannels)
+	outputs, outputsOK := context.(playdate.AudioOutputs)
 	synthesizers, synthsOK := context.(playdate.Synthesizers)
-	if !channelsOK || !synthsOK {
+	if !channelsOK || !outputsOK || !synthsOK {
 		return errors.Join(playdate.ErrAudioUnavailable, g.close())
+	}
+	g.outputs = outputs
+	g.defaultChannel, err = outputs.DefaultAudioChannel()
+	if err != nil {
+		return errors.Join(err, g.close())
+	}
+	g.outputState, err = outputs.AudioOutputState()
+	if err != nil {
+		return errors.Join(err, g.close())
+	}
+	if err = outputs.SetAudioOutputsActive(true, true); err != nil {
+		return errors.Join(err, g.close())
 	}
 	g.channel, err = channels.NewAudioChannel()
 	if err != nil {
@@ -351,8 +367,15 @@ func (g *game) applyEffectSelection() error {
 }
 
 func (g *game) Update(context playdate.Context) (bool, error) {
+	outputState, err := g.outputs.AudioOutputState()
+	if err != nil {
+		return false, err
+	}
+	if outputState != g.outputState {
+		g.outputState = outputState
+		g.dirty = true
+	}
 	input := context.Input()
-	var err error
 	if input.Pressed != 0 {
 		g.audioTime, err = g.audioClock.CurrentAudioTime()
 		if err != nil {
@@ -480,11 +503,11 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 	g.dirty = false
 	context.Clear()
-	context.DrawText("P5.4 full graph acceptance", 12, 8)
+	context.DrawText("P9.1 output + full audio graph", 12, 8)
 	context.DrawText("A synth | B music | B+Up sample", 12, 30)
 	context.DrawText("A+B+L/R wave | U/D modulation", 12, 52)
 	context.DrawText("A+L/R LFO | B+L/R effect", 12, 74)
-	context.DrawText("A+U/D seq play/stop | crank pan", 12, 96)
+	context.DrawText("Output H/M: "+outputName(g.outputState.Headphones)+"/"+outputName(g.outputState.HeadsetMicrophone), 12, 96)
 	context.DrawText("Wave: "+waveformName(g.waveform)+"  LFO: "+lfoName(g.lfoType), 12, 126)
 	context.DrawText("Mod: "+modulationName(g.modulation)+"  FX: "+effectName(g.effectIndex), 12, 148)
 	context.DrawText("Seq: "+boolName(g.sequencePlaying)+" "+smallUint(g.sequenceTime)+"/"+smallUint(g.sequenceLength), 12, 170)
@@ -622,6 +645,13 @@ func boolName(value bool) string {
 		return "play"
 	}
 	return "stop"
+}
+
+func outputName(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
 }
 
 func percent(value float32) string { return smallUint(uint32(value*100)) + "%" }
@@ -766,6 +796,9 @@ func (g *game) close() error {
 	}
 	if g.delayChannel != nil {
 		channelErr = errors.Join(channelErr, g.delayChannel.Close())
+	}
+	if g.defaultChannel != nil {
+		channelErr = errors.Join(channelErr, g.defaultChannel.Close())
 	}
 	if g.music != nil {
 		musicErr = g.music.Close()

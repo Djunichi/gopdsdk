@@ -4,6 +4,25 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
+## Unreleased
+
+- Started P9.1 with the optional `AudioOutputs` capability on Simulator and
+  device native adapters. Games can access the borrowed default channel, query
+  headphone and headset-microphone presence, and activate headphone and speaker
+  outputs. Closing the default-channel wrapper cannot remove or free the native
+  default channel. Deterministic public-API, runtime forwarding, ownership, and
+  generated-adapter tests pass. On 2026-08-09 the `examples/audio` scene built
+  with the official Windows SDK 3.1.1 and visibly initialized in Simulator;
+  it reported no connected headphone or headset microphone, accepted enabling
+  both outputs, and kept the existing music graph playing. The conservative-GC
+  hard-float device build uses 286,860 bytes of static RAM and produces a
+  1,823,280-byte ELF and a 174,806-byte PDX. Installation and launch through
+  COM3 then passed on a physical Playdate. On 2026-08-09 the user confirmed
+  audible routing into connected headphones and live `Output H` changes after
+  insertion/removal. Headset-microphone detection, simultaneous speaker and
+  headphone output, soak, memory-growth measurement, and unchanged post-run
+  device logs remain unverified.
+
 ## v0.8.0 (2026-08-09)
 
 - Implemented P8.3 per-sprite procedural draw, update, and pair-specific
