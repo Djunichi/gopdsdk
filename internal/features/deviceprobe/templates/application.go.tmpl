@@ -457,6 +457,12 @@ func bridgeFreeFilePlayer(player uintptr)
 func bridgeSoundEffectSource(effect uintptr) uintptr
 //go:linkname bridgeNewAudioChannel bridgeNewAudioChannel
 func bridgeNewAudioChannel() uintptr
+//go:linkname bridgeDefaultAudioChannel bridgeDefaultAudioChannel
+func bridgeDefaultAudioChannel() uintptr
+//go:linkname bridgeAudioOutputState bridgeAudioOutputState
+func bridgeAudioOutputState(*int32,*int32)
+//go:linkname bridgeSetAudioOutputsActive bridgeSetAudioOutputsActive
+func bridgeSetAudioOutputsActive(int32,int32)
 //go:linkname bridgeAudioChannelAddSource bridgeAudioChannelAddSource
 func bridgeAudioChannelAddSource(channel, source uintptr) int32
 //go:linkname bridgeAudioChannelRemoveSource bridgeAudioChannelRemoveSource
@@ -958,6 +964,9 @@ func(playdateContext)NewPCMPlayer(samples []int16,rate uint32)(sdkPlaydate.Sampl
 func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, error) { terminated := path + "\x00"; handle := bridgeLoadFilePlayer(unsafe.StringData(terminated)); if handle == 0 { return nil, sdkPlaydate.AudioLoadError(path) }; return sdkRuntime.NewFilePlayer(handle, filePlayerDriver), nil }
 var audioChannelDriver=sdkRuntime.AudioChannelDriver{AddSource:func(c,s uintptr)bool{return bridgeAudioChannelAddSource(c,s)!=0},RemoveSource:func(c,s uintptr)bool{return bridgeAudioChannelRemoveSource(c,s)!=0},AddEffect:func(c,e uintptr)bool{return bridgeAudioChannelAddEffect(c,e)!=0},RemoveEffect:func(c,e uintptr)bool{return bridgeAudioChannelRemoveEffect(c,e)!=0},SetVolume:func(h uintptr,v float32){bridgeAudioChannelSetVolumeBits(h,float32Bits(v))},Volume:func(h uintptr)float32{return float32FromBits(bridgeAudioChannelVolumeBits(h))},SetPan:func(h uintptr,v float32){bridgeAudioChannelSetPanBits(h,float32Bits(v))},Remove:func(h uintptr)bool{return bridgeRemoveAudioChannel(h)!=0},Free:bridgeFreeAudioChannel}
 func(playdateContext)NewAudioChannel()(sdkPlaydate.AudioChannel,error){h:=bridgeNewAudioChannel();if h==0{return nil,sdkPlaydate.ErrAudioCreate};return sdkRuntime.NewAudioChannel(h,audioChannelDriver),nil}
+func(playdateContext)DefaultAudioChannel()(sdkPlaydate.AudioChannel,error){h:=bridgeDefaultAudioChannel();if h==0{return nil,sdkPlaydate.ErrAudioUnavailable};return sdkRuntime.DefaultAudioChannel(h,audioChannelDriver),nil}
+func(playdateContext)AudioOutputState()(sdkPlaydate.AudioOutputState,error){var h,m int32;bridgeAudioOutputState(&h,&m);return sdkPlaydate.AudioOutputState{Headphones:h!=0,HeadsetMicrophone:m!=0},nil}
+func(playdateContext)SetAudioOutputsActive(headphones,speaker bool)error{var h,s int32;if headphones{h=1};if speaker{s=1};bridgeSetAudioOutputsActive(h,s);return nil}
 var signalDriver=sdkRuntime.SignalDriver{Value:func(h uintptr)float32{return float32FromBits(bridgeSignalValueBits(h))},SetScale:func(h uintptr,v float32){bridgeSignalSetScaleBits(h,float32Bits(v))},SetOffset:func(h uintptr,v float32){bridgeSignalSetOffsetBits(h,float32Bits(v))}}
 var lfoDriver=sdkRuntime.LFODriver{Signal:signalDriver,SetRate:func(h uintptr,v float32){bridgeLFOSetValueBits(h,0,float32Bits(v))},SetPhase:func(h uintptr,v float32){bridgeLFOSetValueBits(h,1,float32Bits(v))},SetCenter:func(h uintptr,v float32){bridgeLFOSetValueBits(h,2,float32Bits(v))},SetDepth:func(h uintptr,v float32){bridgeLFOSetValueBits(h,3,float32Bits(v))},SetRetrigger:func(h uintptr,v bool){var f int32;if v{f=1};bridgeLFOSetRetrigger(h,f)},SetArpeggiation:func(h uintptr,s []float32){bridgeLFOSetArpeggiation(h,int32(len(s)),uintptr(unsafe.Pointer(&s[0])))}}
 var envelopeDriver=sdkRuntime.EnvelopeDriver{Signal:signalDriver,SetAttack:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,0,float32Bits(v))},SetDecay:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,1,float32Bits(v))},SetSustain:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,2,float32Bits(v))},SetRelease:func(h uintptr,v float32){bridgeEnvelopeSetValueBits(h,3,float32Bits(v))},SetLegato:func(h uintptr,v bool){var f int32;if v{f=1};bridgeEnvelopeSetFlag(h,0,f)},SetRetrigger:func(h uintptr,v bool){var f int32;if v{f=1};bridgeEnvelopeSetFlag(h,1,f)}}

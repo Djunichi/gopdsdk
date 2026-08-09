@@ -96,9 +96,17 @@ P9 completes offline playback, synthesis, samples, routing, and device output.
 
 ### P9.1 — output and channel control
 
-- Add the default channel, headphone/headset state, output routing, output as a
-  source, channel membership, output activation, and the missing useful volume,
-  pan, and modulator controls.
+Development started with default-channel access, synchronous headphone/headset
+state, and headphone/speaker activation on both native adapters. Deterministic
+unit coverage exists. The official Windows SDK 3.1.1 Simulator visibly passed
+scene initialization and the disconnected-headset state on 2026-08-09. The
+conservative-GC hard-float build and COM3 deployment also passed; the user
+confirmed physical headphone routing and live insertion/removal state changes.
+Headset-microphone detection, simultaneous outputs, soak, memory growth, and
+post-run device-log cleanliness remain unverified.
+
+- Continue with output routing, output as a source, channel membership, and the
+  missing useful volume, pan, and modulator controls.
 - Define behavior for hardware states that cannot be exercised in Simulator.
 
 ### P9.2 — samples and players

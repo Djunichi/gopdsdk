@@ -107,13 +107,16 @@ func (*channel) SetPan(float32) error                    { return nil }
 func (c *channel) Close() error                          { c.closed = true; return nil }
 
 type context struct {
-	effect   *player
-	music    *player
-	input    playdate.Input
-	musicErr error
-	synth    *player
-	lfo      *signal
-	channel  *channel
+	effect         *player
+	music          *player
+	input          playdate.Input
+	musicErr       error
+	synth          *player
+	lfo            *signal
+	channel        *channel
+	defaultChannel *channel
+	outputs        [2]bool
+	outputState    playdate.AudioOutputState
 }
 
 func (*context) CurrentTimeMilliseconds() uint32                                    { return 0 }
@@ -155,6 +158,17 @@ func (c *context) LoadFilePlayer(path string) (playdate.FilePlayer, error) {
 	c.music = &player{}
 	return c.music, nil
 }
+func (c *context) DefaultAudioChannel() (playdate.AudioChannel, error) {
+	c.defaultChannel = &channel{}
+	return c.defaultChannel, nil
+}
+func (c *context) AudioOutputState() (playdate.AudioOutputState, error) {
+	return c.outputState, nil
+}
+func (c *context) SetAudioOutputsActive(headphones, speaker bool) error {
+	c.outputs = [2]bool{headphones, speaker}
+	return nil
+}
 func (c *context) NewAudioChannel() (playdate.AudioChannel, error) {
 	c.channel = &channel{}
 	return c.channel, nil
@@ -177,6 +191,11 @@ func TestRepeatedEffectMusicAndLifecycle(t *testing.T) {
 	g := New().(*game)
 	if err := g.Init(c); err != nil {
 		t.Fatal(err)
+	}
+	c.outputState = playdate.AudioOutputState{Headphones: true, HeadsetMicrophone: true}
+	refreshed, err := g.Update(c)
+	if err != nil || !refreshed || g.outputState != c.outputState {
+		t.Fatalf("output state refresh = %v, %#v, %v", refreshed, g.outputState, err)
 	}
 	for range 2 {
 		c.input.Buttons = playdate.ButtonB

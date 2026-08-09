@@ -490,6 +490,65 @@ func TestAudioChannelOwnership(t *testing.T) {
 	}
 }
 
+func TestDefaultAudioChannelDoesNotRemoveOrFreeNativeChannel(t *testing.T) {
+	removed, freed := 0, 0
+	channel := DefaultAudioChannel(9, AudioChannelDriver{
+		Remove: func(uintptr) bool { removed++; return true },
+		Free:   func(uintptr) { freed++ },
+	})
+	if err := channel.Close(); err != nil {
+		t.Fatalf("Close() = %v", err)
+	}
+	if removed != 0 || freed != 0 {
+		t.Fatalf("borrowed default channel removed %d times, freed %d times", removed, freed)
+	}
+}
+
+type audioOutputContext struct {
+	testContext
+	channel playdate.AudioChannel
+	set     [2]bool
+}
+
+func (c *audioOutputContext) DefaultAudioChannel() (playdate.AudioChannel, error) {
+	return c.channel, nil
+}
+func (*audioOutputContext) AudioOutputState() (playdate.AudioOutputState, error) {
+	return playdate.AudioOutputState{Headphones: true, HeadsetMicrophone: true}, nil
+}
+func (c *audioOutputContext) SetAudioOutputsActive(headphones, speaker bool) error {
+	c.set = [2]bool{headphones, speaker}
+	return nil
+}
+
+func TestApplicationForwardsAudioOutputs(t *testing.T) {
+	native := &audioOutputContext{channel: DefaultAudioChannel(7, AudioChannelDriver{})}
+	application, err := NewApplication(testGame{init: func(context playdate.Context) error {
+		outputs, ok := context.(playdate.AudioOutputs)
+		if !ok {
+			return errors.New("audio outputs not forwarded")
+		}
+		channel, err := outputs.DefaultAudioChannel()
+		if err != nil || channel == nil {
+			t.Fatalf("DefaultAudioChannel() = %v, %v", channel, err)
+		}
+		state, err := outputs.AudioOutputState()
+		if err != nil || !state.Headphones || !state.HeadsetMicrophone {
+			t.Fatalf("AudioOutputState() = %#v, %v", state, err)
+		}
+		return outputs.SetAudioOutputsActive(true, false)
+	}}, native, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Handle(EventInit, 0); err != nil {
+		t.Fatal(err)
+	}
+	if native.set != [2]bool{true, false} {
+		t.Fatalf("SetAudioOutputsActive forwarded %v", native.set)
+	}
+}
+
 func TestSynthSignalOwnership(t *testing.T) {
 	var frequency, amplitude uintptr
 	var signalFreed, synthFreed int

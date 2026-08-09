@@ -246,6 +246,8 @@ type AudioClock interface{CurrentAudioTime() (uint32, error)}
 type AudioEffect interface{Close() error; SetMix(level float32) error; SetMixModulator(signal Signal) error}
 type AudioEffects interface{NewBitCrusher() (BitCrusher, error); NewDelayLine(lengthFrames int, stereo bool) (DelayLine, error); NewOverdrive() (Overdrive, error); NewRingModulator() (RingModulator, error); NewTwoPoleFilter(FilterType) (TwoPoleFilter, error)}
 type AudioLoadError string
+type AudioOutputState struct{Headphones bool; HeadsetMicrophone bool}
+type AudioOutputs interface{AudioOutputState() (AudioOutputState, error); DefaultAudioChannel() (AudioChannel, error); SetAudioOutputsActive(headphones bool, speaker bool) error}
 type AudioSource interface{SetVolume(left float32, right float32) error; State() (PlaybackState, error); Volume() (left float32, right float32, err error)}
 type BitCrusher interface{SetDepth(float32) error; SetDepthModulator(Signal) error; SetDownsampling(float32) error; SetDownsamplingModulator(Signal) error; SetExponential(bool) error; AudioEffect}
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}

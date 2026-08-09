@@ -300,6 +300,9 @@ void bridgeFilePlayerFadeVolume(uintptr_t player,float left,float right,uint32_t
 void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer->freePlayer((FilePlayer*)player); }
 uintptr_t bridgeSoundEffectSource(uintptr_t effect){return(uintptr_t)bridgeEffect(effect)->player;}
 uintptr_t bridgeNewAudioChannel(void){SoundChannel* channel=bridgePlaydate->sound->channel->newChannel();if(!channel)return 0;bridgePlaydate->sound->addChannel(channel);return(uintptr_t)channel;}
+uintptr_t bridgeDefaultAudioChannel(void){return(uintptr_t)bridgePlaydate->sound->getDefaultChannel();}
+void bridgeAudioOutputState(int*headphones,int*headsetMic){bridgePlaydate->sound->getHeadphoneState(headphones,headsetMic,NULL);}
+void bridgeSetAudioOutputsActive(int headphones,int speaker){bridgePlaydate->sound->setOutputsActive(headphones,speaker);}
 int bridgeAudioChannelAddSource(uintptr_t channel,uintptr_t source){bridgePlaydate->sound->removeSource((SoundSource*)source);return bridgePlaydate->sound->channel->addSource((SoundChannel*)channel,(SoundSource*)source);}
 int bridgeAudioChannelRemoveSource(uintptr_t channel,uintptr_t source){return bridgePlaydate->sound->channel->removeSource((SoundChannel*)channel,(SoundSource*)source);}
 void bridgeAudioChannelSetVolume(uintptr_t channel,float volume){bridgePlaydate->sound->channel->setVolume((SoundChannel*)channel,volume);}
