@@ -178,16 +178,100 @@ func (i *instrument) Close() error {
 
 // TrackDriver contains native operations for an owned sequence track.
 type TrackDriver struct {
-	SetInstrument      func(uintptr, uintptr)
-	AddNote            func(uintptr, uint32, uint32, uint8, float32)
-	RemoveNote         func(uintptr, uint32, uint8)
-	ClearNotes         func(uintptr)
-	AddControlEvent    func(uintptr, int, int, float32, bool) bool
-	RemoveControlEvent func(uintptr, int, int) bool
-	ClearControlEvents func(uintptr)
-	SetMuted           func(uintptr, bool)
-	Length             func(uintptr) uint32
-	Free               func(uintptr)
+	SetInstrument               func(uintptr, uintptr)
+	AddNote                     func(uintptr, uint32, uint32, uint8, float32)
+	RemoveNote                  func(uintptr, uint32, uint8)
+	ClearNotes                  func(uintptr)
+	AddControlEvent             func(uintptr, int, int, float32, bool) bool
+	RemoveControlEvent          func(uintptr, int, int) bool
+	ClearControlEvents          func(uintptr)
+	SetMuted                    func(uintptr, bool)
+	Length                      func(uintptr) uint32
+	Instrument                  func(uintptr) uintptr
+	ControlSignalCount          func(uintptr) int
+	ControlSignal               func(uintptr, int) uintptr
+	SignalForController         func(uintptr, int, bool) uintptr
+	Polyphony, ActiveVoiceCount func(uintptr) int
+	NoteIndexAtStep             func(uintptr, uint32) int
+	NoteAt                      func(uintptr, int) (uint32, uint32, uint8, float32, bool)
+	Free                        func(uintptr)
+}
+
+func (t *sequenceTrack) Instrument() (playdate.Instrument, error) {
+	_, e := t.nativeHandle()
+	if e != nil {
+		return nil, e
+	}
+	if t.instrument == nil {
+		return nil, nil
+	}
+	return t.instrument, nil
+}
+func (t *sequenceTrack) ControlSignalCount() (int, error) {
+	h, e := t.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return t.driver.ControlSignalCount(h), nil
+}
+func (t *sequenceTrack) borrowedSignal(h uintptr) playdate.ControlSignal {
+	if h == 0 {
+		return nil
+	}
+	d := ControlSignalDriver{Signal: SignalDriver{Value: func(uintptr) float32 { return 0 }, SetScale: func(uintptr, float32) {}, SetOffset: func(uintptr, float32) {}, Free: func(uintptr) {}}}
+	return NewControlSignal(h, d)
+}
+func (t *sequenceTrack) ControlSignal(index int) (playdate.ControlSignal, error) {
+	if index < 0 {
+		return nil, playdate.ErrAudioParameter
+	}
+	h, e := t.nativeHandle()
+	if e != nil {
+		return nil, e
+	}
+	return t.borrowedSignal(t.driver.ControlSignal(h, index)), nil
+}
+func (t *sequenceTrack) SignalForController(c int, create bool) (playdate.ControlSignal, error) {
+	if c < 0 {
+		return nil, playdate.ErrAudioParameter
+	}
+	h, e := t.nativeHandle()
+	if e != nil {
+		return nil, e
+	}
+	return t.borrowedSignal(t.driver.SignalForController(h, c, create)), nil
+}
+func (t *sequenceTrack) Polyphony() (int, error) {
+	h, e := t.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return t.driver.Polyphony(h), nil
+}
+func (t *sequenceTrack) ActiveVoiceCount() (int, error) {
+	h, e := t.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return t.driver.ActiveVoiceCount(h), nil
+}
+func (t *sequenceTrack) NoteIndexAtStep(step uint32) (int, error) {
+	h, e := t.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return t.driver.NoteIndexAtStep(h, step), nil
+}
+func (t *sequenceTrack) NoteAt(index int) (playdate.SequenceNote, bool, error) {
+	if index < 0 {
+		return playdate.SequenceNote{}, false, playdate.ErrAudioParameter
+	}
+	h, e := t.nativeHandle()
+	if e != nil {
+		return playdate.SequenceNote{}, false, e
+	}
+	s, l, n, v, ok := t.driver.NoteAt(h, index)
+	return playdate.SequenceNote{Step: s, Length: l, Note: n, Velocity: v}, ok, nil
 }
 
 type sequenceTrack struct {
@@ -338,21 +422,65 @@ func (t *sequenceTrack) Close() error {
 
 // SequenceDriver contains native operations for an owned music sequence.
 type SequenceDriver struct {
-	LoadMIDI   func(uintptr, string) bool
-	SetTempo   func(uintptr, float32)
-	Tempo      func(uintptr) float32
-	SetLoops   func(uintptr, int, int, int)
-	TrackCount func(uintptr) uint
-	AddTrack   func(uintptr) uintptr
-	SetTrack   func(uintptr, uint, uintptr)
-	Play       func(uintptr, uint32)
-	Stop       func(uintptr)
-	IsPlaying  func(uintptr) bool
-	Time       func(uintptr) uint32
-	SetTime    func(uintptr, uint32)
-	Length     func(uintptr) uint32
-	Free       func(uintptr)
+	LoadMIDI    func(uintptr, string) bool
+	SetTempo    func(uintptr, float32)
+	Tempo       func(uintptr) float32
+	SetLoops    func(uintptr, int, int, int)
+	TrackCount  func(uintptr) uint
+	AddTrack    func(uintptr) uintptr
+	SetTrack    func(uintptr, uint, uintptr)
+	Play        func(uintptr, uint32)
+	Stop        func(uintptr)
+	IsPlaying   func(uintptr) bool
+	Time        func(uintptr) uint32
+	SetTime     func(uintptr, uint32)
+	Length      func(uintptr) uint32
+	Free        func(uintptr)
+	GetTrack    func(uintptr, uint) uintptr
+	CurrentStep func(uintptr) (int, int)
+	AllNotesOff func(uintptr)
+	Track       TrackDriver
 }
+
+func (s *sequence) TrackCount() (uint, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, e
+	}
+	return s.driver.TrackCount(h), nil
+}
+func (s *sequence) Track(index uint) (playdate.SequenceTrack, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return nil, e
+	}
+	if t := s.tracks[index]; t != nil {
+		return t, nil
+	}
+	th := s.driver.GetTrack(h, index)
+	if th == 0 {
+		return nil, nil
+	}
+	t := NewSequenceTrack(th, s.driver.Track).(*sequenceTrack)
+	t.driver.Free = func(uintptr) {}
+	return t, nil
+}
+func (s *sequence) CurrentStep() (int, int, error) {
+	h, e := s.nativeHandle()
+	if e != nil {
+		return 0, 0, e
+	}
+	a, b := s.driver.CurrentStep(h)
+	return a, b, nil
+}
+func (s *sequence) AllNotesOff() error {
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.AllNotesOff(h)
+	}
+	return e
+}
+
 type sequence struct {
 	handle   uintptr
 	driver   SequenceDriver

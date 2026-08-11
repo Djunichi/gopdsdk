@@ -106,6 +106,52 @@ type PCMPlayers interface {
 	NewPCMPlayer(samples []int16, sampleRate uint32) (SamplePlayer, error)
 }
 
+// PCMRenderCallback fills up to len(left) signed 16-bit PCM frames and returns
+// the number produced. right is nil for mono sources. The callback runs only
+// from the frame-update goroutine, never from Playdate's audio thread.
+type PCMRenderCallback func(left, right []int16) int
+
+// PCMCallbackSource is a continuously playing, explicitly owned source backed
+// by a bounded native PCM ring. An underrun emits silence without calling Go.
+type PCMCallbackSource interface {
+	AudioSource
+	UnderrunCount() (uint32, error)
+	Close() error
+}
+
+// CallbackAudio creates bounded callback sources attached to an existing
+// channel. stereo selects whether the render callback receives a right buffer.
+type CallbackAudio interface {
+	NewPCMCallbackSource(channel AudioChannel, stereo bool, callback PCMRenderCallback) (PCMCallbackSource, error)
+}
+
+// GeneratorState is the latest bounded snapshot for one native synth voice.
+// Parameters contains the eight custom generator parameter slots.
+type GeneratorState struct {
+	Voice         uint8
+	Note          float32
+	Velocity      float32
+	Length        float32
+	Released      bool
+	ReleaseOffset int32
+	Rate          uint32
+	DeltaRate     int32
+	Parameters    [8]float32
+}
+
+// GeneratorRenderCallback produces signed 16-bit PCM for one synth voice. The
+// callback runs on the frame-update goroutine; right is nil for mono generators.
+type GeneratorRenderCallback func(state GeneratorState, left, right []int16) int
+
+// GeneratorSynth is a native PDSynth configured with a device-safe custom
+// generator. Instrument voice copies receive independent bounded PCM rings.
+type GeneratorSynth interface{ Synth }
+
+// GeneratorSynthesizers creates custom generator synths.
+type GeneratorSynthesizers interface {
+	NewGeneratorSynth(stereo bool, callback GeneratorRenderCallback) (GeneratorSynth, error)
+}
+
 // VariableRatePlayer changes and reports a player's playback rate. FilePlayer
 // values may capability-assert this optional interface, but only positive rates
 // are supported for streaming playback.
@@ -113,6 +159,9 @@ type VariableRatePlayer interface {
 	SetRate(rate float32) error
 	Rate() (float32, error)
 }
+
+// RateModulatedPlayer accepts a signal controlling native playback rate.
+type RateModulatedPlayer interface{ SetRateModulator(Signal) error }
 
 // CompletionPlayer reports natural playback completion. Setting a nil callback
 // clears the current callback. Stop and Close do not invoke it.
@@ -183,6 +232,8 @@ type AudioChannel interface {
 	SetVolume(volume float32) error
 	Volume() (float32, error)
 	SetPan(pan float32) error
+	SetVolumeModulator(Signal) error
+	SetPanModulator(Signal) error
 	Close() error
 }
 
@@ -214,6 +265,12 @@ type TwoPoleFilter interface {
 	SetGain(float32) error
 	SetResonance(float32) error
 	SetResonanceModulator(Signal) error
+}
+
+type OnePoleFilter interface {
+	AudioEffect
+	SetParameter(float32) error
+	SetParameterModulator(Signal) error
 }
 
 type BitCrusher interface {
@@ -260,6 +317,7 @@ type DelayTap interface {
 // AudioEffects creates owned native processors.
 type AudioEffects interface {
 	NewTwoPoleFilter(FilterType) (TwoPoleFilter, error)
+	NewOnePoleFilter() (OnePoleFilter, error)
 	NewBitCrusher() (BitCrusher, error)
 	NewRingModulator() (RingModulator, error)
 	NewDelayLine(lengthFrames int, stereo bool) (DelayLine, error)
@@ -345,6 +403,9 @@ type Envelope interface {
 	SetRelease(seconds float32) error
 	SetLegato(legato bool) error
 	SetRetrigger(retrigger bool) error
+	SetCurvature(amount float32) error
+	SetVelocitySensitivity(amount float32) error
+	SetRateScaling(scaling float32, startNote, endNote uint8) error
 }
 
 // ControlSignal is a step timeline usable as a synth modulator.
@@ -361,9 +422,15 @@ type Synth interface {
 	AudioSource
 	SetWaveform(waveform Waveform) error
 	SetEnvelope(attack, decay, sustain, release float32) error
+	SetEnvelopeCurvature(amount float32) error
+	SetEnvelopeVelocitySensitivity(amount float32) error
+	SetEnvelopeRateScaling(scaling float32, startNote, endNote uint8) error
 	SetTranspose(semitones float32) error
 	SetFrequencyModulator(signal Signal) error
 	SetAmplitudeModulator(signal Signal) error
+	SetWavetable(sample AudioSample, log2Size, columns, rows int) error
+	SetParameter(parameter int, value float32) error
+	SetParameterModulator(parameter int, signal Signal) error
 	PlayMIDINote(note, velocity, length float32, when uint32) error
 	NoteOff(when uint32) error
 	Stop() error
@@ -406,7 +473,22 @@ type SequenceTrack interface {
 	ClearControlEvents() error
 	SetMuted(bool) error
 	Length() (uint32, error)
+	Instrument() (Instrument, error)
+	ControlSignalCount() (int, error)
+	ControlSignal(index int) (ControlSignal, error)
+	SignalForController(controller int, create bool) (ControlSignal, error)
+	Polyphony() (int, error)
+	ActiveVoiceCount() (int, error)
+	NoteIndexAtStep(step uint32) (int, error)
+	NoteAt(index int) (SequenceNote, bool, error)
 	Close() error
+}
+
+// SequenceNote is an immutable snapshot of one note event.
+type SequenceNote struct {
+	Step, Length uint32
+	Note         uint8
+	Velocity     float32
 }
 
 // Sequence owns playback state and MIDI-loaded children, but not tracks
@@ -423,6 +505,10 @@ type Sequence interface {
 	Time() (uint32, error)
 	SetTime(uint32) error
 	Length() (uint32, error)
+	TrackCount() (uint, error)
+	Track(index uint) (SequenceTrack, error)
+	CurrentStep() (step, timeOffset int, err error)
+	AllNotesOff() error
 	Close() error
 }
 

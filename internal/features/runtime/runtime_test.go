@@ -32,6 +32,19 @@ func TestOwnedFontMeasurementAndClose(t *testing.T) {
 	}
 }
 
+func TestOnePoleAcceptsLowAndHighPassRange(t *testing.T) {
+	var got float32
+	effect := NewOnePoleFilter(7, OnePoleFilterDriver{Effect: EffectDriver{SetMix: func(uintptr, float32) {}, SetMixModulator: func(uintptr, uintptr) {}, Free: func(uintptr) {}}, SetParameter: func(_ uintptr, value float32) { got = value }, SetParameterModulator: func(uintptr, uintptr) {}})
+	for _, value := range []float32{-1, 1} {
+		if err := effect.SetParameter(value); err != nil || got != value {
+			t.Fatalf("SetParameter(%v) = %v, got %v", value, err, got)
+		}
+	}
+	if err := effect.SetParameter(-1.01); err != playdate.ErrAudioParameter {
+		t.Fatalf("SetParameter(-1.01) = %v", err)
+	}
+}
+
 func TestFontHandleRejectsForeignFont(t *testing.T) {
 	if _, err := FontHandle(foreignFont{}); !errors.Is(err, playdate.ErrFontInvalid) {
 		t.Fatalf("FontHandle = %v", err)
@@ -745,10 +758,17 @@ func (musicContext) NewSequence() (playdate.Sequence, error)           { return 
 func (musicContext) NewTwoPoleFilter(playdate.FilterType) (playdate.TwoPoleFilter, error) {
 	return nil, nil
 }
+func (musicContext) NewOnePoleFilter() (playdate.OnePoleFilter, error)  { return nil, nil }
 func (musicContext) NewBitCrusher() (playdate.BitCrusher, error)        { return nil, nil }
 func (musicContext) NewRingModulator() (playdate.RingModulator, error)  { return nil, nil }
 func (musicContext) NewDelayLine(int, bool) (playdate.DelayLine, error) { return nil, nil }
 func (musicContext) NewOverdrive() (playdate.Overdrive, error)          { return nil, nil }
+func (musicContext) NewPCMCallbackSource(playdate.AudioChannel, bool, playdate.PCMRenderCallback) (playdate.PCMCallbackSource, error) {
+	return nil, nil
+}
+func (musicContext) NewGeneratorSynth(bool, playdate.GeneratorRenderCallback) (playdate.GeneratorSynth, error) {
+	return nil, nil
+}
 
 func TestApplicationForwardsMusicGraph(t *testing.T) {
 	application, err := NewApplication(testGame{init: func(context playdate.Context) error {
@@ -757,6 +777,12 @@ func TestApplicationForwardsMusicGraph(t *testing.T) {
 		}
 		if _, ok := context.(playdate.Synthesizers); !ok {
 			return errors.New("synthesizers not forwarded")
+		}
+		if _, ok := context.(playdate.CallbackAudio); !ok {
+			return errors.New("callback audio not forwarded")
+		}
+		if _, ok := context.(playdate.GeneratorSynthesizers); !ok {
+			return errors.New("generator synths not forwarded")
 		}
 		sequencers, ok := context.(playdate.Sequencers)
 		if !ok {

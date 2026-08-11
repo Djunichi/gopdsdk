@@ -121,6 +121,8 @@ func effectFrom(value playdate.AudioEffect) (*effectNode, error) {
 		return e, nil
 	case *twoPoleFilter:
 		return e.effectNode, nil
+	case *onePoleFilter:
+		return e.effectNode, nil
 	case *bitCrusher:
 		return e.effectNode, nil
 	case *ringModulator:
@@ -133,6 +135,29 @@ func effectFrom(value playdate.AudioEffect) (*effectNode, error) {
 		return nil, playdate.ErrAudioSourceInvalid
 	}
 }
+
+type OnePoleFilterDriver struct {
+	Effect                EffectDriver
+	SetParameter          func(uintptr, float32)
+	SetParameterModulator func(uintptr, uintptr)
+}
+type onePoleFilter struct {
+	*effectNode
+	driver OnePoleFilterDriver
+}
+
+func NewOnePoleFilter(h uintptr, d OnePoleFilterDriver) playdate.OnePoleFilter {
+	e := newEffectNode(h, d.Effect)
+	e.setters[1] = d.SetParameterModulator
+	return &onePoleFilter{e, d}
+}
+func (e *onePoleFilter) SetParameter(v float32) error {
+	if !finite(v) || v < -1 || v > 1 {
+		return playdate.ErrAudioParameter
+	}
+	return effectFloat(e.effectNode, v, -1, e.driver.SetParameter)
+}
+func (e *onePoleFilter) SetParameterModulator(v playdate.Signal) error { return e.setSignal(1, v) }
 
 type TwoPoleFilterDriver struct {
 	Effect                                       EffectDriver

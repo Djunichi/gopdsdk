@@ -1,0 +1,6 @@
+name=gopdsdk Wavetable
+author=gopdsdk
+description=P9.3 wavetable and modulation acceptance
+bundleID=dev.gopdsdk.wavetable
+version=0.1.0
+buildNumber=1

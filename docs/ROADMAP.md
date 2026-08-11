@@ -130,16 +130,42 @@ and audible/visible device behavior remain unverified.
 
 ### P9.3 — synthesis, modulation, and sequencing
 
-- Add one-pole filtering, wavetable synthesis, remaining envelope/synth
-  parameters, rate/pan/volume/effect modulation, signal/controller lookup, and
-  sequence/track/note introspection that enables behavior unavailable through
-  the current write-only API.
-- Add custom synth generators and callback audio sources through a bounded
-  device-safe callback path. Raw C function and userdata entry points remain
-  intentionally omitted once the Go callback contract is equivalent.
-- Treat MP3 callback streaming as required only if the installed official SDK
-  supports it as a shipping-device capability and existing file/sample players
-  cannot preserve its behavior.
+Development started with synth-owned envelope curvature, velocity sensitivity,
+and note-range rate scaling on both native adapters. The isolated
+`examples/synthesis` scene passed audible comparison of negative and positive
+curvature in the official Windows SDK 3.1.1 Simulator and, after conservative
+hard-float build and COM3 deployment, on a physical Playdate on 2026-08-11. The
+accepted device artifact uses 280,776 bytes of static RAM and produces a
+1,211,620-byte ELF and a 42,434-byte PDX. Soak, memory-growth measurement,
+lifecycle stress, and post-run device-log inspection remain unverified.
+
+The implementation now includes one-pole filtering, wavetable and custom
+generator synthesis, remaining synth parameters and modulation edges,
+signal/controller lookup, and sequence/track/note introspection on both native
+adapters. Callback PCM uses four fixed 4,096-frame native rings. Custom synths
+use eight fixed userdata/voice slots with independent 4,096-frame rings and
+native polyphonic copy semantics. Both expose update-thread Go callbacks while
+the native audio thread only consumes bounded rings. Raw C function and userdata
+entry points remain intentionally omitted because the Go contracts preserve the
+portable behavior.
+
+The focused `examples/callbackpcm` and `examples/generatorsynth` scenes pass
+unit tests and audible acceptance in the official Windows SDK 3.1.1 Simulator.
+Both were then built with the conservative-GC hard-float device pipeline,
+installed through COM3, launched, and audibly accepted on a physical Playdate
+on 2026-08-11. The accepted callback scene uses 352,340 bytes of static RAM and
+produces a 1,376,984-byte ELF and 57,677-byte PDX. The accepted generator scene
+uses 416,012 bytes of static RAM and produces a 1,463,812-byte ELF and
+61,781-byte PDX. P9.3 implementation and focused audible acceptance are
+complete; soak, memory-growth measurement, lifecycle stress, and a final
+post-run log check roll into P9.4 acceptance.
+
+SDK 3.1.1 declares `setMP3StreamSource` in the C header but provides no matching
+official documentation or example establishing a shipping-device contract.
+P9.3 therefore does not expose it from declaration discovery alone; packaged
+MP3 playback remains available through `FilePlayer`. Reconsider a bounded byte
+stream only when official device behavior can be probed and ordinary
+file/sample players cannot preserve the required game behavior.
 
 ### P9.4 — release
 

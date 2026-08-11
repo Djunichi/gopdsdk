@@ -49,7 +49,7 @@ func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 			t.Errorf("probe source does not contain %q", want)
 		}
 	}
-	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", "bridgeCurrentAudioTime", "bridgeButtons", "bridgeCrankAngleBits", "bridgeCrankDeltaBits", "bridgeCrankDocked", "bridgeFrameDeltaBits", "float32FromBits", "bridgeLoadBitmap", "bridgeNewBitmap", "bridgeFreeBitmap", "bridgeBitmapSize", "bridgeFillBitmap", "bridgeBitmapData", "bridgeCopyBitmap", "bridgeLoadIntoBitmap", "bridgeNewBitmapTable", "bridgeLoadIntoBitmapTable", "bridgeSetBitmapMask", "bridgeGetBitmapMask", "bridgeCheckMaskCollision", "bridgeRotatedBitmapBits", "bridgeCopyDisplayBuffer", "bridgeDrawBitmap", "bridgeDrawScaledBitmapBits", "bridgeDrawRotatedBitmapBits", "bridgeSetStencil", "bridgeClearStencil", "bridgeDisplaySetRefreshRateBits", "bridgeDisplaySetScale", "bridgeDisplaySetMosaic", "bridgeDrawPrimitive", "bridgeSetClipRect", "bridgeSetDrawMode", "bridgeGetFrame", "bridgeMarkUpdatedRows", "sdkRuntime.WithFramebuffer", "sdkRuntime.OwnedBitmapHandle", "bridgePushContext", "bridgePopContext", "sdkRuntime.ValidatePrimitiveGeometry", "bridgeNewSprite", "bridgeSpriteSetBitmap", "bridgeSpriteMoveToBits", "bridgeSpriteMoveByBits", "bridgeSpriteSetVisible", "bridgeSpriteSetZIndex", "bridgeSpriteMarkDirty", "bridgeSpriteMarkDirtyRectBits", "bridgeSetAlwaysRedraw", "bridgeAddDirtyRect", "bridgeSpriteAdd", "bridgeSpriteRemove", "bridgeFreeSprite", "bridgeUpdateAndDrawSprites", "bridgeLoadSoundEffect", "bridgeSamplePlayerPlayBits", "bridgeLoadFilePlayer", "bridgeFilePlayerSetRateBits", "bridgeSoundEffectSetFinishCallback", "bridgeFilePlayerFadeVolumeBits", "sdkRuntime.InvokeAudioCallback", "sdkRuntime.NewSoundEffect", "sdkRuntime.NewSamplePlayer", "sdkRuntime.NewFilePlayer", "bridgeNewAudioChannel", "bridgeNewSynth", "bridgeNewLFO", "bridgeNewEnvelopeBits", "bridgeNewControlSignal", "sdkRuntime.NewAudioChannel", "sdkRuntime.NewSynth", "sdkRuntime.NewLFO", "sdkRuntime.NewEnvelope", "sdkRuntime.NewControlSignal", `"example.com/game"`, "func main()"} {
+	for _, want := range []string{"package main", "//export goEventHandler", "func goEventHandler", "//export goUpdate", "sdkRuntime.NewApplication(app.New(), gameContext, nil)", "application.Handle", "application.Update", "bridgeClear", "bridgeLog", "gopdsdk event error:", "bridgeDrawText", "bridgeCurrentTimeMilliseconds", "bridgeCurrentAudioTime", "bridgeButtons", "bridgeCrankAngleBits", "bridgeCrankDeltaBits", "bridgeCrankDocked", "bridgeFrameDeltaBits", "float32FromBits", "bridgeLoadBitmap", "bridgeNewBitmap", "bridgeFreeBitmap", "bridgeBitmapSize", "bridgeFillBitmap", "bridgeBitmapData", "bridgeCopyBitmap", "bridgeLoadIntoBitmap", "bridgeNewBitmapTable", "bridgeLoadIntoBitmapTable", "bridgeSetBitmapMask", "bridgeGetBitmapMask", "bridgeCheckMaskCollision", "bridgeRotatedBitmapBits", "bridgeCopyDisplayBuffer", "bridgeDrawBitmap", "bridgeDrawScaledBitmapBits", "bridgeDrawRotatedBitmapBits", "bridgeSetStencil", "bridgeClearStencil", "bridgeDisplaySetRefreshRateBits", "bridgeDisplaySetScale", "bridgeDisplaySetMosaic", "bridgeDrawPrimitive", "bridgeSetClipRect", "bridgeSetDrawMode", "bridgeGetFrame", "bridgeMarkUpdatedRows", "sdkRuntime.WithFramebuffer", "sdkRuntime.OwnedBitmapHandle", "bridgePushContext", "bridgePopContext", "sdkRuntime.ValidatePrimitiveGeometry", "bridgeNewSprite", "bridgeSpriteSetBitmap", "bridgeSpriteMoveToBits", "bridgeSpriteMoveByBits", "bridgeSpriteSetVisible", "bridgeSpriteSetZIndex", "bridgeSpriteMarkDirty", "bridgeSpriteMarkDirtyRectBits", "bridgeSetAlwaysRedraw", "bridgeAddDirtyRect", "bridgeSpriteAdd", "bridgeSpriteRemove", "bridgeFreeSprite", "bridgeUpdateAndDrawSprites", "bridgeLoadSoundEffect", "bridgeSamplePlayerPlayBits", "bridgeLoadFilePlayer", "bridgeFilePlayerSetRateBits", "bridgeSoundEffectSetFinishCallback", "bridgeFilePlayerFadeVolumeBits", "sdkRuntime.InvokeAudioCallback", "sdkRuntime.NewSoundEffect", "sdkRuntime.NewSamplePlayer", "sdkRuntime.NewFilePlayer", "bridgeNewAudioChannel", "bridgeNewSynth", "bridgeNewLFO", "bridgeNewEnvelopeBits", "bridgeNewControlSignal", "sdkRuntime.NewAudioChannel", "sdkRuntime.NewSynth", "sdkRuntime.NewLFO", "sdkRuntime.NewEnvelope", "sdkRuntime.NewControlSignal", `"example.com/game"`, "func main()"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
@@ -153,6 +153,29 @@ func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
 	run := strings.Index(bootstrapSource, "runtimeRun();")
 	if activate < 0 || run < activate {
 		t.Fatalf("bootstrap order activate/run = %d/%d", activate, run)
+	}
+}
+
+func TestP93DeviceABIBridges(t *testing.T) {
+	for name, source := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{"bridgeSamplePlayerSetRateModulator", "bridgeFilePlayerSetRateModulator"} {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+	}
+	for _, want := range []string{"bridgeAudioChannelSetModulator", "bridgeSynthSetWavetable", "bridgeSynthSetParameterBits", "bridgeTrackInspect", "bridgeTrackMetric", "bridgeTrackNoteAtBits", "bridgeSequenceGetTrack", "bridgeSequenceCurrentStep", "bridgeSequenceAllNotesOff", "bridgeNewOnePole", "bridgeNewPCMCallbackSource", "bridgeNewGeneratorSynth"} {
+		if !strings.Contains(bootstrapSource, want) {
+			t.Errorf("device bootstrap does not contain %q", want)
+		}
+		if !strings.Contains(applicationSourceTemplate, want) {
+			t.Errorf("device application does not contain %q", want)
+		}
+	}
+	for _, want := range []string{"bridgePCMRender", "BRIDGE_PCM_RING_FRAMES", "bridgeGeneratorRender", "bridgeGeneratorCopy", "BRIDGE_GENERATOR_VOICE_COUNT"} {
+		if !strings.Contains(bootstrapSource, want) {
+			t.Errorf("device bootstrap does not contain %q", want)
+		}
 	}
 }
 

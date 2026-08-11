@@ -1,0 +1,6 @@
+name=gopdsdk Sequence Inspect
+author=gopdsdk
+description=P9.3 sequence introspection acceptance
+bundleID=dev.gopdsdk.sequenceinspect
+version=0.1.0
+buildNumber=1

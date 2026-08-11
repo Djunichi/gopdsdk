@@ -381,6 +381,7 @@ type AudioDriver struct {
 	SetOffset         func(uintptr, float32)
 	Offset            func(uintptr) float32
 	SetRate           func(uintptr, float32)
+	SetRateModulator  func(uintptr, uintptr)
 	Rate              func(uintptr) float32
 	SetFinishCallback func(uintptr, uint32)
 	SetLoopCallback   func(uintptr, uint32)
@@ -406,20 +407,50 @@ type audioPlayer struct {
 	fadeCallback   uint32
 	sample         *audioSample
 	channels       map[*audioChannel]struct{}
+	rateSignal     *signalNode
+}
+
+func (p *audioPlayer) SetRateModulator(v playdate.Signal) error {
+	h, e := p.nativeHandle()
+	if e != nil {
+		return e
+	}
+	if p.driver.SetRateModulator == nil {
+		return playdate.ErrAudioUnavailable
+	}
+	s, e := signalFrom(v)
+	if e != nil {
+		return e
+	}
+	var sh uintptr
+	if s != nil {
+		sh = s.handle
+	}
+	if p.rateSignal != nil {
+		delete(p.rateSignal.players, p)
+	}
+	p.driver.SetRateModulator(h, sh)
+	p.rateSignal = s
+	if s != nil {
+		s.players[p] = struct{}{}
+	}
+	return nil
 }
 
 // AudioChannelDriver contains native operations for an explicitly owned
 // routing node.
 type AudioChannelDriver struct {
-	AddSource    func(uintptr, uintptr) bool
-	RemoveSource func(uintptr, uintptr) bool
-	AddEffect    func(uintptr, uintptr) bool
-	RemoveEffect func(uintptr, uintptr) bool
-	SetVolume    func(uintptr, float32)
-	Volume       func(uintptr) float32
-	SetPan       func(uintptr, float32)
-	Remove       func(uintptr) bool
-	Free         func(uintptr)
+	AddSource          func(uintptr, uintptr) bool
+	RemoveSource       func(uintptr, uintptr) bool
+	AddEffect          func(uintptr, uintptr) bool
+	RemoveEffect       func(uintptr, uintptr) bool
+	SetVolume          func(uintptr, float32)
+	Volume             func(uintptr) float32
+	SetPan             func(uintptr, float32)
+	SetVolumeModulator func(uintptr, uintptr)
+	SetPanModulator    func(uintptr, uintptr)
+	Remove             func(uintptr) bool
+	Free               func(uintptr)
 }
 
 // AudioOutputDriver contains native operations for the process-wide output
@@ -432,12 +463,54 @@ type AudioOutputDriver struct {
 }
 
 type audioChannel struct {
-	handle  uintptr
-	driver  AudioChannelDriver
-	sources map[*audioPlayer]struct{}
-	effects map[*effectNode]struct{}
-	closed  bool
+	handle                  uintptr
+	driver                  AudioChannelDriver
+	sources                 map[*audioPlayer]struct{}
+	effects                 map[*effectNode]struct{}
+	closed                  bool
+	volumeSignal, panSignal *signalNode
 }
+
+func (c *audioChannel) setModulator(value playdate.Signal, pan bool) error {
+	h, e := c.nativeHandle()
+	if e != nil {
+		return e
+	}
+	s, e := signalFrom(value)
+	if e != nil {
+		return e
+	}
+	var sh uintptr
+	if s != nil {
+		sh = s.handle
+	}
+	old := c.volumeSignal
+	slot := uint8(1)
+	set := c.driver.SetVolumeModulator
+	if pan {
+		old = c.panSignal
+		slot = 2
+		set = c.driver.SetPanModulator
+	}
+	if old != nil {
+		old.channels[c] &^= slot
+		if old.channels[c] == 0 {
+			delete(old.channels, c)
+		}
+	}
+	set(h, sh)
+	if pan {
+		c.panSignal = s
+	} else {
+		c.volumeSignal = s
+	}
+	if s != nil {
+		s.channels[c] |= slot
+	}
+	return nil
+}
+func (c *audioChannel) SetVolumeModulator(v playdate.Signal) error { return c.setModulator(v, false) }
+func (c *audioChannel) SetPanModulator(v playdate.Signal) error    { return c.setModulator(v, true) }
 
 // NewAudioChannel wraps a native channel already added to the sound graph.
 func NewAudioChannel(handle uintptr, driver AudioChannelDriver) playdate.AudioChannel {
@@ -637,6 +710,16 @@ func (c *audioChannel) Close() error {
 		delete(effect.channels, c)
 	}
 	c.effects = nil
+	if c.volumeSignal != nil {
+		delete(c.volumeSignal.channels, c)
+		c.driver.SetVolumeModulator(handle, 0)
+		c.volumeSignal = nil
+	}
+	if c.panSignal != nil {
+		delete(c.panSignal.channels, c)
+		c.driver.SetPanModulator(handle, 0)
+		c.panSignal = nil
+	}
 	if c.driver.Remove != nil && !c.driver.Remove(handle) {
 		return playdate.ErrAudioRoute
 	}
@@ -1053,6 +1136,11 @@ func (p *audioPlayer) Close() error {
 		delete(p.channels, channel)
 	}
 	p.channels = nil
+	if p.rateSignal != nil {
+		delete(p.rateSignal.players, p)
+		p.driver.SetRateModulator(handle, 0)
+		p.rateSignal = nil
+	}
 	if p.driver.SetFinishCallback != nil {
 		p.driver.SetFinishCallback(handle, 0)
 	}
@@ -2668,6 +2756,14 @@ func (context *applicationContext) NewPCMPlayer(samples []int16, sampleRate uint
 	return players.NewPCMPlayer(samples, sampleRate)
 }
 
+func (context *applicationContext) NewPCMCallbackSource(channel playdate.AudioChannel, stereo bool, callback playdate.PCMRenderCallback) (playdate.PCMCallbackSource, error) {
+	callbacks, _ := context.Context.(playdate.CallbackAudio)
+	if callbacks == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return callbacks.NewPCMCallbackSource(channel, stereo, callback)
+}
+
 func (context *applicationContext) NewSample(byteCount int) (playdate.AudioSample, error) {
 	samples, ok := context.Context.(playdate.AudioSamples)
 	if !ok || context.terminated {
@@ -2736,6 +2832,13 @@ func (context *applicationContext) NewSynth(waveform playdate.Waveform) (playdat
 	}
 	return synths.NewSynth(waveform)
 }
+func (context *applicationContext) NewGeneratorSynth(stereo bool, callback playdate.GeneratorRenderCallback) (playdate.GeneratorSynth, error) {
+	generators, _ := context.Context.(playdate.GeneratorSynthesizers)
+	if generators == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return generators.NewGeneratorSynth(stereo, callback)
+}
 func (context *applicationContext) NewLFO(lfoType playdate.LFOType) (playdate.LFO, error) {
 	synths, _ := context.Context.(playdate.Synthesizers)
 	if synths == nil || context.terminated {
@@ -2785,6 +2888,13 @@ func (context *applicationContext) NewTwoPoleFilter(kind playdate.FilterType) (p
 		return nil, playdate.ErrAudioUnavailable
 	}
 	return v.NewTwoPoleFilter(kind)
+}
+func (context *applicationContext) NewOnePoleFilter() (playdate.OnePoleFilter, error) {
+	v, _ := context.Context.(playdate.AudioEffects)
+	if v == nil || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return v.NewOnePoleFilter()
 }
 func (context *applicationContext) NewBitCrusher() (playdate.BitCrusher, error) {
 	v, _ := context.Context.(playdate.AudioEffects)
@@ -3574,6 +3684,8 @@ func (r *Runtime) Update(raw RawInput) (int32, error) {
 		return 0, ErrNotInitialized
 	}
 	DrainAudioCallbacks()
+	RefillPCMCallbackSources()
+	RefillGeneratorSynths()
 	previousButtons := r.input.Buttons
 	previousDocked := raw.CrankDocked
 	if r.hasInput {

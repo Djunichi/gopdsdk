@@ -23,13 +23,15 @@ type LFODriver struct {
 
 // EnvelopeDriver contains native operations specific to an ADSR envelope.
 type EnvelopeDriver struct {
-	Signal       SignalDriver
-	SetAttack    func(uintptr, float32)
-	SetDecay     func(uintptr, float32)
-	SetSustain   func(uintptr, float32)
-	SetRelease   func(uintptr, float32)
-	SetLegato    func(uintptr, bool)
-	SetRetrigger func(uintptr, bool)
+	Signal                               SignalDriver
+	SetAttack                            func(uintptr, float32)
+	SetDecay                             func(uintptr, float32)
+	SetSustain                           func(uintptr, float32)
+	SetRelease                           func(uintptr, float32)
+	SetLegato                            func(uintptr, bool)
+	SetRetrigger                         func(uintptr, bool)
+	SetCurvature, SetVelocitySensitivity func(uintptr, float32)
+	SetRateScaling                       func(uintptr, float32, uint8, uint8)
 }
 
 // ControlSignalDriver contains native operations for a step timeline.
@@ -46,6 +48,8 @@ type signalNode struct {
 	synths    map[*synth]uint8
 	effects   map[*effectNode]uint8
 	delayTaps map[*delayTap]struct{}
+	channels  map[*audioChannel]uint8
+	players   map[*audioPlayer]struct{}
 	closed    bool
 }
 
@@ -65,7 +69,7 @@ type controlSignal struct {
 }
 
 func newSignalNode(handle uintptr, driver SignalDriver) *signalNode {
-	return &signalNode{handle: handle, driver: driver, synths: make(map[*synth]uint8), effects: make(map[*effectNode]uint8), delayTaps: make(map[*delayTap]struct{})}
+	return &signalNode{handle: handle, driver: driver, synths: make(map[*synth]uint8), effects: make(map[*effectNode]uint8), delayTaps: make(map[*delayTap]struct{}), channels: make(map[*audioChannel]uint8), players: make(map[*audioPlayer]struct{})}
 }
 
 // NewLFO wraps an owned native low-frequency oscillator.
@@ -147,9 +151,27 @@ func (s *signalNode) Close() error {
 			tap.signal = nil
 		}
 	}
+	for channel, slots := range s.channels {
+		if slots&1 != 0 {
+			channel.driver.SetVolumeModulator(channel.handle, 0)
+			channel.volumeSignal = nil
+		}
+		if slots&2 != 0 {
+			channel.driver.SetPanModulator(channel.handle, 0)
+			channel.panSignal = nil
+		}
+	}
+	for player := range s.players {
+		if !player.closed {
+			player.driver.SetRateModulator(player.handle, 0)
+			player.rateSignal = nil
+		}
+	}
 	s.synths = nil
 	s.effects = nil
 	s.delayTaps = nil
+	s.channels = nil
+	s.players = nil
 	s.driver.Free(handle)
 	s.handle = 0
 	s.closed = true
@@ -299,6 +321,30 @@ func (e *envelope) SetRetrigger(value bool) error {
 	e.driver.SetRetrigger(h, value)
 	return nil
 }
+func (e *envelope) SetCurvature(v float32) error { return e.setExtra(v, e.driver.SetCurvature) }
+func (e *envelope) SetVelocitySensitivity(v float32) error {
+	return e.setExtra(v, e.driver.SetVelocitySensitivity)
+}
+func (e *envelope) setExtra(v float32, set func(uintptr, float32)) error {
+	if !finite(v) {
+		return playdate.ErrAudioParameter
+	}
+	h, err := e.nativeHandle()
+	if err == nil {
+		set(h, v)
+	}
+	return err
+}
+func (e *envelope) SetRateScaling(v float32, start, end uint8) error {
+	if !finite(v) || start > end {
+		return playdate.ErrAudioParameter
+	}
+	h, err := e.nativeHandle()
+	if err == nil {
+		e.driver.SetRateScaling(h, v, start, end)
+	}
+	return err
+}
 
 func (c *controlSignal) AddEvent(step int, value float32, interpolate bool) error {
 	if step < 0 {
@@ -336,14 +382,80 @@ func (c *controlSignal) ClearEvents() error {
 
 // SynthDriver contains native operations for an owned waveform synthesizer.
 type SynthDriver struct {
-	Audio                 AudioDriver
-	SetWaveform           func(uintptr, playdate.Waveform)
-	SetEnvelope           func(uintptr, float32, float32, float32, float32)
-	SetTranspose          func(uintptr, float32)
-	SetFrequencyModulator func(uintptr, uintptr)
-	SetAmplitudeModulator func(uintptr, uintptr)
-	PlayMIDINote          func(uintptr, float32, float32, float32, uint32)
-	NoteOff               func(uintptr, uint32)
+	Audio                          AudioDriver
+	SetWaveform                    func(uintptr, playdate.Waveform)
+	SetEnvelope                    func(uintptr, float32, float32, float32, float32)
+	SetEnvelopeCurvature           func(uintptr, float32)
+	SetEnvelopeVelocitySensitivity func(uintptr, float32)
+	SetEnvelopeRateScaling         func(uintptr, float32, uint8, uint8)
+	SetTranspose                   func(uintptr, float32)
+	SetFrequencyModulator          func(uintptr, uintptr)
+	SetAmplitudeModulator          func(uintptr, uintptr)
+	PlayMIDINote                   func(uintptr, float32, float32, float32, uint32)
+	NoteOff                        func(uintptr, uint32)
+	SetWavetable                   func(uintptr, uintptr, int, int, int) bool
+	SetParameter                   func(uintptr, int, float32) bool
+	SetParameterModulator          func(uintptr, int, uintptr)
+}
+
+func (s *synth) SetWavetable(value playdate.AudioSample, log2Size, columns, rows int) error {
+	if s.generator != nil {
+		return playdate.ErrAudioUnavailable
+	}
+	if log2Size < 0 || columns < 1 || rows < 1 {
+		return playdate.ErrAudioParameter
+	}
+	sample, ok := value.(*audioSample)
+	if !ok {
+		return playdate.ErrAudioSourceInvalid
+	}
+	sh, err := sample.nativeHandle()
+	if err != nil {
+		return err
+	}
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if s.driver.SetWavetable == nil || !s.driver.SetWavetable(h, sh, log2Size, columns, rows) {
+		return playdate.ErrAudioParameter
+	}
+	return nil
+}
+func (s *synth) SetParameter(parameter int, value float32) error {
+	if parameter < 1 || !finite(value) {
+		return playdate.ErrAudioParameter
+	}
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if s.driver.SetParameter == nil || !s.driver.SetParameter(h, parameter, value) {
+		return playdate.ErrAudioParameter
+	}
+	return nil
+}
+func (s *synth) SetParameterModulator(parameter int, value playdate.Signal) error {
+	if parameter < 1 {
+		return playdate.ErrAudioParameter
+	}
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	n, err := signalFrom(value)
+	if err != nil {
+		return err
+	}
+	var sh uintptr
+	if n != nil {
+		sh = n.handle
+	}
+	if s.driver.SetParameterModulator == nil {
+		return playdate.ErrAudioUnavailable
+	}
+	s.driver.SetParameterModulator(h, parameter, sh)
+	return nil
 }
 
 type synth struct {
@@ -352,6 +464,7 @@ type synth struct {
 	frequency   *signalNode
 	amplitude   *signalNode
 	instruments map[*instrument]struct{}
+	generator   *generatorSynthSource
 }
 
 // NewSynth wraps an owned native waveform synthesizer.
@@ -360,6 +473,9 @@ func NewSynth(handle uintptr, driver SynthDriver) playdate.Synth {
 }
 
 func (s *synth) SetWaveform(value playdate.Waveform) error {
+	if s.generator != nil {
+		return playdate.ErrAudioUnavailable
+	}
 	if value > playdate.WaveformPOVosim {
 		return playdate.ErrAudioWaveform
 	}
@@ -380,6 +496,36 @@ func (s *synth) SetEnvelope(a, d, sustain, r float32) error {
 	}
 	s.driver.SetEnvelope(h, a, d, sustain, r)
 	return nil
+}
+func (s *synth) SetEnvelopeCurvature(v float32) error {
+	if !finite(v) {
+		return playdate.ErrAudioParameter
+	}
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetEnvelopeCurvature(h, v)
+	}
+	return e
+}
+func (s *synth) SetEnvelopeVelocitySensitivity(v float32) error {
+	if !finite(v) {
+		return playdate.ErrAudioParameter
+	}
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetEnvelopeVelocitySensitivity(h, v)
+	}
+	return e
+}
+func (s *synth) SetEnvelopeRateScaling(v float32, a, b uint8) error {
+	if !finite(v) || a > b {
+		return playdate.ErrAudioParameter
+	}
+	h, e := s.nativeHandle()
+	if e == nil {
+		s.driver.SetEnvelopeRateScaling(h, v, a, b)
+	}
+	return e
 }
 func (s *synth) SetTranspose(value float32) error {
 	if !finite(value) {
@@ -484,6 +630,11 @@ func (s *synth) Close() error {
 	}
 	if len(s.instruments) != 0 {
 		return playdate.ErrAudioRoute
+	}
+	if s.generator != nil {
+		delete(generatorSynthSources, s.generator)
+		s.generator.callback = nil
+		s.generator = nil
 	}
 	if s.frequency != nil {
 		delete(s.frequency.synths, s)
