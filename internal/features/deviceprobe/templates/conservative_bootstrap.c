@@ -69,6 +69,7 @@ void bridgeClear(void)
 {
 	activePlaydate->graphics->clear(kColorWhite);
 }
+void bridgeLog(const char* message){activePlaydate->system->logToConsole("%s",message);}
 uintptr_t bridgeGetFrame(void){return (uintptr_t)activePlaydate->graphics->getFrame();}
 void bridgeMarkUpdatedRows(int32_t start,int32_t end){activePlaydate->graphics->markUpdatedRows(start,end);}
 
@@ -261,6 +262,7 @@ uint32_t bridgeSamplePlayerLengthBits(uintptr_t effect){union{float value;uint32
 void bridgeSamplePlayerSetOffsetBits(uintptr_t effect,uint32_t offset){union{uint32_t bits;float value;}v={.bits=offset};activePlaydate->sound->sampleplayer->setOffset(bridgeEffect(effect)->player,v.value);}
 uint32_t bridgeSamplePlayerOffsetBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getOffset(bridgeEffect(effect)->player)};return v.bits;}
 void bridgeSamplePlayerSetRateBits(uintptr_t effect,uint32_t rate){union{uint32_t bits;float value;}v={.bits=rate};activePlaydate->sound->sampleplayer->setRate(bridgeEffect(effect)->player,v.value);}
+void bridgeSamplePlayerSetRateModulator(uintptr_t e,uintptr_t s){activePlaydate->sound->sampleplayer->setRateModulator(bridgeEffect(e)->player,(PDSynthSignalValue*)s);}
 uint32_t bridgeSamplePlayerRateBits(uintptr_t effect){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->sampleplayer->getRate(bridgeEffect(effect)->player)};return v.bits;}
 void bridgeSoundEffectSetLoopCallback(uintptr_t e,uint32_t c){activePlaydate->sound->sampleplayer->setLoopCallback(bridgeEffect(e)->player,c?bridgeAudioFinishCallback:NULL,(void*)(uintptr_t)c);} void bridgeSamplePlayerSetSample(uintptr_t e,uintptr_t s){BridgeSoundEffect*v=bridgeEffect(e);if(v->ownsSample&&v->sample)activePlaydate->sound->sample->freeSample(v->sample);v->sample=(AudioSample*)s;v->ownsSample=0;activePlaydate->sound->sampleplayer->setSample(v->player,v->sample);} void bridgeSamplePlayerSetPlayRange(uintptr_t e,int32_t s,int32_t n){activePlaydate->sound->sampleplayer->setPlayRange(bridgeEffect(e)->player,s,n);}
 void bridgeFreeSoundEffect(uintptr_t effect){BridgeSoundEffect* value=bridgeEffect(effect);activePlaydate->sound->sampleplayer->freePlayer(value->player);if(value->ownsSample&&value->sample)activePlaydate->sound->sample->freeSample(value->sample);activePlaydate->system->realloc(value,0);}
@@ -272,6 +274,7 @@ void bridgeFilePlayerVolumeBits(uintptr_t player,uint32_t* left,uint32_t* right)
 int32_t bridgeFilePlayerIsPlaying(uintptr_t player){return activePlaydate->sound->fileplayer->isPlaying((FilePlayer*)player);}
 void bridgeFilePlayerPause(uintptr_t player){activePlaydate->sound->fileplayer->pause((FilePlayer*)player);}
 void bridgeFilePlayerSetRateBits(uintptr_t player,uint32_t rate){union{uint32_t bits;float value;}v={.bits=rate};activePlaydate->sound->fileplayer->setRate((FilePlayer*)player,v.value);}
+void bridgeFilePlayerSetRateModulator(uintptr_t p,uintptr_t s){activePlaydate->sound->fileplayer->setRateModulator((FilePlayer*)p,(PDSynthSignalValue*)s);}
 uint32_t bridgeFilePlayerRateBits(uintptr_t player){union{float value;uint32_t bits;}v={.value=activePlaydate->sound->fileplayer->getRate((FilePlayer*)player)};return v.bits;}
 uint32_t bridgeCurrentAudioTime(void){return activePlaydate->sound->getCurrentTime();}
 extern void goAudioCallback(uint32_t callback,int32_t oneShot);

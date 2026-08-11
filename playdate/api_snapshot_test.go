@@ -246,11 +246,11 @@ func XORPaint() Paint
 type Accelerometer interface{AccelerometerXYZ() (x float32, y float32, z float32); SetAccelerometerEnabled(bool)}
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
-type AudioChannel interface{AddEffect(effect AudioEffect) error; AddSource(source AudioSource) error; Close() error; RemoveEffect(effect AudioEffect) error; RemoveSource(source AudioSource) error; SetPan(pan float32) error; SetVolume(volume float32) error; Volume() (float32, error)}
+type AudioChannel interface{AddEffect(effect AudioEffect) error; AddSource(source AudioSource) error; Close() error; RemoveEffect(effect AudioEffect) error; RemoveSource(source AudioSource) error; SetPan(pan float32) error; SetPanModulator(Signal) error; SetVolume(volume float32) error; SetVolumeModulator(Signal) error; Volume() (float32, error)}
 type AudioChannels interface{NewAudioChannel() (AudioChannel, error)}
 type AudioClock interface{CurrentAudioTime() (uint32, error)}
 type AudioEffect interface{Close() error; SetMix(level float32) error; SetMixModulator(signal Signal) error}
-type AudioEffects interface{NewBitCrusher() (BitCrusher, error); NewDelayLine(lengthFrames int, stereo bool) (DelayLine, error); NewOverdrive() (Overdrive, error); NewRingModulator() (RingModulator, error); NewTwoPoleFilter(FilterType) (TwoPoleFilter, error)}
+type AudioEffects interface{NewBitCrusher() (BitCrusher, error); NewDelayLine(lengthFrames int, stereo bool) (DelayLine, error); NewOnePoleFilter() (OnePoleFilter, error); NewOverdrive() (Overdrive, error); NewRingModulator() (RingModulator, error); NewTwoPoleFilter(FilterType) (TwoPoleFilter, error)}
 type AudioLoadError string
 type AudioOutputState struct{Headphones bool; HeadsetMicrophone bool}
 type AudioOutputs interface{AudioOutputState() (AudioOutputState, error); DefaultAudioChannel() (AudioChannel, error); SetAudioOutputsActive(headphones bool, speaker bool) error}
@@ -268,6 +268,7 @@ type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Board struct{ID string; Name string}
 type BoardsList struct{LastUpdated uint32; Boards []Board}
 type Buttons uint8
+type CallbackAudio interface{NewPCMCallbackSource(channel AudioChannel, stereo bool, callback PCMRenderCallback) (PCMCallbackSource, error)}
 type Camera struct{X int; Y int; Width int; Height int}
 type CheckmarkMenuItem interface{SetValue(bool); Value() bool; MenuItem}
 type Collision struct{Other Sprite; ResponseType CollisionResponse; Overlaps bool; Time float32; Move Point; Normal Point; Touch Point; SpriteRect Rect; OtherRect Rect}
@@ -281,7 +282,7 @@ type DelayLine interface{AddTap(delayFrames int) (DelayTap, error); SetFeedback(
 type DelayTap interface{Close() error; SetChannelsFlipped(bool) error; SetDelay(frames int) error; SetDelayModulator(Signal) error; AudioSource}
 type Display interface{FPS() float32; Height() int; RefreshRate() float32; SetFlipped(x bool, y bool); SetInverted(bool); SetMosaic(x uint, y uint) error; SetOffset(x int, y int); SetRefreshRate(framesPerSecond float32) error; SetScale(uint) error; Width() int}
 type DrawMode uint8
-type Envelope interface{SetAttack(seconds float32) error; SetDecay(seconds float32) error; SetLegato(legato bool) error; SetRelease(seconds float32) error; SetRetrigger(retrigger bool) error; SetSustain(level float32) error; Signal}
+type Envelope interface{SetAttack(seconds float32) error; SetCurvature(amount float32) error; SetDecay(seconds float32) error; SetLegato(legato bool) error; SetRateScaling(scaling float32, startNote uint8, endNote uint8) error; SetRelease(seconds float32) error; SetRetrigger(retrigger bool) error; SetSustain(level float32) error; SetVelocitySensitivity(amount float32) error; Signal}
 type FadingPlayer interface{FadeVolume(left float32, right float32, audioFrames uint32, callback func()) error}
 type File interface{Close() error; Flush() error; io.Reader; io.Writer; io.Seeker}
 type FileInfo struct{IsDir bool; Size uint32; Year int; Month int; Day int; Hour int; Minute int; Second int}
@@ -297,6 +298,10 @@ type FontLoadError string
 type Framebuffer interface{Bytes() ([]byte, error); Height() int; MarkDirtyRows(start int, end int) error; Pixel(x int, y int) (Color, error); RowBytes() int; SetPixel(x int, y int, color Color) error; Width() int}
 type FramebufferGraphics interface{WithFramebuffer(callback func(Framebuffer) error) error}
 type Game interface{Init(Context) error; Update(Context) (refresh bool, err error)}
+type GeneratorRenderCallback func(state GeneratorState, left []int16, right []int16) int
+type GeneratorState struct{Voice uint8; Note float32; Velocity float32; Length float32; Released bool; ReleaseOffset int32; Rate uint32; DeltaRate int32; Parameters [8]float32}
+type GeneratorSynth interface{Synth}
+type GeneratorSynthesizers interface{NewGeneratorSynth(stereo bool, callback GeneratorRenderCallback) (GeneratorSynth, error)}
 type Graphics interface{Clear(); DrawBitmap(bitmap Bitmap, x int, y int) error; DrawScaledBitmap(bitmap Bitmap, x int, y int, scaleX float32, scaleY float32) error; DrawText(text string, x int, y int); LoadBitmap(path string) (Bitmap, error); LoadBitmapTable(path string) (BitmapTable, error); NewBitmap(width int, height int) (Bitmap, error)}
 type GraphicsPoint struct{X int; Y int}
 type GraphicsState interface{ClearClipRect(); SetBackgroundColor(color Color) error; SetClipRect(x int, y int, width int, height int) error; SetDrawMode(mode DrawMode) error; SetDrawOffset(dx int, dy int); SetLineCapStyle(style LineCapStyle) error; SetScreenClipRect(x int, y int, width int, height int) error}
@@ -321,9 +326,12 @@ type MicrophoneSource uint8
 type Microphones interface{RequestMicrophoneAccess(purpose string, callback func(MicrophonePermission)) (MicrophonePermission, error); StartMicrophoneRecording(source MicrophoneSource, callback func(MicrophoneSamples) bool) (MicrophoneRecorder, error)}
 type MoveResult struct{ActualX float32; ActualY float32; Collisions []Collision}
 type OffscreenGraphics interface{DrawInto(bitmap Bitmap, callback func() error) error}
+type OnePoleFilter interface{SetParameter(float32) error; SetParameterModulator(Signal) error; AudioEffect}
 type OptionsMenuItem interface{SetValue(int) error; Value() int; MenuItem}
 type Overdrive interface{SetGain(float32) error; SetLimit(float32) error; SetLimitModulator(Signal) error; SetOffset(float32) error; SetOffsetModulator(Signal) error; AudioEffect}
+type PCMCallbackSource interface{Close() error; UnderrunCount() (uint32, error); AudioSource}
 type PCMPlayers interface{NewPCMPlayer(samples []int16, sampleRate uint32) (SamplePlayer, error)}
+type PCMRenderCallback func(left []int16, right []int16) int
 type Paint struct{pattern [16]byte; solid Color; kind uint8}
 type PlaybackState uint8
 type Point struct{X float32; Y float32}
@@ -331,6 +339,7 @@ type PolygonFillRule uint8
 type PowerMonitor interface{BatteryPercentage() float32; BatteryVoltage() float32; PowerStatus() PowerStatus}
 type PowerStatus uint8
 type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawRoundedRect(x int, y int, width int, height int, radius int, lineWidth int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillPolygon(points []GraphicsPoint, rule PolygonFillRule, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillRoundedRect(x int, y int, width int, height int, radius int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
+type RateModulatedPlayer interface{SetRateModulator(Signal) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
 type RingModulator interface{SetFrequency(float32) error; SetFrequencyModulator(Signal) error; AudioEffect}
 type SampleData interface{CopyTo(dst []byte) (int, error); Format() SoundFormat; Len() int; SampleRate() uint32}
@@ -342,8 +351,9 @@ type Score struct{Rank uint32; Value uint32; Player string; BoardID string}
 type ScoreboardOperationError struct{Operation string; BoardID string; Message string}
 type Scoreboards interface{AddScore(boardID string, value uint32, callback func(Score, error)) error; GetPersonalBest(boardID string, callback func(Score, error)) error; GetScoreboards(callback func(BoardsList, error)) error; GetScores(boardID string, callback func(ScoresList, error)) error}
 type ScoresList struct{BoardID string; LastUpdated uint32; PlayerIncluded bool; Limit uint32; Scores []ListScore}
-type Sequence interface{Close() error; IsPlaying() (bool, error); Length() (uint32, error); LoadMIDI(path string) error; Play(callback func()) error; SetLoops(start int, end int, count int) error; SetTempo(stepsPerSecond float32) error; SetTime(uint32) error; SetTrack(index uint, track SequenceTrack) error; Stop() error; Tempo() (float32, error); Time() (uint32, error)}
-type SequenceTrack interface{AddControlEvent(controller int, step int, value float32, interpolate bool) error; AddNote(step uint32, length uint32, note uint8, velocity float32) error; ClearControlEvents() error; ClearNotes() error; Close() error; Length() (uint32, error); RemoveControlEvent(controller int, step int) error; RemoveNote(step uint32, note uint8) error; SetInstrument(Instrument) error; SetMuted(bool) error}
+type Sequence interface{AllNotesOff() error; Close() error; CurrentStep() (step int, timeOffset int, err error); IsPlaying() (bool, error); Length() (uint32, error); LoadMIDI(path string) error; Play(callback func()) error; SetLoops(start int, end int, count int) error; SetTempo(stepsPerSecond float32) error; SetTime(uint32) error; SetTrack(index uint, track SequenceTrack) error; Stop() error; Tempo() (float32, error); Time() (uint32, error); Track(index uint) (SequenceTrack, error); TrackCount() (uint, error)}
+type SequenceNote struct{Step uint32; Length uint32; Note uint8; Velocity float32}
+type SequenceTrack interface{ActiveVoiceCount() (int, error); AddControlEvent(controller int, step int, value float32, interpolate bool) error; AddNote(step uint32, length uint32, note uint8, velocity float32) error; ClearControlEvents() error; ClearNotes() error; Close() error; ControlSignal(index int) (ControlSignal, error); ControlSignalCount() (int, error); Instrument() (Instrument, error); Length() (uint32, error); NoteAt(index int) (SequenceNote, bool, error); NoteIndexAtStep(step uint32) (int, error); Polyphony() (int, error); RemoveControlEvent(controller int, step int) error; RemoveNote(step uint32, note uint8) error; SetInstrument(Instrument) error; SetMuted(bool) error; SignalForController(controller int, create bool) (ControlSignal, error)}
 type Sequencers interface{NewInstrument() (Instrument, error); NewSequence() (Sequence, error); NewSequenceTrack() (SequenceTrack, error)}
 type Signal interface{Close() error; SetOffset(offset float32) error; SetScale(scale float32) error; Value() (float32, error)}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; Stop() error; AudioSource}
@@ -360,7 +370,7 @@ type SpriteTileMaps interface{NewSpriteTileMap(BitmapTable, int, int, []uint16) 
 type SpriteUpdateCallback func(sprite Sprite)
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
 type StreamingPlayerControls interface{DidUnderrun() (bool, error); Load(path string) error; SetBufferLength(seconds float32) error; SetLoopRange(start float32, end float32) error; SetStopOnUnderrun(bool) error}
-type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(note float32, velocity float32, length float32, when uint32) error; SetAmplitudeModulator(signal Signal) error; SetEnvelope(attack float32, decay float32, sustain float32, release float32) error; SetFrequencyModulator(signal Signal) error; SetTranspose(semitones float32) error; SetWaveform(waveform Waveform) error; Stop() error; AudioSource}
+type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(note float32, velocity float32, length float32, when uint32) error; SetAmplitudeModulator(signal Signal) error; SetEnvelope(attack float32, decay float32, sustain float32, release float32) error; SetEnvelopeCurvature(amount float32) error; SetEnvelopeRateScaling(scaling float32, startNote uint8, endNote uint8) error; SetEnvelopeVelocitySensitivity(amount float32) error; SetFrequencyModulator(signal Signal) error; SetParameter(parameter int, value float32) error; SetParameterModulator(parameter int, signal Signal) error; SetTranspose(semitones float32) error; SetWaveform(waveform Waveform) error; SetWavetable(sample AudioSample, log2Size int, columns int, rows int) error; Stop() error; AudioSource}
 type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelope(attack float32, decay float32, sustain float32, release float32) (Envelope, error); NewLFO(lfoType LFOType) (LFO, error); NewSynth(waveform Waveform) (Synth, error)}
 type System interface{CurrentTimeMilliseconds() uint32}
 type SystemMenu interface{AddActionMenuItem(title string, callback func()) (MenuItem, error); AddCheckmarkMenuItem(title string, value bool, callback func()) (CheckmarkMenuItem, error); AddOptionsMenuItem(title string, options []string, callback func()) (OptionsMenuItem, error)}
@@ -380,6 +390,7 @@ type Videos interface{LoadVideo(path string) (VideoPlayer, error)}
 type Waveform uint8
 var ErrAnimationConfig error
 var ErrAudioBufferLength error
+var ErrAudioCallback error
 var ErrAudioChannelClosed error
 var ErrAudioClosed error
 var ErrAudioCreate error

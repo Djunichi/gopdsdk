@@ -299,3 +299,25 @@ func TestRenderRequiresEveryInput(t *testing.T) {
 		t.Fatalf("Render() error = %q, want %q", got, want)
 	}
 }
+
+func TestCallbackAudioUsesBoundedNativeRings(t *testing.T) {
+	sources, err := Render(Config{APIHeader: "pd_api.h", RuntimeImport: "example.com/sdk/runtime", PlaydateImport: "example.com/sdk/playdate", ApplicationImport: "example.com/game"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"BRIDGE_PCM_SOURCE_COUNT", "BRIDGE_PCM_RING_FRAMES", "bridgePCMRender", "bridgeNewPCMCallbackSource", "BRIDGE_GENERATOR_VOICE_COUNT", "BRIDGE_GENERATOR_RING_FRAMES", "bridgeGeneratorRender", "bridgeGeneratorCopy", "bridgeNewGeneratorSynth"} {
+		if !strings.Contains(sources.C, want) {
+			t.Errorf("C source does not contain %q", want)
+		}
+	}
+	for _, want := range []string{"#define BRIDGE_PCM_RING_FRAMES 4096", "#define BRIDGE_GENERATOR_RING_FRAMES 4096"} {
+		if !strings.Contains(sources.C, want) {
+			t.Errorf("bounded ring is too short for a 30 FPS update interval: missing %q", want)
+		}
+	}
+	for _, want := range []string{"sdkRuntime.NewPCMCallbackSource", "sdkRuntime.NewGeneratorSynth", "GeneratorVoiceState"} {
+		if !strings.Contains(sources.Go, want) {
+			t.Errorf("Go source does not contain %q", want)
+		}
+	}
+}

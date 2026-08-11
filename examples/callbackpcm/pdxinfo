@@ -1,0 +1,6 @@
+name=Callback PCM
+author=gopdsdk
+description=Bounded update-thread PCM callback acceptance
+bundleID=dev.gopdsdk.callbackpcm
+version=1.0.0
+buildNumber=1

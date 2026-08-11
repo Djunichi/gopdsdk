@@ -1,0 +1,6 @@
+name=Generator Synth
+author=gopdsdk
+description=Polyphonic bounded custom synth generator acceptance
+bundleID=dev.gopdsdk.generatorsynth
+version=1.0.0
+buildNumber=1

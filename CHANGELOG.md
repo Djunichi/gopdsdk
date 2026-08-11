@@ -6,6 +6,49 @@ that out.
 
 ## Unreleased
 
+- Completed the P9.3 implementation surface with one-pole filtering, wavetable
+  and custom-generator synthesis, eight generator parameter slots, sample/file
+  rate modulation, channel pan/volume modulation, synth-envelope controls,
+  signal/controller lookup, and sequence/track/note introspection on Simulator
+  and device adapters. `CallbackAudio.NewPCMCallbackSource` adds four fixed
+  native PCM source slots with 4,096-frame rings; `NewGeneratorSynth` adds eight
+  fixed native userdata/voice slots with independent 4,096-frame rings and
+  native `PDSynth.copy` semantics. Go render callbacks run only during update;
+  native audio callbacks consume rings and emit silence on underrun. Unit,
+  public-API snapshot, forwarding, ownership, bounded-refill, generated ABI,
+  and full repository tests pass.
+
+- Deliberately omitted raw generator userdata/function pointers and
+  `setMP3StreamSource`. The bounded Go generator contracts preserve the former.
+  SDK 3.1.1 declares the latter in its C header but supplies no official
+  documentation or example establishing shipping-device behavior, so header
+  discovery alone is not treated as device readiness; packaged MP3 playback
+  remains available through `FilePlayer`.
+
+- Added focused `examples/callbackpcm` and `examples/generatorsynth` acceptance
+  scenes without extending the already dense `examples/audio`. On 2026-08-11
+  both passed audible acceptance in the official Windows SDK 3.1.1 Simulator,
+  then conservative-GC hard-float device builds, COM3 installation, launch, and
+  audible acceptance on a physical Playdate. The accepted `callbackpcm` artifact
+  uses 352,340 bytes of static RAM and produces a 1,376,984-byte ELF and a
+  57,677-byte PDX; `generatorsynth` uses 416,012 bytes of static RAM and produces
+  a 1,463,812-byte ELF and a 61,781-byte PDX. Device acceptance covered stereo
+  routing, deliberate PCM underrun recovery, direct and copied generator voices,
+  1-based custom parameters, distinct triangle/square timbres, and stable audio
+  with 4,096-frame rings. Soak, memory-growth measurement, lifecycle stress,
+  and a final post-run device-log inspection remain P9.4 work.
+
+- Started P9.3 with synth-owned envelope curvature, velocity sensitivity, and
+  note-range rate scaling on both native adapters, plus the isolated
+  `examples/synthesis` audible acceptance scene. On 2026-08-11 the official
+  Windows SDK 3.1.1 Simulator passed audible comparison of `-1.0` and `+1.0`
+  curvature with a long attack/decay. The user then confirmed the same behavior
+  on a physical Playdate after conservative hard-float build, USB installation
+  through COM3, and launch. The accepted device artifact uses 280,776 bytes of
+  static RAM and produces a 1,211,620-byte ELF and a 42,434-byte PDX. Soak,
+  memory-growth measurement, lifecycle stress, and post-run device-log
+  inspection remain unverified.
+
 - Implemented P9.2 owned `AudioSample` buffers, packaged and caller-data
   loading, in-place reload, borrowed data inspection/copying, length and
   decompression, sample attachment and frame ranges, sample/file loop

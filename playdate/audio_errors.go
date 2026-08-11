@@ -54,4 +54,5 @@ var (
 	ErrAudioFormat       error = audioError("audio sample format is invalid")
 	ErrAudioRange        error = audioError("audio playback range is invalid")
 	ErrAudioBufferLength error = audioError("audio buffer length must be finite and positive")
+	ErrAudioCallback     error = audioError("audio callback is invalid")
 )

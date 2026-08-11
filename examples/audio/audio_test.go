@@ -54,11 +54,17 @@ func (p *player) FadeVolume(left, _ float32, frames uint32, callback func()) err
 	p.volume, p.fadeFrames, p.fade = left, frames, callback
 	return nil
 }
-func (*player) SetWaveform(playdate.Waveform) error                  { return nil }
-func (*player) SetEnvelope(float32, float32, float32, float32) error { return nil }
-func (*player) SetTranspose(float32) error                           { return nil }
-func (*player) SetFrequencyModulator(playdate.Signal) error          { return nil }
-func (*player) SetAmplitudeModulator(playdate.Signal) error          { return nil }
+func (*player) SetWaveform(playdate.Waveform) error                    { return nil }
+func (*player) SetEnvelope(float32, float32, float32, float32) error   { return nil }
+func (*player) SetEnvelopeCurvature(float32) error                     { return nil }
+func (*player) SetEnvelopeVelocitySensitivity(float32) error           { return nil }
+func (*player) SetEnvelopeRateScaling(float32, uint8, uint8) error     { return nil }
+func (*player) SetTranspose(float32) error                             { return nil }
+func (*player) SetFrequencyModulator(playdate.Signal) error            { return nil }
+func (*player) SetAmplitudeModulator(playdate.Signal) error            { return nil }
+func (*player) SetWavetable(playdate.AudioSample, int, int, int) error { return nil }
+func (*player) SetParameter(int, float32) error                        { return nil }
+func (*player) SetParameterModulator(int, playdate.Signal) error       { return nil }
 func (p *player) PlayMIDINote(float32, float32, float32, uint32) error {
 	p.state = playdate.PlaybackPlaying
 	p.plays++
@@ -68,24 +74,27 @@ func (*player) NoteOff(uint32) error { return nil }
 
 type signal struct{ closed bool }
 
-func (*signal) Value() (float32, error)           { return 0, nil }
-func (*signal) SetScale(float32) error            { return nil }
-func (*signal) SetOffset(float32) error           { return nil }
-func (s *signal) Close() error                    { s.closed = true; return nil }
-func (*signal) SetRate(float32) error             { return nil }
-func (*signal) SetPhase(float32) error            { return nil }
-func (*signal) SetCenter(float32) error           { return nil }
-func (*signal) SetDepth(float32) error            { return nil }
-func (*signal) SetRetrigger(bool) error           { return nil }
-func (*signal) SetArpeggiation([]float32) error   { return nil }
-func (*signal) SetAttack(float32) error           { return nil }
-func (*signal) SetDecay(float32) error            { return nil }
-func (*signal) SetSustain(float32) error          { return nil }
-func (*signal) SetRelease(float32) error          { return nil }
-func (*signal) SetLegato(bool) error              { return nil }
-func (*signal) AddEvent(int, float32, bool) error { return nil }
-func (*signal) RemoveEvent(int) error             { return nil }
-func (*signal) ClearEvents() error                { return nil }
+func (*signal) Value() (float32, error)                    { return 0, nil }
+func (*signal) SetScale(float32) error                     { return nil }
+func (*signal) SetOffset(float32) error                    { return nil }
+func (s *signal) Close() error                             { s.closed = true; return nil }
+func (*signal) SetRate(float32) error                      { return nil }
+func (*signal) SetPhase(float32) error                     { return nil }
+func (*signal) SetCenter(float32) error                    { return nil }
+func (*signal) SetDepth(float32) error                     { return nil }
+func (*signal) SetRetrigger(bool) error                    { return nil }
+func (*signal) SetArpeggiation([]float32) error            { return nil }
+func (*signal) SetAttack(float32) error                    { return nil }
+func (*signal) SetDecay(float32) error                     { return nil }
+func (*signal) SetSustain(float32) error                   { return nil }
+func (*signal) SetRelease(float32) error                   { return nil }
+func (*signal) SetLegato(bool) error                       { return nil }
+func (*signal) SetCurvature(float32) error                 { return nil }
+func (*signal) SetVelocitySensitivity(float32) error       { return nil }
+func (*signal) SetRateScaling(float32, uint8, uint8) error { return nil }
+func (*signal) AddEvent(int, float32, bool) error          { return nil }
+func (*signal) RemoveEvent(int) error                      { return nil }
+func (*signal) ClearEvents() error                         { return nil }
 
 type channel struct {
 	source        playdate.AudioSource
@@ -99,12 +108,14 @@ func (c *channel) RemoveSource(playdate.AudioSource) error {
 	c.removes++
 	return nil
 }
-func (*channel) AddEffect(playdate.AudioEffect) error    { return nil }
-func (*channel) RemoveEffect(playdate.AudioEffect) error { return nil }
-func (*channel) SetVolume(float32) error                 { return nil }
-func (*channel) Volume() (float32, error)                { return 1, nil }
-func (*channel) SetPan(float32) error                    { return nil }
-func (c *channel) Close() error                          { c.closed = true; return nil }
+func (*channel) AddEffect(playdate.AudioEffect) error     { return nil }
+func (*channel) RemoveEffect(playdate.AudioEffect) error  { return nil }
+func (*channel) SetVolume(float32) error                  { return nil }
+func (*channel) Volume() (float32, error)                 { return 1, nil }
+func (*channel) SetPan(float32) error                     { return nil }
+func (*channel) SetPanModulator(playdate.Signal) error    { return nil }
+func (*channel) SetVolumeModulator(playdate.Signal) error { return nil }
+func (c *channel) Close() error                           { c.closed = true; return nil }
 
 type context struct {
 	effect         *player

@@ -302,6 +302,14 @@ must react to connection changes. `SetAudioOutputsActive` selects headphone and
 speaker output; a Simulator may accept the selection without an observable
 host-routing change.
 
+`Synth.SetEnvelopeCurvature`, `SetEnvelopeVelocitySensitivity`, and
+`SetEnvelopeRateScaling` configure the synth-owned, note-triggered ADSR rather
+than a separately allocated `Envelope` modulation signal. Rate-scaling note
+ranges must be ordered from the lower note to the higher note; non-finite
+parameters and reversed ranges return `ErrAudioParameter`. A separately created
+`Envelope` remains an explicitly owned signal and exposes the corresponding
+setters for modulation graphs whose trigger is managed by the native graph.
+
 Microphone games capability-assert `Microphones`. Request permission before
 recording, handle pending/denied/granted explicitly, and close the owned
 `MicrophoneRecorder`. A `MicrophoneSamples` value is callback-scoped; copy only
@@ -335,6 +343,38 @@ the native arpeggiator sequence; an empty or non-finite step list returns
 `ErrAudioParameter`. Audio completion callbacks are retained by ID and delivered
 on an update frame. On device, native audio callbacks first enter a bounded FIFO
 instead of re-entering Go from the audio thread.
+
+Games that generate continuous PCM capability-assert `CallbackAudio` and pass
+an existing `AudioChannel` to `NewPCMCallbackSource`. Construction attaches the
+owned source to that channel. Its `PCMRenderCallback` receives at most 512
+frames per call on the update goroutine, with a nil right slice for mono. The
+returned frame count is clamped to the offered range; returning zero stops that
+frame's refill. Each native adapter has four fixed source slots and a 4,096-frame
+ring per slot (4,095 usable frames, enough for two 30 FPS intervals at 44.1 kHz).
+The native audio callback only consumes the
+ring. Empty rings produce silence and increment `UnderrunCount`; they never
+re-enter Go. `Close` detaches the native callback source, releases its fixed
+slot, and suppresses future render calls. A nil callback returns
+`ErrAudioCallback`; an exhausted native pool returns `ErrAudioCreate`.
+
+Custom synth games separately capability-assert `GeneratorSynthesizers`.
+`NewGeneratorSynth` returns a native `Synth`, so its envelope, note scheduling,
+parameter, modulation, routing, and `Instrument.AddVoice` contracts remain
+available. Its `GeneratorRenderCallback` also runs only during update and emits
+signed 16-bit PCM; the native bridge converts it to the official generator's
+Q8.24 format. `GeneratorState` reports the native voice slot, latest note,
+velocity, requested length, release state and sample end offset, Q0.32 phase
+rate and signed rate delta, plus eight custom parameter slots. `Synth.SetParameter` uses the
+official 1-based generator parameter indices 1 through 8; callback state exposes
+them in `Parameters[0]` through `Parameters[7]`. Each native adapter has eight fixed generator userdata slots,
+each with an independent 4,096-frame ring, and offers at most 256 frames per Go
+render call. Native `PDSynth.copy` operations used by instruments copy the
+parameter snapshot but allocate independent note state, phase-rate state, and
+PCM storage; pool exhaustion rejects further native voice copies. A generator
+synth cannot close while retained by an instrument, matching ordinary synth
+ownership. `SetWaveform` and `SetWavetable` return `ErrAudioUnavailable` for a
+generator synth because replacing its native generator would invalidate the
+bounded userdata and ring lifetime.
 
 ## Fonts and deterministic UI
 

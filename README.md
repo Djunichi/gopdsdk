@@ -857,6 +857,42 @@ expose channel volume and pan. Synths support native waveforms,
 ADSR parameters, transpose, audio-clock note scheduling, and frequency or
 amplitude modulation by owned LFOs, envelopes, and control-signal timelines.
 
+`Synth` also exposes curvature, velocity sensitivity, and note-range rate
+scaling for its internal note-triggered envelope. The focused
+`examples/synthesis` scene uses a deliberately long attack and decay so the
+difference between negative and positive curvature is audible: use Left/Right
+to select the curve, then press A to play a fresh note.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/synthesis
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/synthesis
+```
+
+Two additional focused scenes cover custom audio without adding more controls
+to `examples/audio`. `examples/callbackpcm` continuously renders a sine wave
+through a bounded stereo `PCMCallbackSource`: Left plays 220 Hz in the left
+channel, Right plays 660 Hz in the right channel, and A
+deliberately starves the ring so silence and the native underrun counter are
+observable. `examples/generatorsynth` uses a native custom `GeneratorSynth`: B
+plays its root voice, A plays an overlapping C-major chord through copied
+instrument voices, and Left/Right selects sine/square timbre through generator
+parameter 0.
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/callbackpcm
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/generatorsynth
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/callbackpcm
+go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/generatorsynth
+```
+
+Both callbacks execute on the frame-update goroutine. Native audio callbacks
+only consume fixed 4,096-frame rings and emit silence when empty; no game
+callback or slice crosses onto the audio thread. The 4,095 usable frames cover
+two standard 30 FPS intervals at 44.1 kHz. Callback PCM sources have four native
+slots; custom synth generators have eight native userdata/voice slots with
+independent rings, including instrument copies. Exhausting either bounded pool
+rejects new native construction instead of allocating from the audio callback.
+
 Routing and modulation edges do not transfer endpoint ownership. Closing a
 source or signal detaches every retained edge before freeing it; closing a
 channel detaches its sources without closing them. Unit tests cover duplicate
