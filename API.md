@@ -313,6 +313,23 @@ to Go during update frames rather than re-entering Go from the audio thread.
 `PCMPlayers.NewPCMPlayer` synchronously copies mono signed 16-bit PCM into
 native-owned storage and never retains the caller slice.
 
+Sample-oriented games capability-assert `AudioSamples` and
+`SamplePlayerFactory`. `NewSample` and `LoadSample` return explicitly owned
+native buffers; `NewSampleFromData` synchronously copies the caller's bytes into
+native-owned storage. `AudioSample.Data` returns a borrowed view whose metadata
+and `CopyTo` remain valid only until the sample closes. A player borrows its
+attached sample: close or replace the player before closing that sample, or
+`AudioSample.Close` returns `ErrAudioSampleInUse`.
+
+Samples can be reloaded in place, inspected, decompressed, and attached to a
+new or existing player through `SamplePlayerControls`. Sample playback ranges
+use start-inclusive, end-exclusive PCM frame indexes. Sample and file players
+may expose `LoopCallbackPlayer`; callbacks are delivered through the bounded
+update-frame queue. File players may expose `StreamingPlayerControls` for
+reload, buffer length, loop range, underrun query, and stop-on-underrun control.
+Invalid buffer lengths return
+`ErrAudioBufferLength`; invalid ranges return `ErrAudioRange`.
+
 `LFO.SetArpeggiation` requires at least one finite half-step offset and configures
 the native arpeggiator sequence; an empty or non-finite step list returns
 `ErrAudioParameter`. Audio completion callbacks are retained by ID and delivered

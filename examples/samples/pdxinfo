@@ -1,0 +1,6 @@
+name=P9.2 Samples
+author=gopdsdk
+description=Owned sample buffers and sample player acceptance
+bundleID=dev.gopdsdk.samples
+version=1.0.0
+buildNumber=1

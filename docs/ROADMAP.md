@@ -111,11 +111,22 @@ post-run device-log cleanliness remain unverified.
 
 ### P9.2 — samples and players
 
-- Add owned sample buffers, packaged and caller-data loading, loading into an
-  existing sample/player, copying, decompression, sample data inspection,
-  playback ranges, loop callbacks, buffering, and underrun status/control.
-- Preserve bounded memory and explicitly distinguish borrowed sample views from
-  native-owned copies.
+Implemented owned sample buffers, packaged and caller-data loading, in-place
+sample reload, sample attachment/replacement, borrowed data inspection and
+bounded copying, decompression, playback ranges, loop callbacks, file-player
+reload/buffering/loop ranges, and underrun status/control on both native
+adapters. Caller slices are copied into native-owned storage; `SampleData` views
+expire with their sample, and players borrow rather than own attached samples.
+Deterministic unit, public-API, runtime, and generated-adapter coverage passes.
+The official Windows SDK 3.1.1 build passed on 2026-08-09. The conservative-GC
+hard-float device build also passed. The user confirmed visible initialization,
+audible range playback with A, and stop with B in the official Windows
+Simulator. Loop-callback behavior, final-package device deployment/execution,
+and audible/visible device behavior remain unverified.
+
+- Confirm range/loop behavior on a physical Playdate and exercise the loop
+  callback and streaming underrun controls in acceptance scenes.
+- Measure soak/memory growth and inspect post-run device logs when requested.
 
 ### P9.3 — synthesis, modulation, and sequencing
 

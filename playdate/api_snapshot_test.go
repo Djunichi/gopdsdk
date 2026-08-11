@@ -193,6 +193,12 @@ const PolygonFillNonZero PolygonFillRule
 const PowerCharging PowerStatus
 const PowerScrews PowerStatus
 const PowerUSB PowerStatus
+const Sound16BitMono SoundFormat
+const Sound16BitStereo SoundFormat
+const Sound8BitMono SoundFormat
+const Sound8BitStereo SoundFormat
+const SoundADPCMMono SoundFormat
+const SoundADPCMStereo SoundFormat
 const TextAlignCenter TextAlignment
 const TextAlignLeft TextAlignment
 const TextAlignRight TextAlignment
@@ -248,6 +254,8 @@ type AudioEffects interface{NewBitCrusher() (BitCrusher, error); NewDelayLine(le
 type AudioLoadError string
 type AudioOutputState struct{Headphones bool; HeadsetMicrophone bool}
 type AudioOutputs interface{AudioOutputState() (AudioOutputState, error); DefaultAudioChannel() (AudioChannel, error); SetAudioOutputsActive(headphones bool, speaker bool) error}
+type AudioSample interface{Close() error; Data() (SampleData, error); Decompress() error; Length() (float32, error); Load(path string) error}
+type AudioSamples interface{LoadSample(path string) (AudioSample, error); NewSample(byteCount int) (AudioSample, error); NewSampleFromData(data []byte, format SoundFormat, sampleRate uint32) (AudioSample, error)}
 type AudioSource interface{SetVolume(left float32, right float32) error; State() (PlaybackState, error); Volume() (left float32, right float32, err error)}
 type BitCrusher interface{SetDepth(float32) error; SetDepthModulator(Signal) error; SetDownsampling(float32) error; SetDownsamplingModulator(Signal) error; SetExponential(bool) error; AudioEffect}
 type Bitmap interface{Clear() error; Close() error; Fill(Color) error; Height() (int, error); Width() (int, error)}
@@ -304,6 +312,7 @@ type LifecycleGame interface{HandleLifecycle(Context, LifecycleEvent) error}
 type LineCapStyle uint8
 type ListScore struct{Rank uint32; Value uint32; Player string}
 type Localization interface{Language() Language; LocalizedText(key string, language Language) (string, bool)}
+type LoopCallbackPlayer interface{SetLoopCallback(callback func()) error}
 type MenuItem interface{Remove(); SetTitle(string) error; Title() string}
 type MicrophonePermission uint8
 type MicrophoneRecorder interface{Close() error; Source() MicrophoneSource; Stop() error}
@@ -324,7 +333,10 @@ type PowerStatus uint8
 type PrimitiveGraphics interface{DrawEllipse(x int, y int, width int, height int, lineWidth int, startAngle float32, endAngle float32, paint Paint) error; DrawLine(x1 int, y1 int, x2 int, y2 int, width int, paint Paint) error; DrawRect(x int, y int, width int, height int, paint Paint) error; DrawRoundedRect(x int, y int, width int, height int, radius int, lineWidth int, paint Paint) error; DrawTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, width int, paint Paint) error; FillEllipse(x int, y int, width int, height int, startAngle float32, endAngle float32, paint Paint) error; FillPolygon(points []GraphicsPoint, rule PolygonFillRule, paint Paint) error; FillRect(x int, y int, width int, height int, paint Paint) error; FillRoundedRect(x int, y int, width int, height int, radius int, paint Paint) error; FillTriangle(x1 int, y1 int, x2 int, y2 int, x3 int, y3 int, paint Paint) error}
 type Rect struct{X float32; Y float32; Width float32; Height float32}
 type RingModulator interface{SetFrequency(float32) error; SetFrequencyModulator(Signal) error; AudioEffect}
+type SampleData interface{CopyTo(dst []byte) (int, error); Format() SoundFormat; Len() int; SampleRate() uint32}
 type SamplePlayer interface{Length() (float32, error); Offset() (float32, error); PlayRepeated(repeat int, rate float32) error; Rate() (float32, error); SetOffset(seconds float32) error; SetRate(rate float32) error; SoundEffect}
+type SamplePlayerControls interface{SetPlayRange(startFrame int, endFrame int) error; SetSample(AudioSample) error}
+type SamplePlayerFactory interface{NewSamplePlayer(sample AudioSample) (SamplePlayer, error)}
 type SamplePlayers interface{LoadSamplePlayer(path string) (SamplePlayer, error)}
 type Score struct{Rank uint32; Value uint32; Player string; BoardID string}
 type ScoreboardOperationError struct{Operation string; BoardID string; Message string}
@@ -335,6 +347,7 @@ type SequenceTrack interface{AddControlEvent(controller int, step int, value flo
 type Sequencers interface{NewInstrument() (Instrument, error); NewSequence() (Sequence, error); NewSequenceTrack() (SequenceTrack, error)}
 type Signal interface{Close() error; SetOffset(offset float32) error; SetScale(scale float32) error; Value() (float32, error)}
 type SoundEffect interface{Close() error; Pause() error; Play() error; Resume() error; Stop() error; AudioSource}
+type SoundFormat uint8
 type Sprite interface{Add() error; Bounds() (Rect, error); Center() (x float32, y float32, err error); CheckCollisions(goalX float32, goalY float32) (MoveResult, error); ClearClipRect() error; ClearCollideRect() error; ClearStencil() error; ClearTileMap() error; Close() error; CollideRect() (Rect, error); CollisionsEnabled() (bool, error); ImageFlip() (BitmapFlip, error); MarkDirty() error; MarkDirtyRect(Rect) error; MoveBy(dx float32, dy float32) error; MoveWithCollisions(goalX float32, goalY float32) (MoveResult, error); Position() (x float32, y float32, err error); Remove() error; SetBitmap(Bitmap) error; SetBounds(Rect) error; SetCenter(x float32, y float32) error; SetClipRect(x int, y int, width int, height int) error; SetCollideRect(Rect) error; SetCollisionResponseCallback(SpriteCollisionResponseCallback) error; SetCollisionsEnabled(bool) error; SetDrawCallback(SpriteDrawCallback) error; SetDrawMode(DrawMode) error; SetIgnoresDrawOffset(bool) error; SetImageFlip(BitmapFlip) error; SetOpaque(bool) error; SetPosition(x float32, y float32) error; SetStencilImage(Bitmap, bool) error; SetStencilPattern([8]byte) error; SetTag(uint8) error; SetTileMap(SpriteTileMap) error; SetUpdateCallback(SpriteUpdateCallback) error; SetUpdatesEnabled(bool) error; SetVisible(bool) error; SetZIndex(int) error; Tag() (uint8, error); TileMap() (SpriteTileMap, bool, error); UpdatesEnabled() (bool, error); Visible() (bool, error); ZIndex() (int, error)}
 type SpriteCollisionResponseCallback func(sprite Sprite, other Sprite) CollisionResponse
 type SpriteDisplayList interface{AddSprites([]Sprite) error; RemoveAllSprites(); RemoveSprites([]Sprite) error; ResetCollisionWorld(); SpriteCount() int}
@@ -346,6 +359,7 @@ type SpriteTileMap interface{Close() error; PixelSize() (width int, height int, 
 type SpriteTileMaps interface{NewSpriteTileMap(BitmapTable, int, int, []uint16) (SpriteTileMap, error)}
 type SpriteUpdateCallback func(sprite Sprite)
 type Sprites interface{NewSprite() (Sprite, error); QueryOverlappingSprites(Sprite) ([]Sprite, error); QuerySpritesAtPoint(x float32, y float32) []Sprite; QuerySpritesInRect(Rect) []Sprite; UpdateAndDrawSprites()}
+type StreamingPlayerControls interface{DidUnderrun() (bool, error); Load(path string) error; SetBufferLength(seconds float32) error; SetLoopRange(start float32, end float32) error; SetStopOnUnderrun(bool) error}
 type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(note float32, velocity float32, length float32, when uint32) error; SetAmplitudeModulator(signal Signal) error; SetEnvelope(attack float32, decay float32, sustain float32, release float32) error; SetFrequencyModulator(signal Signal) error; SetTranspose(semitones float32) error; SetWaveform(waveform Waveform) error; Stop() error; AudioSource}
 type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelope(attack float32, decay float32, sustain float32, release float32) (Envelope, error); NewLFO(lfoType LFOType) (LFO, error); NewSynth(waveform Waveform) (Synth, error)}
 type System interface{CurrentTimeMilliseconds() uint32}
@@ -365,20 +379,26 @@ type VideoPlayer interface{Close() error; Info() (VideoInfo, error); RenderFrame
 type Videos interface{LoadVideo(path string) (VideoPlayer, error)}
 type Waveform uint8
 var ErrAnimationConfig error
+var ErrAudioBufferLength error
 var ErrAudioChannelClosed error
 var ErrAudioClosed error
 var ErrAudioCreate error
 var ErrAudioEventStep error
 var ErrAudioFade error
+var ErrAudioFormat error
 var ErrAudioGraphClosed error
 var ErrAudioOffset error
 var ErrAudioPan error
 var ErrAudioParameter error
 var ErrAudioPlay error
+var ErrAudioRange error
 var ErrAudioRate error
 var ErrAudioRepeat error
 var ErrAudioReverseUnsupported error
 var ErrAudioRoute error
+var ErrAudioSampleClosed error
+var ErrAudioSampleInUse error
+var ErrAudioSampleSize error
 var ErrAudioSourceInvalid error
 var ErrAudioUnavailable error
 var ErrAudioVolume error

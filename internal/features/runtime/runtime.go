@@ -383,6 +383,14 @@ type AudioDriver struct {
 	SetRate           func(uintptr, float32)
 	Rate              func(uintptr) float32
 	SetFinishCallback func(uintptr, uint32)
+	SetLoopCallback   func(uintptr, uint32)
+	SetSample         func(uintptr, uintptr)
+	SetPlayRange      func(uintptr, int, int)
+	Load              func(uintptr, string) bool
+	SetBufferLength   func(uintptr, float32)
+	SetLoopRange      func(uintptr, float32, float32)
+	DidUnderrun       func(uintptr) bool
+	SetStopOnUnderrun func(uintptr, bool)
 	FadeVolume        func(uintptr, float32, float32, uint32, uint32)
 	Free              func(uintptr)
 }
@@ -394,7 +402,9 @@ type audioPlayer struct {
 	paused         bool
 	closed         bool
 	finishCallback uint32
+	loopCallback   uint32
 	fadeCallback   uint32
+	sample         *audioSample
 	channels       map[*audioChannel]struct{}
 }
 
@@ -640,6 +650,97 @@ func (c *audioChannel) Close() error {
 
 type filePlayer struct{ *audioPlayer }
 
+// AudioSampleDriver contains native operations for an owned sample buffer.
+type AudioSampleDriver struct {
+	Load       func(uintptr, string) bool
+	Data       func(uintptr) ([]byte, playdate.SoundFormat, uint32)
+	Length     func(uintptr) float32
+	Decompress func(uintptr) bool
+	Free       func(uintptr)
+}
+
+type audioSample struct {
+	handle uintptr
+	driver AudioSampleDriver
+	users  map[*audioPlayer]struct{}
+	closed bool
+}
+
+type sampleData struct {
+	owner  *audioSample
+	data   []byte
+	format playdate.SoundFormat
+	rate   uint32
+}
+
+func NewAudioSample(handle uintptr, driver AudioSampleDriver) playdate.AudioSample {
+	return &audioSample{handle: handle, driver: driver, users: make(map[*audioPlayer]struct{})}
+}
+
+func (s *audioSample) nativeHandle() (uintptr, error) {
+	if s == nil || s.closed || s.handle == 0 {
+		return 0, playdate.ErrAudioSampleClosed
+	}
+	return s.handle, nil
+}
+func (s *audioSample) Load(path string) error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !s.driver.Load(h, path) {
+		return playdate.AudioLoadError(path)
+	}
+	return nil
+}
+func (s *audioSample) Data() (playdate.SampleData, error) {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return nil, err
+	}
+	data, format, rate := s.driver.Data(h)
+	return &sampleData{owner: s, data: data, format: format, rate: rate}, nil
+}
+func (s *audioSample) Length() (float32, error) {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return 0, err
+	}
+	return s.driver.Length(h), nil
+}
+func (s *audioSample) Decompress() error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !s.driver.Decompress(h) {
+		return playdate.ErrAudioCreate
+	}
+	return nil
+}
+func (s *audioSample) Close() error {
+	h, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if len(s.users) != 0 {
+		return playdate.ErrAudioSampleInUse
+	}
+	s.driver.Free(h)
+	s.handle = 0
+	s.closed = true
+	return nil
+}
+func (d *sampleData) Len() int                     { return len(d.data) }
+func (d *sampleData) Format() playdate.SoundFormat { return d.format }
+func (d *sampleData) SampleRate() uint32           { return d.rate }
+func (d *sampleData) CopyTo(dst []byte) (int, error) {
+	if _, err := d.owner.nativeHandle(); err != nil {
+		return 0, err
+	}
+	return copy(dst, d.data), nil
+}
+
 // NewSoundEffect wraps an owned sample player and its sample as one handle.
 func NewSoundEffect(handle uintptr, driver AudioDriver) playdate.SoundEffect {
 	return &audioPlayer{handle: handle, driver: driver, allowReverse: true}
@@ -755,6 +856,97 @@ func (p *audioPlayer) SetFinishCallback(callback func()) error {
 	return nil
 }
 
+func (p *audioPlayer) SetLoopCallback(callback func()) error {
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	ForgetAudioCallback(p.loopCallback)
+	p.loopCallback = RegisterAudioCallback(callback)
+	p.driver.SetLoopCallback(h, p.loopCallback)
+	return nil
+}
+func (p *audioPlayer) SetSample(value playdate.AudioSample) error {
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	s, ok := value.(*audioSample)
+	if !ok {
+		return playdate.ErrAudioSourceInvalid
+	}
+	sh, err := s.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if p.sample != nil {
+		delete(p.sample.users, p)
+	}
+	p.driver.SetSample(h, sh)
+	p.sample = s
+	s.users[p] = struct{}{}
+	return nil
+}
+func (p *audioPlayer) SetPlayRange(start, end int) error {
+	if start < 0 || end <= start || end > 2147483647 {
+		return playdate.ErrAudioRange
+	}
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.SetPlayRange(h, start, end)
+	return nil
+}
+
+func (p *filePlayer) Load(path string) error {
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	if !p.driver.Load(h, path) {
+		return playdate.AudioLoadError(path)
+	}
+	return nil
+}
+func (p *filePlayer) SetBufferLength(seconds float32) error {
+	if seconds <= 0 || !finite(seconds) {
+		return playdate.ErrAudioBufferLength
+	}
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.SetBufferLength(h, seconds)
+	return nil
+}
+func (p *filePlayer) SetLoopRange(start, end float32) error {
+	if start < 0 || end <= start || !finite(start) || !finite(end) {
+		return playdate.ErrAudioRange
+	}
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.SetLoopRange(h, start, end)
+	return nil
+}
+func (p *filePlayer) DidUnderrun() (bool, error) {
+	h, err := p.nativeHandle()
+	if err != nil {
+		return false, err
+	}
+	return p.driver.DidUnderrun(h), nil
+}
+func (p *filePlayer) SetStopOnUnderrun(value bool) error {
+	h, err := p.nativeHandle()
+	if err != nil {
+		return err
+	}
+	p.driver.SetStopOnUnderrun(h, value)
+	return nil
+}
+
 // FadeVolume starts a streaming-player volume fade measured in audio frames.
 func (p *filePlayer) FadeVolume(left, right float32, audioFrames uint32, callback func()) error {
 	if err := ValidateAudioVolume(left, right); err != nil {
@@ -848,6 +1040,11 @@ func (p *audioPlayer) Close() error {
 		return err
 	}
 	p.driver.Stop(handle)
+	if p.sample != nil {
+		delete(p.sample.users, p)
+		p.sample = nil
+	}
+	ForgetAudioCallback(p.loopCallback)
 	for channel := range p.channels {
 		if !channel.driver.RemoveSource(channel.handle, p.driver.Source(handle)) {
 			return playdate.ErrAudioRoute
@@ -2469,6 +2666,35 @@ func (context *applicationContext) NewPCMPlayer(samples []int16, sampleRate uint
 		return nil, playdate.ErrAudioParameter
 	}
 	return players.NewPCMPlayer(samples, sampleRate)
+}
+
+func (context *applicationContext) NewSample(byteCount int) (playdate.AudioSample, error) {
+	samples, ok := context.Context.(playdate.AudioSamples)
+	if !ok || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return samples.NewSample(byteCount)
+}
+func (context *applicationContext) LoadSample(path string) (playdate.AudioSample, error) {
+	samples, ok := context.Context.(playdate.AudioSamples)
+	if !ok || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return samples.LoadSample(path)
+}
+func (context *applicationContext) NewSampleFromData(data []byte, format playdate.SoundFormat, rate uint32) (playdate.AudioSample, error) {
+	samples, ok := context.Context.(playdate.AudioSamples)
+	if !ok || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return samples.NewSampleFromData(data, format, rate)
+}
+func (context *applicationContext) NewSamplePlayer(sample playdate.AudioSample) (playdate.SamplePlayer, error) {
+	players, ok := context.Context.(playdate.SamplePlayerFactory)
+	if !ok || context.terminated {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	return players.NewSamplePlayer(sample)
 }
 
 func (context *applicationContext) NewAudioChannel() (playdate.AudioChannel, error) {
