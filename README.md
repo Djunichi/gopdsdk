@@ -2,12 +2,12 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The latest declared release is **`v0.8.0`**; publication remains pending until
-its tag and hosted release exist. It completes the offline sprite and collision
-facilities with presentation controls, native tilemaps, detailed queries,
-display-list operations, and bounded callbacks. P8 acceptance, soak,
-bounded-memory, and post-run device-log checks passed on the verified Windows
-Simulator and physical-device profile.
+The latest declared release is **`v0.9.0`**; publication remains pending until
+its tag and hosted release exist. It completes offline sound, including owned
+samples and streaming controls, routing and output state, synthesis,
+modulation, sequencing, effects, and bounded PCM/custom-generator callbacks.
+Sound acceptance, soak, bounded-memory, and post-run device-log checks passed on
+the verified Windows Simulator and physical-device profile.
 The public API is snapshot-tested and documented,
 but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
@@ -22,7 +22,7 @@ external-consumer CLI suite natively on all three hosts. Windows is additionally
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
 
-The exact `v0.8.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+The exact `v0.9.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
 TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
 solely by version number: `doctor` reports them as `UNVERIFIED` until the
 relevant probe succeeds.

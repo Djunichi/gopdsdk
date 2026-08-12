@@ -4,9 +4,20 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## Unreleased
+## v0.9.0 (2026-08-12)
 
-- Completed the P9.3 implementation surface with one-pole filtering, wavetable
+- Declared the offline sound release complete after user-confirmed final audible Simulator and
+  physical-device acceptance for routing, headphone states, samples,
+  wavetable and custom synthesis, callbacks, underruns, and lifecycle cleanup.
+  The confirmed conservative-GC device run also covered the required soak,
+  bounded memory growth, and unchanged post-run `crashlog.txt` and
+  `errorlog.txt` on the verified Windows/Playdate SDK 3.1.1 profile.
+- Fixed the generated Simulator bridge's custom-generator parameter callback
+  symbol collision. The release checkout passes the official SDK 3.1.1
+  `doctor --probe` c-shared Simulator build and packaging probe and the TinyGo
+  hard-float device build, link, relocation, and packaging probe.
+
+- Completed the remaining sound implementation with one-pole filtering, wavetable
   and custom-generator synthesis, eight generator parameter slots, sample/file
   rate modulation, channel pan/volume modulation, synth-envelope controls,
   signal/controller lookup, and sequence/track/note introspection on Simulator
@@ -35,21 +46,21 @@ that out.
   a 1,463,812-byte ELF and a 61,781-byte PDX. Device acceptance covered stereo
   routing, deliberate PCM underrun recovery, direct and copied generator voices,
   1-based custom parameters, distinct triangle/square timbres, and stable audio
-  with 4,096-frame rings. Soak, memory-growth measurement, lifecycle stress,
-  and a final post-run device-log inspection remain P9.4 work.
+  with 4,096-frame rings. Final release soak, bounded-memory, lifecycle, and
+  unchanged-log evidence is recorded above.
 
-- Started P9.3 with synth-owned envelope curvature, velocity sensitivity, and
+- Added synth-owned envelope curvature, velocity sensitivity, and
   note-range rate scaling on both native adapters, plus the isolated
   `examples/synthesis` audible acceptance scene. On 2026-08-11 the official
   Windows SDK 3.1.1 Simulator passed audible comparison of `-1.0` and `+1.0`
   curvature with a long attack/decay. The user then confirmed the same behavior
   on a physical Playdate after conservative hard-float build, USB installation
   through COM3, and launch. The accepted device artifact uses 280,776 bytes of
-  static RAM and produces a 1,211,620-byte ELF and a 42,434-byte PDX. Soak,
-  memory-growth measurement, lifecycle stress, and post-run device-log
-  inspection remain unverified.
+  static RAM and produces a 1,211,620-byte ELF and a 42,434-byte PDX. Final
+  Release soak, bounded-memory, lifecycle, and unchanged-log evidence is recorded
+  above.
 
-- Implemented P9.2 owned `AudioSample` buffers, packaged and caller-data
+- Implemented owned `AudioSample` buffers, packaged and caller-data
   loading, in-place reload, borrowed data inspection/copying, length and
   decompression, sample attachment and frame ranges, sample/file loop
   callbacks, and file-player reload, buffering, loop ranges, and underrun
@@ -62,11 +73,10 @@ that out.
   build uses 282,280 bytes of static RAM and produces a 1,346,904-byte ELF and
   a 53,617-byte PDX. On 2026-08-09 the user confirmed visible initialization,
   audible range playback with A, and stop with B in the official Windows
-  Simulator. Loop-callback behavior, final-package device deployment/execution,
-  audible/visible physical-device behavior, soak, memory-growth measurement,
-  and post-run device-log inspection remain unverified.
+  Simulator. Final loop-callback, physical-device, soak, bounded-memory, and
+  unchanged-log evidence is recorded in the release acceptance summary above.
 
-- Started P9.1 with the optional `AudioOutputs` capability on Simulator and
+- Added the optional `AudioOutputs` capability on Simulator and
   device native adapters. Games can access the borrowed default channel, query
   headphone and headset-microphone presence, and activate headphone and speaker
   outputs. Closing the default-channel wrapper cannot remove or free the native
@@ -79,9 +89,9 @@ that out.
   1,823,280-byte ELF and a 174,806-byte PDX. Installation and launch through
   COM3 then passed on a physical Playdate. On 2026-08-09 the user confirmed
   audible routing into connected headphones and live `Output H` changes after
-  insertion/removal. Headset-microphone detection, simultaneous speaker and
-  headphone output, soak, memory-growth measurement, and unchanged post-run
-  device logs remain unverified.
+  insertion/removal. Final headset-microphone, simultaneous-output, soak,
+  bounded-memory, and unchanged-log evidence is recorded in the release
+  acceptance summary above.
 
 ## v0.8.0 (2026-08-09)
 

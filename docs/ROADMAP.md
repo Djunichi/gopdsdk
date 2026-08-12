@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.8.0` declared; publication is pending. The remaining offline
+Status: `v0.9.0` declared; publication is pending. The remaining offline
 official-SDK capability gaps are allocated through `v0.12.0`, followed by the
-`v1.0.0` contract release, updated 2026-08-09.
+`v1.0.0` contract release, updated 2026-08-12.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -50,7 +50,6 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P9 | `v0.9.0` | Complete offline sound, sample, and output facilities | Planned |
 | P10 | `v0.10.0` | Complete offline system and lifecycle facilities | Planned |
 | P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | Planned |
 | P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | Planned |
@@ -89,89 +88,6 @@ both native contexts, deterministic tests, a repository-owned acceptance
 consumer, official Simulator integration, device build, and applicable physical
 device behavior. Callback APIs additionally require bounded queues, no unsafe
 re-entry into Go, termination suppression, and overflow behavior.
-
-## P9 — complete sound — `v0.9.0`
-
-P9 completes offline playback, synthesis, samples, routing, and device output.
-
-### P9.1 — output and channel control
-
-Development started with default-channel access, synchronous headphone/headset
-state, and headphone/speaker activation on both native adapters. Deterministic
-unit coverage exists. The official Windows SDK 3.1.1 Simulator visibly passed
-scene initialization and the disconnected-headset state on 2026-08-09. The
-conservative-GC hard-float build and COM3 deployment also passed; the user
-confirmed physical headphone routing and live insertion/removal state changes.
-Headset-microphone detection, simultaneous outputs, soak, memory growth, and
-post-run device-log cleanliness remain unverified.
-
-- Continue with output routing, output as a source, channel membership, and the
-  missing useful volume, pan, and modulator controls.
-- Define behavior for hardware states that cannot be exercised in Simulator.
-
-### P9.2 — samples and players
-
-Implemented owned sample buffers, packaged and caller-data loading, in-place
-sample reload, sample attachment/replacement, borrowed data inspection and
-bounded copying, decompression, playback ranges, loop callbacks, file-player
-reload/buffering/loop ranges, and underrun status/control on both native
-adapters. Caller slices are copied into native-owned storage; `SampleData` views
-expire with their sample, and players borrow rather than own attached samples.
-Deterministic unit, public-API, runtime, and generated-adapter coverage passes.
-The official Windows SDK 3.1.1 build passed on 2026-08-09. The conservative-GC
-hard-float device build also passed. The user confirmed visible initialization,
-audible range playback with A, and stop with B in the official Windows
-Simulator. Loop-callback behavior, final-package device deployment/execution,
-and audible/visible device behavior remain unverified.
-
-- Confirm range/loop behavior on a physical Playdate and exercise the loop
-  callback and streaming underrun controls in acceptance scenes.
-- Measure soak/memory growth and inspect post-run device logs when requested.
-
-### P9.3 — synthesis, modulation, and sequencing
-
-Development started with synth-owned envelope curvature, velocity sensitivity,
-and note-range rate scaling on both native adapters. The isolated
-`examples/synthesis` scene passed audible comparison of negative and positive
-curvature in the official Windows SDK 3.1.1 Simulator and, after conservative
-hard-float build and COM3 deployment, on a physical Playdate on 2026-08-11. The
-accepted device artifact uses 280,776 bytes of static RAM and produces a
-1,211,620-byte ELF and a 42,434-byte PDX. Soak, memory-growth measurement,
-lifecycle stress, and post-run device-log inspection remain unverified.
-
-The implementation now includes one-pole filtering, wavetable and custom
-generator synthesis, remaining synth parameters and modulation edges,
-signal/controller lookup, and sequence/track/note introspection on both native
-adapters. Callback PCM uses four fixed 4,096-frame native rings. Custom synths
-use eight fixed userdata/voice slots with independent 4,096-frame rings and
-native polyphonic copy semantics. Both expose update-thread Go callbacks while
-the native audio thread only consumes bounded rings. Raw C function and userdata
-entry points remain intentionally omitted because the Go contracts preserve the
-portable behavior.
-
-The focused `examples/callbackpcm` and `examples/generatorsynth` scenes pass
-unit tests and audible acceptance in the official Windows SDK 3.1.1 Simulator.
-Both were then built with the conservative-GC hard-float device pipeline,
-installed through COM3, launched, and audibly accepted on a physical Playdate
-on 2026-08-11. The accepted callback scene uses 352,340 bytes of static RAM and
-produces a 1,376,984-byte ELF and 57,677-byte PDX. The accepted generator scene
-uses 416,012 bytes of static RAM and produces a 1,463,812-byte ELF and
-61,781-byte PDX. P9.3 implementation and focused audible acceptance are
-complete; soak, memory-growth measurement, lifecycle stress, and a final
-post-run log check roll into P9.4 acceptance.
-
-SDK 3.1.1 declares `setMP3StreamSource` in the C header but provides no matching
-official documentation or example establishing a shipping-device contract.
-P9.3 therefore does not expose it from declaration discovery alone; packaged
-MP3 playback remains available through `FilePlayer`. Reconsider a bounded byte
-stream only when official device behavior can be probed and ordinary
-file/sample players cannot preserve the required game behavior.
-
-### P9.4 — release
-
-- Run audible Simulator and physical-device acceptance for routing, headphones,
-  samples, wavetable/custom synthesis, callbacks, underruns, lifecycle cleanup,
-  soak, memory bounds, and unchanged device logs before releasing `v0.9.0`.
 
 ## P10 — complete system integration — `v0.10.0`
 
