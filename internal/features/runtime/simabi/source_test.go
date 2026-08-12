@@ -310,6 +310,9 @@ func TestCallbackAudioUsesBoundedNativeRings(t *testing.T) {
 			t.Errorf("C source does not contain %q", want)
 		}
 	}
+	if !strings.Contains(sources.C, "bridgeGeneratorParameterCallback") || strings.Contains(sources.C, "static int bridgeGeneratorSetParameter(") {
+		t.Error("generator callback and exported parameter setter must have distinct C symbols")
+	}
 	for _, want := range []string{"#define BRIDGE_PCM_RING_FRAMES 4096", "#define BRIDGE_GENERATOR_RING_FRAMES 4096"} {
 		if !strings.Contains(sources.C, want) {
 			t.Errorf("bounded ring is too short for a 30 FPS update interval: missing %q", want)

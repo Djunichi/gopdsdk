@@ -1,6 +1,6 @@
 # Release procedure
 
-The latest declared release is `v0.8.0`; publication remains pending until its
+The latest declared release is `v0.9.0`; publication remains pending until its
 tag and hosted release exist. Go module versions come from Git
 tags; no separate VERSION file is maintained. The procedure below applies to
 the next planned release selected from the roadmap.
@@ -33,13 +33,13 @@ the next planned release selected from the roadmap.
 
 Before a new tag exists, acceptance uses the intended version with a local
 `replace` to the release checkout. After publication, verify from a clean
-directory without a `replace`. For `v0.8.0`, run this check only after its tag
+directory without a `replace`. For `v0.9.0`, run this check only after its tag
 is published:
 
 ```sh
 go mod init example.com/release-check
-go get github.com/Djunichi/gopdsdk@v0.8.0
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.8.0 doctor
+go get github.com/Djunichi/gopdsdk@v0.9.0
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.9.0 doctor
 ```
 
 Then compile and dry-run a standalone application against both targets. This
