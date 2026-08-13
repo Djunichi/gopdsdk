@@ -16,4 +16,6 @@ const (
 	LifecycleUnlock
 	LifecycleTerminate
 	LifecycleLowPower
+	LifecycleMirrorStarted
+	LifecycleMirrorEnded
 )

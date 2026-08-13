@@ -4,6 +4,30 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
+## Unreleased
+
+- Implemented P10.1 launch and lifecycle control through the optional
+  `playdate.SystemControls` capability on both generated native adapters:
+  copied launch arguments and loaded-game path, restart arguments, owned
+  400×240 menu images, auto-lock control, crank-sound control, and automatic
+  termination restoration. Menu images reject invalid dimensions and offsets,
+  remain protected from close while retained, and are released before the game
+  receives `LifecycleTerminate`.
+- Added mirror-started and mirror-ended lifecycle events plus bounded button
+  callbacks. The callback path preserves multiple ordered transitions between
+  frame snapshots without native-to-Go re-entry, uses a fixed 64-event bridge
+  queue, drops newest on bridge overflow, exposes the dropped count, and is
+  disabled before termination. The new `examples/systemcontrol` consumer
+  exercises launch state, restart, menu image, settings, mirror events, and
+  button delivery.
+- On 2026-08-13 the P10.1 pure-Go consumer, runtime, public-API snapshot, and
+  generated Simulator/device ABI tests passed. The focused consumer compiled
+  and packaged with the official Windows SDK 3.1.1. Its conservative hard-float
+  device build used 283,228 bytes of static RAM and produced a 1,196,892-byte
+  ELF and a 49,261-byte PDX. Visual Simulator execution, USB deployment,
+  physical-device behavior, soak, memory-growth measurement, and post-run
+  device-log inspection remain unverified for this unreleased slice.
+
 ## v0.9.0 (2026-08-12)
 
 - Declared the offline sound release complete after user-confirmed final audible Simulator and

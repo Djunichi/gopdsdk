@@ -1,11 +1,12 @@
 # Public API
 
-This document describes the declared `v0.8.0` public contract, including
-advanced drawing, bitmap data and masks, text and font metrics, display
-introspection, complete offline sprite and collision facilities, optional
+This document describes the released `v0.9.0` public contract plus the
+unreleased P10.1 system-control additions. The contract includes advanced
+drawing, bitmap data and masks, text and font metrics, display introspection,
+complete offline sprite and collision facilities, offline sound, optional
 video, and the bounded diagnostics package. The module is still pre-v1: minor
-releases may make intentional breaking changes, which must be called out in release notes.
-Patch releases preserve the documented API and behavior.
+releases may make intentional breaking changes, which must be called out in
+release notes. Patch releases preserve the documented API and behavior.
 
 Applications import the native contract from
 `github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional
@@ -46,9 +47,10 @@ returns whether the display should refresh. An error from a game callback
 permanently stops that application instance.
 
 Implement `playdate.LifecycleGame` when the game needs pause, resume, lock,
-unlock, terminate, or low-power events. Events retain platform order. Release
-owned native resources on `LifecycleTerminate`; initialization must roll back
-resources already acquired when a later acquisition fails.
+unlock, terminate, low-power, mirror-started, or mirror-ended events. Events
+retain platform order. Release owned native resources on
+`LifecycleTerminate`; initialization must roll back resources already acquired
+when a later acquisition fails.
 
 ## Context capabilities
 
@@ -72,6 +74,21 @@ capability and call `ExitToLauncher`. The official runtime sends
 normal lifecycle path. An in-game title or pause menu is application state:
 switching from gameplay back to that menu does not terminate or restart the
 process.
+
+Games that need launch and lifecycle settings assert the optional
+`SystemControls` capability. `LaunchArguments` copies both the argument string
+and loaded game path out of transient SDK storage. `RestartGame` rejects an
+embedded NUL with `ErrLaunchArguments`. Auto-lock changes are restored and
+crank-sound changes return and restore the prior state when the application
+terminates.
+
+`SetMenuImage` accepts only an owned 400×240 bitmap and an x offset from 0
+through 200. The runtime retains that bitmap until replacement, explicit
+`ClearMenuImage`, or termination; `Close` returns
+`ErrBitmapMenuImageInUse` while retained. The reference is cleared before the
+game receives `LifecycleTerminate`, so normal lifecycle cleanup can close the
+bitmap. Size and offset failures return `ErrMenuImageSize` and
+`ErrMenuImageOffset` before a native call.
 
 Games that sample motion assert `Accelerometer`, explicitly enable it, and read
 `AccelerometerXYZ`; reads before enablement return zero and the runtime disables
@@ -153,11 +170,25 @@ frame boundary. `Buttons.Has` tests whether every requested bit is set.
 same model in Simulator and device builds. Game state should advance from the
 snapshot rather than branching on the build target.
 
+The optional `SystemControls.SetButtonCallback` preserves ordered native
+up/down transitions, including multiple transitions of one button between two
+frame snapshots. Queue sizes are limited to 1 through 64; a nil callback with
+size zero disables delivery, and other invalid combinations return
+`ErrButtonCallbackConfig`. Native callbacks write only to a fixed bridge queue;
+Go callbacks run immediately before the next game update. The bridge drops the
+newest event if its queue is full and reports the count through
+`ButtonCallbackOverflow`. Termination disables the callback before delivering
+`LifecycleTerminate`.
+
 ## Bitmap ownership and errors
 
 `LoadBitmap` and `NewBitmap` return owned bitmap handles. Close each successful
 handle exactly once. A failed partial initialization must close earlier handles.
 Do not rely on finalizers.
+
+An owned bitmap installed through `SystemControls.SetMenuImage` cannot be
+closed while retained. Clear or replace it first, or close it from
+`LifecycleTerminate` after the runtime has cleared the native menu reference.
 
 After a successful close, bitmap operations return `ErrBitmapClosed`.
 Invalid sizes, colors, and scales use the exported sentinel errors. A failed

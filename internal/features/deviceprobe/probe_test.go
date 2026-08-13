@@ -140,6 +140,35 @@ func TestBothDeviceAdaptersContainSystemStatusBridge(t *testing.T) {
 	}
 }
 
+func TestBothDeviceAdaptersContainP101SystemControls(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{
+		"sdkPlaydate.SystemControls", "bridgeGetLaunchArgs", "bridgeRestartGame",
+		"bridgeSetMenuImage", "bridgeSetAutoLockDisabled", "bridgeSetCrankSoundsDisabled",
+		"bridgeSetButtonCallback", "bridgePollButtonEvent", "bridgeButtonCallbackOverflow",
+		"for buttonCallback != nil", "sdkPlaydate.ButtonEvent",
+	} {
+		if !strings.Contains(source, want) {
+			t.Errorf("device Go source does not contain %q", want)
+		}
+	}
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{
+			"system->getLaunchArgs", "system->restartGame", "system->setMenuImage",
+			"system->setAutoLockDisabled", "system->setCrankSoundsDisabled",
+			"system->setButtonCallback", "#define BRIDGE_BUTTON_EVENT_CAPACITY 64",
+			"bridgeButtonDropped++", "bridgePollButtonEvent", "bridgeButtonCallbackOverflow",
+		} {
+			if !strings.Contains(bootstrap, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+		if strings.Contains(bootstrap, "goButtonCallback") {
+			t.Errorf("%s bootstrap enters Go from the native button callback", name)
+		}
+	}
+}
+
 func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
 	for _, want := range []string{"runtime.run", "runtime.alloc", "activePlaydate->system->realloc(NULL, size)", "event == kEventInit && !booted", "runtimeRun();", "goEventHandler(playdate, event, arg)"} {
 		if !strings.Contains(bootstrapSource, want) {

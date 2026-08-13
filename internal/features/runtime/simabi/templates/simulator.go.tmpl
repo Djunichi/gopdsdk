@@ -32,6 +32,14 @@ uintptr_t bridgeFontGlyph(uintptr_t font,uint32_t code,uint32_t next,uintptr_t* 
 uint32_t bridgeCurrentTimeMilliseconds(void);
 uint32_t bridgeCurrentAudioTime(void);
 void bridgeExitToLauncher(void);
+const char* bridgeGetLaunchArgs(const char** path);
+void bridgeRestartGame(const char* arguments);
+void bridgeSetMenuImage(uintptr_t bitmap, int xOffset);
+void bridgeSetAutoLockDisabled(int disabled);
+int bridgeSetCrankSoundsDisabled(int disabled);
+void bridgeSetButtonCallback(int queueSize);
+int bridgePollButtonEvent(uint32_t* button, int* down, uint32_t* when);
+uint32_t bridgeButtonCallbackOverflow(void);
 void bridgeSetAccelerometerEnabled(int enabled);
 void bridgeAccelerometer(float* x, float* y, float* z);
 int bridgePowerStatus(void);
@@ -274,6 +282,7 @@ import (
 var activePlaydate *C.PlaydateAPI
 var gameContext playdateContext
 var debugMessages = sdkRuntime.NewDebugMessageQueue(8, 256)
+var buttonCallback sdkPlaydate.ButtonCallback
 
 //export goSerialMessage
 func goSerialMessage(message *C.char) { if message != nil { debugMessages.Push(C.GoString(message)) } }
@@ -326,6 +335,13 @@ func eventHandler(playdate *C.PlaydateAPI, event C.PDSystemEvent, arg C.uint32_t
 
 //export goUpdate
 func goUpdate() C.int {
+	for buttonCallback != nil {
+		var button, when C.uint32_t
+		var down C.int
+		if C.bridgePollButtonEvent(&button, &down, &when) == 0 { break }
+		callback := buttonCallback
+		callback(sdkPlaydate.ButtonEvent{Button: sdkPlaydate.Buttons(button), Down: down != 0, When: uint32(when)})
+	}
 	refresh, err := application.Update(sdkRuntime.RawInput{
 		Buttons: sdkPlaydate.Buttons(C.bridgeButtons()), CrankAngle: float32(C.bridgeCrankAngle()),
 		CrankDelta: float32(C.bridgeCrankDelta()), CrankDocked: C.bridgeCrankDocked() != 0,
@@ -346,6 +362,7 @@ var _ sdkPlaydate.FramebufferGraphics = playdateContext{}
 var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
 var _ sdkPlaydate.BitmapDataGraphics = playdateContext{}
 var _ sdkPlaydate.Launcher = playdateContext{}
+var _ sdkPlaydate.SystemControls = playdateContext{}
 var _ sdkPlaydate.FileSystem = playdateContext{}
 var _ sdkPlaydate.SystemMenu = playdateContext{}
 var _ sdkPlaydate.Localization = playdateContext{}
@@ -438,6 +455,15 @@ func (playdateContext) CurrentTimeMilliseconds() uint32 {
 func (playdateContext) CurrentAudioTime() (uint32,error) { return uint32(C.bridgeCurrentAudioTime()),nil }
 
 func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }
+func (playdateContext) LaunchArguments()(string,string){var path *C.char;arguments:=C.bridgeGetLaunchArgs((**C.char)(unsafe.Pointer(&path)));return copiedNativeText(arguments),copiedNativeText(path)}
+func (playdateContext) RestartGame(arguments string)error{if err:=sdkRuntime.ValidateLaunchArguments(arguments);err!=nil{return err};value:=C.CString(arguments);defer C.free(unsafe.Pointer(value));C.bridgeRestartGame(value);return nil}
+var menuImageState=sdkRuntime.NewMenuImageState(func(bitmap uintptr,xOffset int){C.bridgeSetMenuImage(C.uintptr_t(bitmap),C.int(xOffset))})
+func (playdateContext) SetMenuImage(bitmap sdkPlaydate.Bitmap,xOffset int)error{return menuImageState.SetMenuImage(bitmap,xOffset)}
+func (playdateContext) ClearMenuImage(){menuImageState.ClearMenuImage()}
+func (playdateContext) SetAutoLockDisabled(disabled bool){value:=0;if disabled{value=1};C.bridgeSetAutoLockDisabled(C.int(value))}
+func (playdateContext) SetCrankSoundsDisabled(disabled bool)bool{value:=0;if disabled{value=1};return C.bridgeSetCrankSoundsDisabled(C.int(value))!=0}
+func (playdateContext) SetButtonCallback(callback sdkPlaydate.ButtonCallback,queueSize int)error{if err:=sdkRuntime.ValidateButtonCallbackConfig(callback,queueSize);err!=nil{return err};buttonCallback=callback;C.bridgeSetButtonCallback(C.int(queueSize));return nil}
+func (playdateContext) ButtonCallbackOverflow()uint32{return uint32(C.bridgeButtonCallbackOverflow())}
 func (playdateContext) SetAccelerometerEnabled(enabled bool){value:=0;if enabled{value=1};C.bridgeSetAccelerometerEnabled(C.int(value))}
 func (playdateContext) AccelerometerXYZ()(float32,float32,float32){var x,y,z C.float;C.bridgeAccelerometer(&x,&y,&z);return float32(x),float32(y),float32(z)}
 func (playdateContext) PowerStatus()sdkPlaydate.PowerStatus{return sdkPlaydate.PowerStatus(C.bridgePowerStatus())}

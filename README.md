@@ -2,8 +2,7 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-The latest declared release is **`v0.9.0`**; publication remains pending until
-its tag and hosted release exist. It completes offline sound, including owned
+The latest release is **`v0.9.0`**. It completes offline sound, including owned
 samples and streaming controls, routing and output state, synthesis,
 modulation, sequencing, effects, and bounded PCM/custom-generator callbacks.
 Sound acceptance, soak, bounded-memory, and post-run device-log checks passed on
@@ -49,14 +48,13 @@ deployment works on that host.
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
-## Install v0.8.0 after publication
+## Install v0.9.0
 
-After the `v0.8.0` tag is published and the module-proxy check passes, run the
-released CLI directly at that version:
+Run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.8.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.8.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.9.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.9.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -290,6 +288,34 @@ The display reports an ordered lifecycle trace and counters; current, pressed,
 released, held, and latched edge button masks; crank angle and change; dock
 transitions; frame delta; and the soak marker. Pure-Go tests supply fixed input
 and lifecycle sequences to this same game implementation.
+
+## Launch and lifecycle control
+
+The unreleased P10.1 `playdate.SystemControls` capability adds copied launch
+arguments and game path, restart arguments, an owned 400×240 system-menu image,
+auto-lock and crank-sound controls, mirror lifecycle events, and bounded button
+callbacks. Button callbacks preserve multiple ordered up/down transitions of
+one button between frame snapshots; they are delivered from a fixed native
+queue immediately before the next Go update and expose bridge overflow counts.
+Termination clears callbacks and the retained menu image and restores system
+settings before the game releases its owned resources.
+
+The `examples/systemcontrol` consumer displays launch and mirror state, button
+event timestamps and overflow, installs a menu image, toggles auto-lock and
+crank sounds with B, and restarts with P10 launch arguments when A is pressed:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/systemcontrol
+go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK ./examples/systemcontrol
+```
+
+Its pure-Go consumer, runtime, public-API snapshot, and generated
+Simulator/device ABI tests pass. On 2026-08-13 the consumer compiled and
+packaged with the official Windows SDK 3.1.1, and its conservative hard-float
+device build used 283,228 bytes of static RAM and produced a 1,196,892-byte ELF
+and a 49,261-byte PDX. Visual Simulator behavior, USB deployment,
+physical-device behavior, soak, memory growth, and post-run device-log checks
+remain unverified for P10.1.
 
 ## Bitmap acceptance
 

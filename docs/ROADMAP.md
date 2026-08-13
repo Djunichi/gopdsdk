@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.9.0` declared; publication is pending. The remaining offline
+Status: `v0.9.0` released; P10 is in progress. The remaining offline
 official-SDK capability gaps are allocated through `v0.12.0`, followed by the
-`v1.0.0` contract release, updated 2026-08-12.
+`v1.0.0` contract release, updated 2026-08-13.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -35,6 +35,8 @@ after `v1.0.0` is tracked by feature and release.
 
 - **Planned** means the product boundary is accepted but no readiness evidence
   is implied.
+- **In progress** means at least one vertical slice is implemented while the
+  complete scope boundary and release gates remain open.
 - **Implemented** means the scoped behavior and deterministic tests exist on
   both adapters.
 - **Release candidate** means the documented native CI, SDK integration,
@@ -50,7 +52,7 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P10 | `v0.10.0` | Complete offline system and lifecycle facilities | Planned |
+| P10 | `v0.10.0` | Complete offline system and lifecycle facilities | In progress |
 | P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | Planned |
 | P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | Planned |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
@@ -93,12 +95,19 @@ re-entry into Go, termination suppression, and overflow behavior.
 
 P10 completes system facilities that can affect a shipped offline game.
 
-### P10.1 — launch and lifecycle control
+### P10.1 — launch and lifecycle control — Implemented
 
-- Add launch arguments, restart, menu image, auto-lock control, crank-sound
-  control, and official mirror lifecycle events when delivered to games.
-- Add button callbacks only if they provide behavior that frame snapshots cannot
-  preserve; otherwise document and test the snapshot equivalence.
+- Added launch arguments, restart, owned menu-image control, auto-lock control,
+  crank-sound control, and official mirror lifecycle events through both native
+  adapters and `NewApplication`.
+- Added bounded button callbacks because an ordered down/up pair or repeated
+  transitions between two updates cannot be represented by the frame snapshot.
+  Native callbacks use a fixed queue without re-entering Go, drop newest on
+  bridge overflow, expose the drop count, and are suppressed at termination.
+- Pure-Go consumer, runtime, public-API snapshot, generated ABI tests, official
+  Windows SDK 3.1.1 compilation/packaging, and conservative hard-float device
+  build pass. Visual Simulator execution, USB deployment, physical-device
+  behavior, soak, memory growth, and post-run device logs remain open.
 
 ### P10.2 — clock, calendar, and device information
 

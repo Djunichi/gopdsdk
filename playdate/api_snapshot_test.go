@@ -130,6 +130,7 @@ const BitmapFlippedY BitmapFlip
 const BitmapUnflipped BitmapFlip
 const ButtonA Buttons
 const ButtonB Buttons
+const ButtonCallbackQueueLimit untyped int
 const ButtonDown Buttons
 const ButtonLeft Buttons
 const ButtonRight Buttons
@@ -172,6 +173,8 @@ const LanguageJapanese Language
 const LanguageSystem Language
 const LifecycleLock LifecycleEvent
 const LifecycleLowPower LifecycleEvent
+const LifecycleMirrorEnded LifecycleEvent
+const LifecycleMirrorStarted LifecycleEvent
 const LifecyclePause LifecycleEvent
 const LifecycleResume LifecycleEvent
 const LifecycleTerminate LifecycleEvent
@@ -267,6 +270,8 @@ type BitmapLoadError string
 type BitmapTable interface{Close() error; Frame(index int) (Bitmap, error)}
 type Board struct{ID string; Name string}
 type BoardsList struct{LastUpdated uint32; Boards []Board}
+type ButtonCallback func(ButtonEvent)
+type ButtonEvent struct{Button Buttons; Down bool; When uint32}
 type Buttons uint8
 type CallbackAudio interface{NewPCMCallbackSource(channel AudioChannel, stereo bool, callback PCMRenderCallback) (PCMCallbackSource, error)}
 type Camera struct{X int; Y int; Width int; Height int}
@@ -373,6 +378,7 @@ type StreamingPlayerControls interface{DidUnderrun() (bool, error); Load(path st
 type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(note float32, velocity float32, length float32, when uint32) error; SetAmplitudeModulator(signal Signal) error; SetEnvelope(attack float32, decay float32, sustain float32, release float32) error; SetEnvelopeCurvature(amount float32) error; SetEnvelopeRateScaling(scaling float32, startNote uint8, endNote uint8) error; SetEnvelopeVelocitySensitivity(amount float32) error; SetFrequencyModulator(signal Signal) error; SetParameter(parameter int, value float32) error; SetParameterModulator(parameter int, signal Signal) error; SetTranspose(semitones float32) error; SetWaveform(waveform Waveform) error; SetWavetable(sample AudioSample, log2Size int, columns int, rows int) error; Stop() error; AudioSource}
 type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelope(attack float32, decay float32, sustain float32, release float32) (Envelope, error); NewLFO(lfoType LFOType) (LFO, error); NewSynth(waveform Waveform) (Synth, error)}
 type System interface{CurrentTimeMilliseconds() uint32}
+type SystemControls interface{ButtonCallbackOverflow() uint32; ClearMenuImage(); LaunchArguments() (arguments string, path string); RestartGame(arguments string) error; SetAutoLockDisabled(disabled bool); SetButtonCallback(callback ButtonCallback, queueSize int) error; SetCrankSoundsDisabled(disabled bool) (previous bool); SetMenuImage(bitmap Bitmap, xOffset int) error}
 type SystemMenu interface{AddActionMenuItem(title string, callback func()) (MenuItem, error); AddCheckmarkMenuItem(title string, value bool, callback func()) (CheckmarkMenuItem, error); AddOptionsMenuItem(title string, options []string, callback func()) (OptionsMenuItem, error)}
 type SystemPreferences interface{ReduceFlashing() bool; SystemVolume() float32; TimezoneOffsetSeconds() int32; Uses24HourTime() bool}
 type TextAlignment uint8
@@ -426,12 +432,14 @@ var ErrBitmapFrameRange error
 var ErrBitmapMask error
 var ErrBitmapMaskInUse error
 var ErrBitmapMaskSize error
+var ErrBitmapMenuImageInUse error
 var ErrBitmapScale error
 var ErrBitmapSize error
 var ErrBitmapTableBorrowed error
 var ErrBitmapTableClosed error
 var ErrBitmapTableInUse error
 var ErrBitmapTableSize error
+var ErrButtonCallbackConfig error
 var ErrDisplayMosaic error
 var ErrDisplayRefreshRate error
 var ErrDisplayScale error
@@ -459,6 +467,9 @@ var ErrGraphicsStencilActive error
 var ErrGraphicsStencilCallback error
 var ErrGraphicsStencilWidth error
 var ErrGraphicsUnavailable error
+var ErrLaunchArguments error
+var ErrMenuImageOffset error
+var ErrMenuImageSize error
 var ErrMenuItemCreate error
 var ErrMenuOptions error
 var ErrMenuTitle error
@@ -490,6 +501,7 @@ var ErrSpriteTileMapConfig error
 var ErrSpriteTileMapCreate error
 var ErrSpriteTileMapInUse error
 var ErrSpriteTileMapUnavailable error
+var ErrSystemControlsUnavailable error
 var ErrTileMapBitmap error
 var ErrTileMapConfig error
 var ErrTileMapDraw error

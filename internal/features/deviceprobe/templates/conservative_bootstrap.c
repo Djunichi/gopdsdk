@@ -95,6 +95,19 @@ uint32_t bridgeCurrentTimeMilliseconds(void)
 }
 
 void bridgeExitToLauncher(void) { activePlaydate->system->exitToLauncher(); }
+uintptr_t bridgeGetLaunchArgs(uintptr_t* path){const char* value=0;const char* arguments=activePlaydate->system->getLaunchArgs(&value);*path=(uintptr_t)value;return(uintptr_t)arguments;}
+void bridgeRestartGame(const char* arguments){activePlaydate->system->restartGame(arguments);}
+void bridgeSetMenuImage(uintptr_t bitmap,int32_t xOffset){activePlaydate->system->setMenuImage((LCDBitmap*)bitmap,xOffset);}
+void bridgeSetAutoLockDisabled(int32_t disabled){activePlaydate->system->setAutoLockDisabled(disabled);}
+int32_t bridgeSetCrankSoundsDisabled(int32_t disabled){return activePlaydate->system->setCrankSoundsDisabled(disabled);}
+#define BRIDGE_BUTTON_EVENT_CAPACITY 64
+typedef struct{uint32_t button;uint32_t when;int32_t down;}BridgeButtonEvent;
+static BridgeButtonEvent bridgeButtonEvents[BRIDGE_BUTTON_EVENT_CAPACITY];
+static uint32_t bridgeButtonRead,bridgeButtonWrite,bridgeButtonCount,bridgeButtonDropped;
+static int bridgeButtonCallback(PDButtons button,int down,uint32_t when,void* userdata){(void)userdata;if(bridgeButtonCount==BRIDGE_BUTTON_EVENT_CAPACITY){bridgeButtonDropped++;return 0;}bridgeButtonEvents[bridgeButtonWrite]=(BridgeButtonEvent){(uint32_t)button,when,(int32_t)down};bridgeButtonWrite=(bridgeButtonWrite+1)%BRIDGE_BUTTON_EVENT_CAPACITY;bridgeButtonCount++;return 0;}
+void bridgeSetButtonCallback(int32_t queueSize){activePlaydate->system->setButtonCallback(NULL,NULL,0);bridgeButtonRead=bridgeButtonWrite=bridgeButtonCount=bridgeButtonDropped=0;if(queueSize>0)activePlaydate->system->setButtonCallback(bridgeButtonCallback,NULL,queueSize);}
+int32_t bridgePollButtonEvent(uint32_t* button,int32_t* down,uint32_t* when){if(bridgeButtonCount==0)return 0;BridgeButtonEvent event=bridgeButtonEvents[bridgeButtonRead];bridgeButtonRead=(bridgeButtonRead+1)%BRIDGE_BUTTON_EVENT_CAPACITY;bridgeButtonCount--;*button=event.button;*down=event.down;*when=event.when;return 1;}
+uint32_t bridgeButtonCallbackOverflow(void){return bridgeButtonDropped;}
 static uint32_t bridgeFloatBits(float value);
 void bridgeSetAccelerometerEnabled(int32_t enabled){activePlaydate->system->setPeripheralsEnabled(enabled?kAccelerometer:kNone);}
 void bridgeAccelerometer(float* x,float* y,float* z){activePlaydate->system->getAccelerometer(x,y,z);}

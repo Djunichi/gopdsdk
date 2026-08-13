@@ -1187,8 +1187,61 @@ type Bitmap struct {
 	font                 *font
 	mask                 *Bitmap
 	maskUsers, maskViews int
+	menuImageUsers       int
 	owned                bool
 	closed               bool
+}
+
+// MenuImageState retains the owned bitmap used by the native system menu.
+type MenuImageState struct {
+	image *Bitmap
+	set   func(uintptr, int)
+}
+
+// NewMenuImageState creates native menu-image state with deterministic bitmap
+// ownership and validation.
+func NewMenuImageState(set func(uintptr, int)) *MenuImageState {
+	return &MenuImageState{set: set}
+}
+
+// SetMenuImage validates and retains a 400x240 owned bitmap.
+func (state *MenuImageState) SetMenuImage(bitmap playdate.Bitmap, xOffset int) error {
+	if xOffset < 0 || xOffset > 200 {
+		return playdate.ErrMenuImageOffset
+	}
+	value, ok := bitmap.(*Bitmap)
+	if !ok {
+		return ErrInvalidBitmap
+	}
+	if !value.owned {
+		return playdate.ErrBitmapBorrowed
+	}
+	handle, err := value.nativeHandle()
+	if err != nil {
+		return err
+	}
+	width, height := value.driver.Dimensions(handle)
+	if width != 400 || height != 240 {
+		return playdate.ErrMenuImageSize
+	}
+	if state.image != value {
+		if state.image != nil {
+			state.image.menuImageUsers--
+		}
+		value.menuImageUsers++
+		state.image = value
+	}
+	state.set(handle, xOffset)
+	return nil
+}
+
+// ClearMenuImage releases the retained menu bitmap after clearing native state.
+func (state *MenuImageState) ClearMenuImage() {
+	state.set(0, 0)
+	if state.image != nil {
+		state.image.menuImageUsers--
+		state.image = nil
+	}
 }
 
 // BitmapTableDriver contains platform operations for one native bitmap table.
@@ -1398,6 +1451,9 @@ func (b *Bitmap) Close() error {
 	}
 	if b.maskUsers > 0 || b.maskViews > 0 {
 		return playdate.ErrBitmapMaskInUse
+	}
+	if b.menuImageUsers > 0 {
+		return playdate.ErrBitmapMenuImageInUse
 	}
 	b.driver.Free(b.handle)
 	if b.parent != nil {
@@ -2570,6 +2626,10 @@ type applicationContext struct {
 	menuItems            []playdate.MenuItem
 	microphoneRecorder   playdate.MicrophoneRecorder
 	accelerometerEnabled bool
+	autoLockDisabled     bool
+	crankSoundsTracked   bool
+	crankSoundsInitial   bool
+	systemTerminating    bool
 	stencilActive        bool
 	terminated           bool
 }
@@ -3031,6 +3091,125 @@ func (context *applicationContext) ExitToLauncher() {
 	launcher, ok := context.Context.(playdate.Launcher)
 	if ok {
 		launcher.ExitToLauncher()
+	}
+}
+
+// ValidateLaunchArguments rejects strings that cannot cross the native C API.
+func ValidateLaunchArguments(arguments string) error {
+	if strings.IndexByte(arguments, 0) >= 0 {
+		return playdate.ErrLaunchArguments
+	}
+	return nil
+}
+
+// ValidateButtonCallbackConfig applies the bounded native queue contract.
+func ValidateButtonCallbackConfig(callback playdate.ButtonCallback, queueSize int) error {
+	if callback == nil && queueSize == 0 {
+		return nil
+	}
+	if callback == nil || queueSize < 1 || queueSize > playdate.ButtonCallbackQueueLimit {
+		return playdate.ErrButtonCallbackConfig
+	}
+	return nil
+}
+
+func (context *applicationContext) systemControls() (playdate.SystemControls, error) {
+	controls, ok := context.Context.(playdate.SystemControls)
+	if !ok || context.systemTerminating || context.terminated {
+		return nil, playdate.ErrSystemControlsUnavailable
+	}
+	return controls, nil
+}
+
+func (context *applicationContext) LaunchArguments() (arguments, path string) {
+	controls, err := context.systemControls()
+	if err != nil {
+		return "", ""
+	}
+	return controls.LaunchArguments()
+}
+
+func (context *applicationContext) RestartGame(arguments string) error {
+	if err := ValidateLaunchArguments(arguments); err != nil {
+		return err
+	}
+	controls, err := context.systemControls()
+	if err != nil {
+		return err
+	}
+	return controls.RestartGame(arguments)
+}
+
+func (context *applicationContext) SetMenuImage(bitmap playdate.Bitmap, xOffset int) error {
+	controls, err := context.systemControls()
+	if err != nil {
+		return err
+	}
+	return controls.SetMenuImage(bitmap, xOffset)
+}
+
+func (context *applicationContext) ClearMenuImage() {
+	if controls, err := context.systemControls(); err == nil {
+		controls.ClearMenuImage()
+	}
+}
+
+func (context *applicationContext) SetAutoLockDisabled(disabled bool) {
+	controls, err := context.systemControls()
+	if err != nil {
+		return
+	}
+	controls.SetAutoLockDisabled(disabled)
+	context.autoLockDisabled = disabled
+}
+
+func (context *applicationContext) SetCrankSoundsDisabled(disabled bool) (previous bool) {
+	controls, err := context.systemControls()
+	if err != nil {
+		return false
+	}
+	previous = controls.SetCrankSoundsDisabled(disabled)
+	if !context.crankSoundsTracked {
+		context.crankSoundsTracked = true
+		context.crankSoundsInitial = previous
+	}
+	return previous
+}
+
+func (context *applicationContext) SetButtonCallback(callback playdate.ButtonCallback, queueSize int) error {
+	if err := ValidateButtonCallbackConfig(callback, queueSize); err != nil {
+		return err
+	}
+	controls, err := context.systemControls()
+	if err != nil {
+		return err
+	}
+	return controls.SetButtonCallback(callback, queueSize)
+}
+
+func (context *applicationContext) ButtonCallbackOverflow() uint32 {
+	controls, err := context.systemControls()
+	if err != nil {
+		return 0
+	}
+	return controls.ButtonCallbackOverflow()
+}
+
+func (context *applicationContext) beginSystemTermination() {
+	controls, ok := context.Context.(playdate.SystemControls)
+	context.systemTerminating = true
+	if !ok {
+		return
+	}
+	_ = controls.SetButtonCallback(nil, 0)
+	controls.ClearMenuImage()
+	if context.autoLockDisabled {
+		controls.SetAutoLockDisabled(false)
+		context.autoLockDisabled = false
+	}
+	if context.crankSoundsTracked {
+		controls.SetCrankSoundsDisabled(context.crankSoundsInitial)
+		context.crankSoundsTracked = false
 	}
 }
 
@@ -3557,6 +3736,9 @@ func NewApplication(game playdate.Game, context playdate.Context, beforeInit fun
 			return game.Init(gameContext)
 		},
 		Lifecycle: func(event playdate.LifecycleEvent) error {
+			if event == playdate.LifecycleTerminate {
+				gameContext.beginSystemTermination()
+			}
 			var err error
 			if lifecycle != nil {
 				err = lifecycle.HandleLifecycle(gameContext, event)
@@ -3667,6 +3849,10 @@ func lifecycleEvent(event Event) (playdate.LifecycleEvent, bool) {
 		return playdate.LifecycleTerminate, true
 	case EventLowPower:
 		return playdate.LifecycleLowPower, true
+	case EventMirrorStarted:
+		return playdate.LifecycleMirrorStarted, true
+	case EventMirrorEnded:
+		return playdate.LifecycleMirrorEnded, true
 	default:
 		return 0, false
 	}

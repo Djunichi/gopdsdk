@@ -48,4 +48,7 @@ var (
 	ErrBitmapTableSize error = bitmapError("bitmap table dimensions and count must be positive")
 	// ErrBitmapTableInUse indicates a table retained by a native tilemap.
 	ErrBitmapTableInUse error = bitmapError("bitmap table is still used by a tilemap")
+	// ErrBitmapMenuImageInUse indicates a bitmap retained as the system menu
+	// image. Clear or replace the menu image before closing it.
+	ErrBitmapMenuImageInUse error = bitmapError("bitmap is still used as the menu image")
 )
