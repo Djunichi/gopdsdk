@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Implement scoped gopdsdk Go features, fixes, refactors, and tests under the repository architecture and portability contract.
+description: Implement scoped gopdsdk Go changes and tests under its architecture and portability contract.
 ---
 
 # Implement
@@ -9,13 +9,12 @@ Follow `AGENTS.md`.
 
 ## Workflow
 
-1. Inspect status, relevant code, callers, tests, and package comment.
-2. State the feature/package boundary; keep `cmd` compositional and extract to
-   `internal/shared` only for a second real consumer.
-3. Implement the smallest complete behavior and error paths.
-4. Add deterministic tests; abstract I/O or processes only at test/platform
+1. Inspect status, relevant code, callers, tests, and the package comment.
+2. State the feature/package boundary, then implement the smallest complete
+   behavior and error paths.
+3. Add deterministic tests; abstract I/O or processes only at test/platform
    boundaries.
-5. Check proportionally; inspect the diff for unrelated edits, portability,
+4. Verify proportionally and inspect the diff for unrelated edits, portability,
    provenance, and overstated readiness.
 
 Do not add dependencies, generated bindings, public API, or shared packages
@@ -23,8 +22,8 @@ speculatively.
 
 ## Checks
 
-Use workspace `.cache` for `GOCACHE` and `GOMODCACHE`. Report skipped/failed
-capabilities and every earlier failure:
+Use workspace `.cache` for `GOCACHE` and `GOMODCACHE`. Report all failures and
+skipped capabilities:
 
 ```powershell
 gofmt -w cmd internal
@@ -34,6 +33,4 @@ git diff --check
 go run ./cmd/gopdsdk doctor
 ```
 
-For a P0 release candidate, run host external-consumer acceptance and inspect
-the CI matrix. Run `doctor --probe` only with the official SDK; otherwise report
-`CI-tested, SDK integration unverified`.
+Use `$release` for release-candidate or publishing work.
