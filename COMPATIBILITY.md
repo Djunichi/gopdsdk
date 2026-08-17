@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The released `v0.9.0` retains the exact toolchain profile accepted by
+The released `v0.10.0` retains the exact toolchain profile accepted by
 the published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
@@ -40,6 +40,16 @@ does not itself prove target timing or memory behavior.
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
 actually exercised.
+
+The v0.10.0 release passed the full Go suite and vet on Windows,
+green Windows/macOS/Linux native CI, the Linux race detector, and official
+Windows SDK 3.1.1 `doctor --probe` for Simulator compilation/packaging and
+TinyGo conservative hard-float compile, link, relocation, and packaging. On
+2026-08-17 both focused consumers passed user-confirmed Simulator interaction.
+The current combined artifacts installed and ran on a physical Playdate and
+passed the complete P10.1 and P10.2 interaction matrices, required
+conservative-GC soak, bounded-memory check, and unchanged post-run
+`crashlog.txt` and `errorlog.txt` checks.
 
 The v0.9.0 sound acceptance matrix passed the official Windows SDK 3.1.1
 Simulator and conservative hard-float device build. On 2026-08-12 the user

@@ -291,14 +291,14 @@ and lifecycle sequences to this same game implementation.
 
 ## Launch and lifecycle control
 
-The unreleased P10.1 `playdate.SystemControls` capability adds copied launch
-arguments and game path, restart arguments, an owned 400×240 system-menu image,
-auto-lock and crank-sound controls, mirror lifecycle events, and bounded button
-callbacks. Button callbacks preserve multiple ordered up/down transitions of
-one button between frame snapshots; they are delivered from a fixed native
-queue immediately before the next Go update and expose bridge overflow counts.
-Termination clears callbacks and the retained menu image and restores system
-settings before the game releases its owned resources.
+The v0.10.0 `playdate.SystemControls` capability adds copied
+launch arguments and game path, restart arguments, an owned 400×240 system-menu
+image, auto-lock and crank-sound controls, mirror lifecycle events, and bounded
+button callbacks. Button callbacks preserve multiple ordered up/down
+transitions of one button between frame snapshots; they are delivered from a
+fixed native queue immediately before the next Go update and expose bridge
+overflow counts. Termination clears callbacks and the retained menu image and
+restores system settings before the game releases its owned resources.
 
 The `examples/systemcontrol` consumer displays launch and mirror state, button
 event timestamps and overflow, installs a menu image, toggles auto-lock and
@@ -318,17 +318,18 @@ image, settings, buttons without overflow, and mirror state; restart closed the
 Simulator application instead of demonstrating a restarted instance. USB
 installation and launch on a physical Playdate then passed the complete
 interaction matrix, including restart with `p10-restarted` launch arguments.
-Soak, memory growth, and post-run device-log checks remain unverified for P10.1.
+Final release soak, bounded-memory, and unchanged post-run device-log checks
+passed on the verified Windows/Playdate profile.
 
 ## Clock, calendar, and device information
 
-The unreleased P10.2 `playdate.SystemEnvironment` capability exposes copied
-seconds and milliseconds since the Playdate epoch at January 1, 2000,
-epoch/calendar conversion, the SDK high-resolution elapsed timer, and copied OS
-version, language, and game PDX version. `DateTimeToEpoch` rejects invalid dates
-and values beyond the representable `uint32` epoch. Its `Weekday` field is
-derived by `EpochToDateTime` and ignored when converting back to epoch seconds.
-Server time is not part of this offline capability.
+The v0.10.0 `playdate.SystemEnvironment` capability exposes
+copied seconds and milliseconds since the Playdate epoch at January 1, 2000,
+epoch/calendar conversion, the SDK high-resolution elapsed timer, and copied
+OS version, language, and game PDX version. `DateTimeToEpoch` rejects invalid
+dates and values beyond the representable `uint32` epoch. Its `Weekday` field
+is derived by `EpochToDateTime` and ignored when converting back to epoch
+seconds. Server time is not part of this offline capability.
 
 `Input.DeltaSeconds` uses the separate wrapping monotonic millisecond clock, so
 frame updates do not reset a game's elapsed timer. The
@@ -346,8 +347,9 @@ hard-float device build pass. The device build used 294,788 bytes of static RAM
 and produced a 1,241,272-byte ELF and a 70,370-byte PDX. On 2026-08-17
 user-confirmed Simulator and physical-Playdate interaction covered current
 epoch/calendar display, exact seconds round-trip, elapsed growth and reset, and
-copied system information. Soak, memory growth, and post-run device-log checks
-remain unverified for P10.2.
+copied system information. The final combined release artifacts passed
+physical-device installation, execution, soak, bounded-memory, and unchanged
+post-run device-log checks.
 
 ## Bitmap acceptance
 
