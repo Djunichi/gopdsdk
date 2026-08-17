@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The declared `v0.9.0` retains the exact toolchain profile accepted by
+The released `v0.9.0` retains the exact toolchain profile accepted by
 the published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.

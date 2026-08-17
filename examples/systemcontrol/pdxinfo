@@ -1,0 +1,7 @@
+name=P10.1 System Control
+author=gopdsdk
+description=P10.1 launch and lifecycle control acceptance
+bundleID=dev.gopdsdk.systemcontrol
+version=1.0.0
+buildNumber=1
+

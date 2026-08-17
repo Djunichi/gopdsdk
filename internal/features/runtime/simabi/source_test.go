@@ -37,6 +37,15 @@ func TestRender(t *testing.T) {
 		"C.bridgeFreeFont",
 		"C.bridgeCurrentTimeMilliseconds",
 		"C.bridgeExitToLauncher",
+		"sdkPlaydate.SystemControls",
+		"C.bridgeGetLaunchArgs",
+		"C.bridgeRestartGame",
+		"C.bridgeSetMenuImage",
+		"C.bridgeSetAutoLockDisabled",
+		"C.bridgeSetCrankSoundsDisabled",
+		"C.bridgeSetButtonCallback",
+		"C.bridgePollButtonEvent",
+		"C.bridgeButtonCallbackOverflow",
 		"C.bridgeSetAccelerometerEnabled",
 		"C.bridgeAccelerometer",
 		"C.bridgePowerStatus",
@@ -206,6 +215,13 @@ func TestRender(t *testing.T) {
 		"sampleplayer->setFinishCallback",
 		"sample->newSampleFromData",
 		"system->exitToLauncher()",
+		"system->getLaunchArgs",
+		"system->restartGame",
+		"system->setMenuImage",
+		"system->setAutoLockDisabled",
+		"system->setCrankSoundsDisabled",
+		"system->setButtonCallback",
+		"BRIDGE_BUTTON_EVENT_CAPACITY 64",
 		"file->open",
 		"file->read",
 		"file->listfiles",
@@ -319,6 +335,26 @@ func TestCallbackAudioUsesBoundedNativeRings(t *testing.T) {
 		}
 	}
 	for _, want := range []string{"sdkRuntime.NewPCMCallbackSource", "sdkRuntime.NewGeneratorSynth", "GeneratorVoiceState"} {
+		if !strings.Contains(sources.Go, want) {
+			t.Errorf("Go source does not contain %q", want)
+		}
+	}
+}
+
+func TestButtonCallbacksUseBoundedNativeQueueAndUpdateDelivery(t *testing.T) {
+	sources, err := Render(Config{APIHeader: "pd_api.h", RuntimeImport: "example.com/sdk/runtime", PlaydateImport: "example.com/sdk/playdate", ApplicationImport: "example.com/game"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"#define BRIDGE_BUTTON_EVENT_CAPACITY 64", "bridgeButtonDropped++", "bridgePollButtonEvent", "bridgeButtonCallbackOverflow"} {
+		if !strings.Contains(sources.C, want) {
+			t.Errorf("C source does not contain %q", want)
+		}
+	}
+	if strings.Contains(sources.C, "extern void goButton") || strings.Contains(sources.C, "extern int goButton") {
+		t.Fatal("native button callback must not enter Go directly")
+	}
+	for _, want := range []string{"for buttonCallback != nil", "callback(sdkPlaydate.ButtonEvent", "sdkRuntime.ValidateButtonCallbackConfig"} {
 		if !strings.Contains(sources.Go, want) {
 			t.Errorf("Go source does not contain %q", want)
 		}
