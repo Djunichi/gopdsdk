@@ -320,6 +320,35 @@ installation and launch on a physical Playdate then passed the complete
 interaction matrix, including restart with `p10-restarted` launch arguments.
 Soak, memory growth, and post-run device-log checks remain unverified for P10.1.
 
+## Clock, calendar, and device information
+
+The unreleased P10.2 `playdate.SystemEnvironment` capability exposes copied
+seconds and milliseconds since the Playdate epoch at January 1, 2000,
+epoch/calendar conversion, the SDK high-resolution elapsed timer, and copied OS
+version, language, and game PDX version. `DateTimeToEpoch` rejects invalid dates
+and values beyond the representable `uint32` epoch. Its `Weekday` field is
+derived by `EpochToDateTime` and ignored when converting back to epoch seconds.
+Server time is not part of this offline capability.
+
+`Input.DeltaSeconds` uses the separate wrapping monotonic millisecond clock, so
+frame updates do not reset a game's elapsed timer. The
+`examples/systemenvironment` consumer displays all P10.2 values and resets the
+elapsed timer when A is pressed:
+
+```sh
+go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/systemenvironment
+go run ./cmd/gopdsdk run device --sdk /path/to/PlaydateSDK ./examples/systemenvironment
+```
+
+Its pure-Go consumer, runtime, public-API snapshot, generated Simulator/device
+ABI tests, official Windows SDK 3.1.1 compilation/package, and conservative
+hard-float device build pass. The device build used 294,788 bytes of static RAM
+and produced a 1,241,272-byte ELF and a 70,370-byte PDX. On 2026-08-17
+user-confirmed Simulator and physical-Playdate interaction covered current
+epoch/calendar display, exact seconds round-trip, elapsed growth and reset, and
+copied system information. Soak, memory growth, and post-run device-log checks
+remain unverified for P10.2.
+
 ## Bitmap acceptance
 
 Bitmap acceptance is complete on the verified Windows profile. The same public bitmap API

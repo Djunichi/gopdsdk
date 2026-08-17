@@ -1,0 +1,6 @@
+name=P10.2 System Environment
+author=gopdsdk
+description=P10.2 clock, calendar, and device information acceptance
+bundleID=dev.gopdsdk.systemenvironment
+version=1.0.0
+buildNumber=1

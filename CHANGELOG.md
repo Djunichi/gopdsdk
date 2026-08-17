@@ -6,6 +6,29 @@ that out.
 
 ## Unreleased
 
+- Implemented P10.2 through the optional `playdate.SystemEnvironment`
+  capability on both generated native adapters and through `NewApplication`:
+  copied seconds and milliseconds since the January 1, 2000 Playdate epoch,
+  epoch/calendar conversion, the independent high-resolution elapsed timer,
+  and copied OS version, language, and game PDX version. Calendar conversion
+  rejects invalid dates and values beyond the `uint32` epoch; weekday is
+  derived output metadata. Server time remains reserved for the online scope.
+- `Input.DeltaSeconds` now uses the wrapping monotonic millisecond clock instead
+  of resetting the SDK's single elapsed timer every frame, allowing games to
+  use `ResetElapsedTime` and `ElapsedTime` independently. The new
+  `examples/systemenvironment` consumer exercises time conversion, elapsed
+  reset, and device information.
+- On 2026-08-17 the P10.2 pure-Go consumer, runtime, public-API snapshot,
+  generated Simulator/device ABI tests, full unit suite, and `go vet ./...`
+  passed. The consumer compiled and packaged with the official Windows SDK
+  3.1.1. Its conservative hard-float device build used 294,788 bytes of static
+  RAM and produced a 1,241,272-byte ELF and a 70,370-byte PDX. User-confirmed
+  Simulator interaction covered current epoch/calendar display, exact seconds
+  round-trip, elapsed-time growth and A-button reset, and copied OS, PDX, and
+  English-language (`LanguageEnglish`, value 0) information. The same build
+  installed over COM3, launched on a physical Playdate, and passed the same
+  user-confirmed interaction matrix. Soak, memory-growth measurement, and
+  post-run inspection of `crashlog.txt` and `errorlog.txt` were not performed.
 - Implemented P10.1 launch and lifecycle control through the optional
   `playdate.SystemControls` capability on both generated native adapters:
   copied launch arguments and loaded-game path, restart arguments, owned

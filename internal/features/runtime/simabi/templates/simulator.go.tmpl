@@ -30,6 +30,12 @@ void bridgeDrawTextInRect(const char* text,size_t length,int x,int y,int width,i
 int bridgeTextHeight(uintptr_t font,const char* text,size_t length,int width,int wrap,int tracking,int leading);
 uintptr_t bridgeFontGlyph(uintptr_t font,uint32_t code,uint32_t next,uintptr_t* bitmap,int* advance,int* kerning);
 uint32_t bridgeCurrentTimeMilliseconds(void);
+uint32_t bridgeCurrentEpochTime(uint32_t* milliseconds);
+void bridgeEpochToDateTime(uint32_t epoch,uint16_t* year,uint8_t* month,uint8_t* day,uint8_t* weekday,uint8_t* hour,uint8_t* minute,uint8_t* second);
+uint32_t bridgeDateTimeToEpoch(uint16_t year,uint8_t month,uint8_t day,uint8_t hour,uint8_t minute,uint8_t second);
+void bridgeResetElapsedTime(void);
+float bridgeElapsedTime(void);
+void bridgeSystemInfo(uint32_t* osVersion,int* language,uint32_t* pdxVersion);
 uint32_t bridgeCurrentAudioTime(void);
 void bridgeExitToLauncher(void);
 const char* bridgeGetLaunchArgs(const char** path);
@@ -363,6 +369,7 @@ var _ sdkPlaydate.OffscreenGraphics = playdateContext{}
 var _ sdkPlaydate.BitmapDataGraphics = playdateContext{}
 var _ sdkPlaydate.Launcher = playdateContext{}
 var _ sdkPlaydate.SystemControls = playdateContext{}
+var _ sdkPlaydate.SystemEnvironment = playdateContext{}
 var _ sdkPlaydate.FileSystem = playdateContext{}
 var _ sdkPlaydate.SystemMenu = playdateContext{}
 var _ sdkPlaydate.Localization = playdateContext{}
@@ -452,6 +459,12 @@ func (playdateContext) Glyph(font sdkPlaydate.Font,code,next rune)(sdkPlaydate.F
 func (playdateContext) CurrentTimeMilliseconds() uint32 {
 	return uint32(C.bridgeCurrentTimeMilliseconds())
 }
+func (playdateContext) CurrentEpochTime()sdkPlaydate.EpochTime{var milliseconds C.uint32_t;seconds:=C.bridgeCurrentEpochTime(&milliseconds);return sdkPlaydate.EpochTime{Seconds:uint32(seconds),Milliseconds:uint32(milliseconds)}}
+func (playdateContext) EpochToDateTime(epoch uint32)sdkPlaydate.DateTime{var year C.uint16_t;var month,day,weekday,hour,minute,second C.uint8_t;C.bridgeEpochToDateTime(C.uint32_t(epoch),&year,&month,&day,&weekday,&hour,&minute,&second);return sdkPlaydate.DateTime{Year:uint16(year),Month:uint8(month),Day:uint8(day),Weekday:uint8(weekday),Hour:uint8(hour),Minute:uint8(minute),Second:uint8(second)}}
+func (playdateContext) DateTimeToEpoch(value sdkPlaydate.DateTime)(uint32,error){if err:=sdkRuntime.ValidateDateTime(value);err!=nil{return 0,err};return uint32(C.bridgeDateTimeToEpoch(C.uint16_t(value.Year),C.uint8_t(value.Month),C.uint8_t(value.Day),C.uint8_t(value.Hour),C.uint8_t(value.Minute),C.uint8_t(value.Second))),nil}
+func (playdateContext) ResetElapsedTime(){C.bridgeResetElapsedTime()}
+func (playdateContext) ElapsedTime()float32{return float32(C.bridgeElapsedTime())}
+func (playdateContext) SystemInfo()sdkPlaydate.SystemInfo{var osVersion,pdxVersion C.uint32_t;var language C.int;C.bridgeSystemInfo(&osVersion,&language,&pdxVersion);return sdkPlaydate.SystemInfo{OSVersion:uint32(osVersion),Language:sdkPlaydate.Language(language),PDXVersion:uint32(pdxVersion)}}
 func (playdateContext) CurrentAudioTime() (uint32,error) { return uint32(C.bridgeCurrentAudioTime()),nil }
 
 func (playdateContext) ExitToLauncher() { C.bridgeExitToLauncher() }

@@ -5,6 +5,12 @@ type systemError string
 func (message systemError) Error() string { return string(message) }
 
 var (
+	// ErrDateTime indicates a calendar value outside the Playdate epoch range or
+	// with an invalid date or time field.
+	ErrDateTime error = systemError("date and time are outside the Playdate epoch range")
+	// ErrSystemEnvironmentUnavailable indicates that offline clock, calendar,
+	// and device information services are absent.
+	ErrSystemEnvironmentUnavailable error = systemError("system environment is unavailable")
 	// ErrSystemControlsUnavailable indicates that launch and lifecycle controls
 	// are absent or the application is terminating.
 	ErrSystemControlsUnavailable error = systemError("system controls are unavailable")

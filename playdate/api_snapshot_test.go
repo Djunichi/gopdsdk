@@ -282,12 +282,14 @@ type Color uint8
 type CompletionPlayer interface{SetFinishCallback(callback func()) error}
 type Context interface{System; Graphics; InputReader; Sprites; Audio}
 type ControlSignal interface{AddEvent(step int, value float32, interpolate bool) error; ClearEvents() error; RemoveEvent(step int) error; Signal}
+type DateTime struct{Year uint16; Month uint8; Day uint8; Weekday uint8; Hour uint8; Minute uint8; Second uint8}
 type DebugMessages interface{PollDebugMessage() (message string, ok bool)}
 type DelayLine interface{AddTap(delayFrames int) (DelayTap, error); SetFeedback(float32) error; SetLength(frames int) error; AudioEffect}
 type DelayTap interface{Close() error; SetChannelsFlipped(bool) error; SetDelay(frames int) error; SetDelayModulator(Signal) error; AudioSource}
 type Display interface{FPS() float32; Height() int; RefreshRate() float32; SetFlipped(x bool, y bool); SetInverted(bool); SetMosaic(x uint, y uint) error; SetOffset(x int, y int); SetRefreshRate(framesPerSecond float32) error; SetScale(uint) error; Width() int}
 type DrawMode uint8
 type Envelope interface{SetAttack(seconds float32) error; SetCurvature(amount float32) error; SetDecay(seconds float32) error; SetLegato(legato bool) error; SetRateScaling(scaling float32, startNote uint8, endNote uint8) error; SetRelease(seconds float32) error; SetRetrigger(retrigger bool) error; SetSustain(level float32) error; SetVelocitySensitivity(amount float32) error; Signal}
+type EpochTime struct{Seconds uint32; Milliseconds uint32}
 type FadingPlayer interface{FadeVolume(left float32, right float32, audioFrames uint32, callback func()) error}
 type File interface{Close() error; Flush() error; io.Reader; io.Writer; io.Seeker}
 type FileInfo struct{IsDir bool; Size uint32; Year int; Month int; Day int; Hour int; Minute int; Second int}
@@ -379,6 +381,8 @@ type Synth interface{Close() error; NoteOff(when uint32) error; PlayMIDINote(not
 type Synthesizers interface{NewControlSignal() (ControlSignal, error); NewEnvelope(attack float32, decay float32, sustain float32, release float32) (Envelope, error); NewLFO(lfoType LFOType) (LFO, error); NewSynth(waveform Waveform) (Synth, error)}
 type System interface{CurrentTimeMilliseconds() uint32}
 type SystemControls interface{ButtonCallbackOverflow() uint32; ClearMenuImage(); LaunchArguments() (arguments string, path string); RestartGame(arguments string) error; SetAutoLockDisabled(disabled bool); SetButtonCallback(callback ButtonCallback, queueSize int) error; SetCrankSoundsDisabled(disabled bool) (previous bool); SetMenuImage(bitmap Bitmap, xOffset int) error}
+type SystemEnvironment interface{CurrentEpochTime() EpochTime; DateTimeToEpoch(dateTime DateTime) (uint32, error); ElapsedTime() float32; EpochToDateTime(epoch uint32) DateTime; ResetElapsedTime(); SystemInfo() SystemInfo}
+type SystemInfo struct{OSVersion uint32; Language Language; PDXVersion uint32}
 type SystemMenu interface{AddActionMenuItem(title string, callback func()) (MenuItem, error); AddCheckmarkMenuItem(title string, value bool, callback func()) (CheckmarkMenuItem, error); AddOptionsMenuItem(title string, options []string, callback func()) (OptionsMenuItem, error)}
 type SystemPreferences interface{ReduceFlashing() bool; SystemVolume() float32; TimezoneOffsetSeconds() int32; Uses24HourTime() bool}
 type TextAlignment uint8
@@ -440,6 +444,7 @@ var ErrBitmapTableClosed error
 var ErrBitmapTableInUse error
 var ErrBitmapTableSize error
 var ErrButtonCallbackConfig error
+var ErrDateTime error
 var ErrDisplayMosaic error
 var ErrDisplayRefreshRate error
 var ErrDisplayScale error
@@ -502,6 +507,7 @@ var ErrSpriteTileMapCreate error
 var ErrSpriteTileMapInUse error
 var ErrSpriteTileMapUnavailable error
 var ErrSystemControlsUnavailable error
+var ErrSystemEnvironmentUnavailable error
 var ErrTileMapBitmap error
 var ErrTileMapConfig error
 var ErrTileMapDraw error

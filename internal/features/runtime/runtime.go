@@ -3113,6 +3113,26 @@ func ValidateButtonCallbackConfig(callback playdate.ButtonCallback, queueSize in
 	return nil
 }
 
+// ValidateDateTime applies the representable Playdate epoch and calendar
+// contract. Weekday is output metadata and is intentionally ignored.
+func ValidateDateTime(value playdate.DateTime) error {
+	if value.Year < 2000 || value.Month < 1 || value.Month > 12 || value.Day < 1 ||
+		value.Hour > 23 || value.Minute > 59 || value.Second > 59 {
+		return playdate.ErrDateTime
+	}
+	days := [...]uint8{0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+	if value.Year%4 == 0 && (value.Year%100 != 0 || value.Year%400 == 0) {
+		days[2] = 29
+	}
+	if value.Day > days[value.Month] {
+		return playdate.ErrDateTime
+	}
+	if value.Year > 2136 || value.Year == 2136 && (value.Month > 2 || value.Month == 2 && (value.Day > 7 || value.Day == 7 && (value.Hour > 6 || value.Hour == 6 && (value.Minute > 28 || value.Minute == 28 && value.Second > 15)))) {
+		return playdate.ErrDateTime
+	}
+	return nil
+}
+
 func (context *applicationContext) systemControls() (playdate.SystemControls, error) {
 	controls, ok := context.Context.(playdate.SystemControls)
 	if !ok || context.systemTerminating || context.terminated {
@@ -3193,6 +3213,55 @@ func (context *applicationContext) ButtonCallbackOverflow() uint32 {
 		return 0
 	}
 	return controls.ButtonCallbackOverflow()
+}
+
+func (context *applicationContext) systemEnvironment() playdate.SystemEnvironment {
+	environment, _ := context.Context.(playdate.SystemEnvironment)
+	return environment
+}
+
+func (context *applicationContext) CurrentEpochTime() playdate.EpochTime {
+	if environment := context.systemEnvironment(); environment != nil {
+		return environment.CurrentEpochTime()
+	}
+	return playdate.EpochTime{}
+}
+
+func (context *applicationContext) EpochToDateTime(epoch uint32) playdate.DateTime {
+	if environment := context.systemEnvironment(); environment != nil {
+		return environment.EpochToDateTime(epoch)
+	}
+	return playdate.DateTime{}
+}
+
+func (context *applicationContext) DateTimeToEpoch(value playdate.DateTime) (uint32, error) {
+	if err := ValidateDateTime(value); err != nil {
+		return 0, err
+	}
+	if environment := context.systemEnvironment(); environment != nil {
+		return environment.DateTimeToEpoch(value)
+	}
+	return 0, playdate.ErrSystemEnvironmentUnavailable
+}
+
+func (context *applicationContext) ResetElapsedTime() {
+	if environment := context.systemEnvironment(); environment != nil {
+		environment.ResetElapsedTime()
+	}
+}
+
+func (context *applicationContext) ElapsedTime() float32 {
+	if environment := context.systemEnvironment(); environment != nil {
+		return environment.ElapsedTime()
+	}
+	return 0
+}
+
+func (context *applicationContext) SystemInfo() playdate.SystemInfo {
+	if environment := context.systemEnvironment(); environment != nil {
+		return environment.SystemInfo()
+	}
+	return playdate.SystemInfo{}
 }
 
 func (context *applicationContext) beginSystemTermination() {

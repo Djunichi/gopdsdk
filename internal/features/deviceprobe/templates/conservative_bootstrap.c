@@ -89,10 +89,17 @@ void bridgeDrawTextInRect(const char* text,uintptr_t length,int32_t x,int32_t y,
 int32_t bridgeTextHeight(uintptr_t font,const char* text,uintptr_t length,int32_t width,int32_t wrap,int32_t tracking,int32_t leading){return activePlaydate->graphics->getTextHeightForMaxWidth((LCDFont*)font,text,length,width,kUTF8Encoding,(PDTextWrappingMode)wrap,tracking,leading);}
 uintptr_t bridgeFontGlyph(uintptr_t font,uint32_t code,uint32_t next,uintptr_t* bitmap,int32_t* advance,int32_t* kerning){LCDFontPage* page=activePlaydate->graphics->getFontPage((LCDFont*)font,code);if(!page)return 0;LCDBitmap* image=0;LCDFontGlyph* glyph=activePlaydate->graphics->getPageGlyph(page,code,&image,(int*)advance);if(!glyph)return 0;*bitmap=(uintptr_t)image;*kerning=next?activePlaydate->graphics->getGlyphKerning(glyph,code,next):0;return(uintptr_t)glyph;}
 
+static uint32_t bridgeFloatBits(float value);
 uint32_t bridgeCurrentTimeMilliseconds(void)
 {
 	return activePlaydate->system->getCurrentTimeMilliseconds();
 }
+uint32_t bridgeCurrentEpochTime(uint32_t* milliseconds){unsigned int nativeMilliseconds=0;unsigned int seconds=activePlaydate->system->getSecondsSinceEpoch(&nativeMilliseconds);*milliseconds=(uint32_t)nativeMilliseconds;return(uint32_t)seconds;}
+void bridgeEpochToDateTime(uint32_t epoch,uint16_t* year,uint8_t* month,uint8_t* day,uint8_t* weekday,uint8_t* hour,uint8_t* minute,uint8_t* second){struct PDDateTime value;activePlaydate->system->convertEpochToDateTime(epoch,&value);*year=value.year;*month=value.month;*day=value.day;*weekday=value.weekday;*hour=value.hour;*minute=value.minute;*second=value.second;}
+uint32_t bridgeDateTimeToEpoch(uint16_t year,uint8_t month,uint8_t day,uint8_t hour,uint8_t minute,uint8_t second){struct PDDateTime value={year,month,day,0,hour,minute,second};return activePlaydate->system->convertDateTimeToEpoch(&value);}
+void bridgeResetElapsedTime(void){activePlaydate->system->resetElapsedTime();}
+uint32_t bridgeElapsedTimeBits(void){return bridgeFloatBits(activePlaydate->system->getElapsedTime());}
+void bridgeSystemInfo(uint32_t* osVersion,int32_t* language,uint32_t* pdxVersion){const struct PDInfo* value=activePlaydate->system->getSystemInfo();if(!value){*osVersion=0;*language=0;*pdxVersion=0;return;}*osVersion=value->osversion;*language=(int32_t)value->language;*pdxVersion=value->pdxversion;}
 
 void bridgeExitToLauncher(void) { activePlaydate->system->exitToLauncher(); }
 uintptr_t bridgeGetLaunchArgs(uintptr_t* path){const char* value=0;const char* arguments=activePlaydate->system->getLaunchArgs(&value);*path=(uintptr_t)value;return(uintptr_t)arguments;}
@@ -108,7 +115,6 @@ static int bridgeButtonCallback(PDButtons button,int down,uint32_t when,void* us
 void bridgeSetButtonCallback(int32_t queueSize){activePlaydate->system->setButtonCallback(NULL,NULL,0);bridgeButtonRead=bridgeButtonWrite=bridgeButtonCount=bridgeButtonDropped=0;if(queueSize>0)activePlaydate->system->setButtonCallback(bridgeButtonCallback,NULL,queueSize);}
 int32_t bridgePollButtonEvent(uint32_t* button,int32_t* down,uint32_t* when){if(bridgeButtonCount==0)return 0;BridgeButtonEvent event=bridgeButtonEvents[bridgeButtonRead];bridgeButtonRead=(bridgeButtonRead+1)%BRIDGE_BUTTON_EVENT_CAPACITY;bridgeButtonCount--;*button=event.button;*down=event.down;*when=event.when;return 1;}
 uint32_t bridgeButtonCallbackOverflow(void){return bridgeButtonDropped;}
-static uint32_t bridgeFloatBits(float value);
 void bridgeSetAccelerometerEnabled(int32_t enabled){activePlaydate->system->setPeripheralsEnabled(enabled?kAccelerometer:kNone);}
 void bridgeAccelerometer(float* x,float* y,float* z){activePlaydate->system->getAccelerometer(x,y,z);}
 int32_t bridgePowerStatus(void){return activePlaydate->system->getPowerStatus();}
@@ -159,7 +165,7 @@ static uint32_t bridgeFloatBits(float value) { union { float value; uint32_t bit
 uint32_t bridgeCrankAngleBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankAngle()); }
 uint32_t bridgeCrankDeltaBits(void) { return bridgeFloatBits(activePlaydate->system->getCrankChange()); }
 int32_t bridgeCrankDocked(void) { return activePlaydate->system->isCrankDocked(); }
-uint32_t bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime(); activePlaydate->system->resetElapsedTime(); return bridgeFloatBits(value); }
+uint32_t bridgeFrameDeltaBits(void) { static uint32_t previous; static int initialized; uint32_t current=activePlaydate->system->getCurrentTimeMilliseconds(); if(!initialized){previous=current;initialized=1;return bridgeFloatBits(0);} uint32_t delta=current-previous;previous=current;return bridgeFloatBits((float)delta/1000.0f); }
 uintptr_t bridgeLoadBitmap(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmap(path, error); }
 uintptr_t bridgeLoadBitmapTable(const char* path, const char** error) { return (uintptr_t)activePlaydate->graphics->loadBitmapTable(path, error); }
 uintptr_t bridgeBitmapTableFrame(uintptr_t table, int32_t index) { return (uintptr_t)activePlaydate->graphics->getTableBitmap((LCDBitmapTable*)table, index); }
