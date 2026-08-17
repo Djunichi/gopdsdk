@@ -1,8 +1,9 @@
 # Release procedure
 
-The latest release is `v0.9.0`. Go module versions come from Git tags; no
-separate VERSION file is maintained. The procedure below applies to the next
-planned release selected from the roadmap.
+The latest declared release is `v0.10.0`; publication remains pending until its
+tag and hosted release exist. Go module versions come from Git tags; no separate
+VERSION file is maintained. The procedure below applies to the next planned
+release selected from the roadmap.
 
 ## Release gates
 

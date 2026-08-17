@@ -1,7 +1,6 @@
 # Public API
 
-This document describes the released `v0.9.0` public contract plus the
-unreleased P10.1 system-control and P10.2 system-environment additions. The
+This document describes the released `v0.10.0` public contract. The
 contract includes advanced drawing, bitmap data and masks, text and font
 metrics, display introspection, complete offline sprite and collision
 facilities, offline sound, optional video, and the bounded diagnostics package.
@@ -113,6 +112,13 @@ wrapping monotonic millisecond clock and does not reset this timer. `SystemInfo`
 returns a copied snapshot containing the numerically encoded OS version,
 localization `Language`, and PDX version declared by the game. Server time is an
 online capability and is not included.
+
+Low-level system delay, allocator, instruction-cache, printf-style
+formatting/parsing, fatal-error, and raw userdata entry points are intentionally
+not public: they are runtime plumbing or have direct Go equivalents. Native
+console error logging remains an adapter development facility. The public FPS
+surface is the existing read-only `Display.FPS` introspection rather than a
+system-owned FPS drawing operation.
 
 Games that draw immediate-mode geometry assert `PrimitiveGraphics`; games that
 change clipping, draw offset, or bitmap compositing assert `GraphicsState`.

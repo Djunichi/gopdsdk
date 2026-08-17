@@ -1,6 +1,6 @@
 # Product roadmap
 
-Status: `v0.9.0` released; P10 is in progress. The remaining offline
+Status: `v0.10.0` declared; publication is pending. The remaining offline
 official-SDK capability gaps are allocated through `v0.12.0`, followed by the
 `v1.0.0` contract release, updated 2026-08-17.
 
@@ -52,7 +52,6 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P10 | `v0.10.0` | Complete offline system and lifecycle facilities | In progress |
 | P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | Planned |
 | P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | Planned |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
@@ -90,59 +89,6 @@ both native contexts, deterministic tests, a repository-owned acceptance
 consumer, official Simulator integration, device build, and applicable physical
 device behavior. Callback APIs additionally require bounded queues, no unsafe
 re-entry into Go, termination suppression, and overflow behavior.
-
-## P10 — complete system integration — `v0.10.0`
-
-P10 completes system facilities that can affect a shipped offline game.
-
-### P10.1 — launch and lifecycle control — Implemented
-
-- Added launch arguments, restart, owned menu-image control, auto-lock control,
-  crank-sound control, and official mirror lifecycle events through both native
-  adapters and `NewApplication`.
-- Added bounded button callbacks because an ordered down/up pair or repeated
-  transitions between two updates cannot be represented by the frame snapshot.
-  Native callbacks use a fixed queue without re-entering Go, drop newest on
-  bridge overflow, expose the drop count, and are suppressed at termination.
-- Pure-Go consumer, runtime, public-API snapshot, generated ABI tests, official
-  Windows SDK 3.1.1 compilation/packaging, and conservative hard-float device
-  build pass. On 2026-08-17 user-confirmed Simulator interaction covered the
-  menu image, settings, ordered button delivery without overflow, and mirror
-  lifecycle state; restart closed the Simulator application instead of showing
-  a restarted instance. USB installation and launch on a physical Playdate
-  passed the complete user-confirmed matrix, including restart and changed
-  launch arguments. Simulator restart behavior, soak, memory growth, and
-  post-run device logs remain open.
-
-### P10.2 — clock, calendar, and device information — Implemented
-
-- Added the optional `playdate.SystemEnvironment` capability with copied current
-  epoch time, epoch/calendar conversion, the independent high-resolution elapsed
-  timer, and copied runtime/game system information through both native adapters
-  and `NewApplication`. Calendar input rejects invalid dates and values outside
-  the representable Playdate `uint32` epoch; weekday is derived output metadata.
-- Moved `Input.DeltaSeconds` to the wrapping monotonic millisecond clock so the
-  frame loop no longer resets the public elapsed timer. Server time remains with
-  networking in `v1.1.0` because it requires online access.
-- Pure-Go consumer, runtime, public-API snapshot, generated ABI tests, official
-  Windows SDK 3.1.1 compilation/packaging, and conservative hard-float device
-  build pass. The device build used 294,788 bytes of static RAM and produced a
-  1,241,272-byte ELF and a 70,370-byte PDX. On 2026-08-17 user-confirmed
-  Simulator and physical-Playdate interaction covered current epoch/calendar
-  display, exact seconds round-trip, elapsed-time growth and A-button reset, and
-  copied OS, PDX, and language information. Soak, memory-growth measurement,
-  and post-run device-log inspection remain open.
-
-### P10.3 — intentional system omissions and release
-
-- Omit delay, allocator, instruction-cache, printf-style formatting/parsing,
-  fatal-error, and raw userdata entry points from public API because they are
-  runtime plumbing or have direct Go equivalents.
-- Keep console logging and FPS drawing as development facilities unless a
-  repository diagnostic proves that they need public Simulator-only contracts.
-- Exercise restart, launch arguments, menu image, time conversion, auto-lock,
-  crank sound, lifecycle cleanup, and system information before releasing
-  `v0.10.0`.
 
 ## P11 — remaining offline services and media — `v0.11.0`
 

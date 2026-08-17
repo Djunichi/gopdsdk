@@ -4,7 +4,28 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## Unreleased
+## v0.10.0 (2026-08-17)
+
+- Completed the P10.3 public-system audit without adding low-level runtime
+  plumbing to the Go contract. System delay, allocator, instruction-cache,
+  printf-style formatting/parsing, fatal-error, and raw userdata entry points
+  remain intentionally omitted. Native console error reporting remains an
+  adapter development facility, while measured FPS stays with the existing
+  read-only `playdate.Display` capability.
+- On 2026-08-17 the `v0.10.0` release checkout passed `go test ./...`,
+  `go vet ./...`, `git diff --check`, green Windows/macOS/Linux native CI and the
+  Linux race detector, plus Windows SDK 3.1.1 `doctor --probe`. The focused
+  consumers compiled and packaged for the official Simulator and conservative
+  hard-float device target. The current `systemcontrol` device artifact uses
+  283,244 bytes of static RAM and produces a 1,200,176-byte ELF and a
+  49,327-byte PDX; `systemenvironment` uses 294,788 bytes of static RAM and
+  produces a 1,241,272-byte ELF and a 70,370-byte PDX.
+- User-confirmed final Simulator and physical-device acceptance covered restart
+  and changed launch arguments, menu-image and system-setting control,
+  lifecycle cleanup, epoch/calendar conversion, elapsed-time reset, and copied
+  system information. The current combined artifacts installed and ran on a
+  physical Playdate; the required conservative-GC soak, bounded-memory check,
+  and unchanged post-run `crashlog.txt` and `errorlog.txt` checks passed.
 
 - Implemented P10.2 through the optional `playdate.SystemEnvironment`
   capability on both generated native adapters and through `NewApplication`:
@@ -28,7 +49,8 @@ that out.
   English-language (`LanguageEnglish`, value 0) information. The same build
   installed over COM3, launched on a physical Playdate, and passed the same
   user-confirmed interaction matrix. Soak, memory-growth measurement, and
-  post-run inspection of `crashlog.txt` and `errorlog.txt` were not performed.
+  final release soak, bounded-memory, and post-run log evidence is recorded
+  above.
 - Implemented P10.1 launch and lifecycle control through the optional
   `playdate.SystemControls` capability on both generated native adapters:
   copied launch arguments and loaded-game path, restart arguments, owned
@@ -55,8 +77,8 @@ that out.
   Playdate, and passed the user-confirmed full interaction matrix, including
   empty initial launch arguments, restart with `p10-restarted` arguments, the
   menu image, settings, ordered button delivery with zero overflow, and mirror
-  lifecycle state. Soak, memory-growth measurement, and post-run inspection of
-  `crashlog.txt` and `errorlog.txt` were not performed.
+  lifecycle state. Final release soak, bounded-memory, and post-run log
+  evidence is recorded above.
 
 ## v0.9.0 (2026-08-12)
 
