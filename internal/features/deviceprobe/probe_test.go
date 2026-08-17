@@ -169,6 +169,33 @@ func TestBothDeviceAdaptersContainP101SystemControls(t *testing.T) {
 	}
 }
 
+func TestBothDeviceAdaptersContainP102SystemEnvironment(t *testing.T) {
+	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	for _, want := range []string{
+		"sdkPlaydate.SystemEnvironment", "bridgeCurrentEpochTime", "bridgeEpochToDateTime",
+		"bridgeDateTimeToEpoch", "bridgeResetElapsedTime", "bridgeElapsedTimeBits",
+		"bridgeSystemInfo", "sdkRuntime.ValidateDateTime",
+	} {
+		if !strings.Contains(source, want) {
+			t.Errorf("device Go source does not contain %q", want)
+		}
+	}
+	for name, bootstrap := range map[string]string{"hard-float": bootstrapSource, "conservative": conservativeBootstrapSource} {
+		for _, want := range []string{
+			"system->getSecondsSinceEpoch", "system->convertEpochToDateTime",
+			"system->convertDateTimeToEpoch", "system->resetElapsedTime",
+			"system->getElapsedTime", "system->getSystemInfo",
+		} {
+			if !strings.Contains(bootstrap, want) {
+				t.Errorf("%s bootstrap does not contain %q", name, want)
+			}
+		}
+		if strings.Contains(bootstrap, "bridgeFrameDeltaBits(void) { float value = activePlaydate->system->getElapsedTime()") {
+			t.Errorf("%s frame delta still resets the public elapsed timer", name)
+		}
+	}
+}
+
 func TestBootstrapInitializesRuntimeOnce(t *testing.T) {
 	for _, want := range []string{"runtime.run", "runtime.alloc", "activePlaydate->system->realloc(NULL, size)", "event == kEventInit && !booted", "runtimeRun();", "goEventHandler(playdate, event, arg)"} {
 		if !strings.Contains(bootstrapSource, want) {

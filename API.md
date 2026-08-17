@@ -1,12 +1,13 @@
 # Public API
 
 This document describes the released `v0.9.0` public contract plus the
-unreleased P10.1 system-control additions. The contract includes advanced
-drawing, bitmap data and masks, text and font metrics, display introspection,
-complete offline sprite and collision facilities, offline sound, optional
-video, and the bounded diagnostics package. The module is still pre-v1: minor
-releases may make intentional breaking changes, which must be called out in
-release notes. Patch releases preserve the documented API and behavior.
+unreleased P10.1 system-control and P10.2 system-environment additions. The
+contract includes advanced drawing, bitmap data and masks, text and font
+metrics, display introspection, complete offline sprite and collision
+facilities, offline sound, optional video, and the bounded diagnostics package.
+The module is still pre-v1: minor releases may make intentional breaking
+changes, which must be called out in release notes. Patch releases preserve the
+documented API and behavior.
 
 Applications import the native contract from
 `github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional
@@ -97,6 +98,21 @@ flags, battery percentage, and voltage. `SystemPreferences` exposes only the
 read-only system volume, reduce-flashing preference, timezone offset in seconds,
 and 12/24-hour preference. These capabilities do not add setters for global
 user preferences.
+
+Games that need offline wall-clock, calendar, or runtime compatibility metadata
+assert the optional `SystemEnvironment` capability. `CurrentEpochTime` returns
+an owned `EpochTime` containing seconds and milliseconds since midnight,
+January 1, 2000. `EpochToDateTime` returns an owned `DateTime`; weekday uses 1
+for Monday through 7 for Sunday. `DateTimeToEpoch` ignores the supplied weekday,
+rejects invalid dates or instants outside the representable `uint32` epoch with
+`ErrDateTime`, and returns seconds in the same epoch.
+
+`ResetElapsedTime` starts the SDK's high-resolution timer and `ElapsedTime`
+reports seconds since that reset. `Input.DeltaSeconds` uses the separate
+wrapping monotonic millisecond clock and does not reset this timer. `SystemInfo`
+returns a copied snapshot containing the numerically encoded OS version,
+localization `Language`, and PDX version declared by the game. Server time is an
+online capability and is not included.
 
 Games that draw immediate-mode geometry assert `PrimitiveGraphics`; games that
 change clipping, draw offset, or bitmap compositing assert `GraphicsState`.
@@ -459,7 +475,9 @@ lookups; missing-key fallback remains game policy.
 
 `Accelerometer` requires explicit enablement and is disabled at termination.
 `PowerMonitor` and `SystemPreferences` expose read-only device/global state.
-`Launcher` remains the single exit-to-launcher capability.
+`SystemEnvironment` exposes copied offline clock, calendar, elapsed-time, and
+runtime/game version values. `Launcher` remains the single exit-to-launcher
+capability.
 
 `Scoreboards` is an optional bounded asynchronous service, not general
 networking. `DebugMessages` is a separate bounded diagnostic FIFO for Simulator

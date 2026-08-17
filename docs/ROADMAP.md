@@ -114,11 +114,24 @@ P10 completes system facilities that can affect a shipped offline game.
   launch arguments. Simulator restart behavior, soak, memory growth, and
   post-run device logs remain open.
 
-### P10.2 — clock, calendar, and device information
+### P10.2 — clock, calendar, and device information — Implemented
 
-- Add epoch/calendar conversion, current epoch time, elapsed-time measurement,
-  and system information with portable owned values.
-- Keep server time with networking in `v1.1.0` when it requires online access.
+- Added the optional `playdate.SystemEnvironment` capability with copied current
+  epoch time, epoch/calendar conversion, the independent high-resolution elapsed
+  timer, and copied runtime/game system information through both native adapters
+  and `NewApplication`. Calendar input rejects invalid dates and values outside
+  the representable Playdate `uint32` epoch; weekday is derived output metadata.
+- Moved `Input.DeltaSeconds` to the wrapping monotonic millisecond clock so the
+  frame loop no longer resets the public elapsed timer. Server time remains with
+  networking in `v1.1.0` because it requires online access.
+- Pure-Go consumer, runtime, public-API snapshot, generated ABI tests, official
+  Windows SDK 3.1.1 compilation/packaging, and conservative hard-float device
+  build pass. The device build used 294,788 bytes of static RAM and produced a
+  1,241,272-byte ELF and a 70,370-byte PDX. On 2026-08-17 user-confirmed
+  Simulator and physical-Playdate interaction covered current epoch/calendar
+  display, exact seconds round-trip, elapsed-time growth and A-button reset, and
+  copied OS, PDX, and language information. Soak, memory-growth measurement,
+  and post-run device-log inspection remain open.
 
 ### P10.3 — intentional system omissions and release
 
