@@ -52,7 +52,7 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | Planned |
+| P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | In progress |
 | P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | Planned |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
 
@@ -97,17 +97,24 @@ and system releases.
 
 ### P11.1 — filesystem completion
 
-- Add current-position reporting if `io.Seeker` cannot preserve the official
-  behavior and expose any remaining filesystem diagnostic needed for correct
-  error classification.
-- Do not expose `geterr` as an independently retained string; continue copying
-  its transient diagnostic at the failing operation boundary.
+- Completed: `io.Seeker` preserves the official current-position behavior by
+  returning `tell` after a successful native seek, including
+  `Seek(0, io.SeekCurrent)`, so no separate public position method is needed.
+- Completed: `FileOperationError` is the remaining filesystem diagnostic needed
+  for classification. Both adapters continue copying transient `geterr` text
+  only at the failing operation boundary and never expose or retain its pointer.
 
 ### P11.2 — scoreboards acceptance
 
 - Retain scoreboards as the sole pre-1.0 online exception already present in
-  the SDK and complete live configured-service Simulator and physical-device
-  acceptance, failure, cancellation, termination, and bounded-callback gates.
+  the SDK. Implemented gates defer copied native completions through a fixed
+  four-slot update queue, allow one pending request per operation kind, reject
+  immediate request failures, and suppress queued or late completions after
+  termination.
+- Asynchronous failure and sequential-request interaction passed in the
+  Simulator and on a physical Playdate. Successful live responses and
+  termination during a pending live request remain gated on a scoreboard
+  configured for `dev.gopdsdk.scoreboards` outside this repository.
 - This scope does not introduce general network access or multiplayer.
 
 ### P11.3 — video, JSON, and residual audit

@@ -45,6 +45,52 @@ func TestScoreboardServiceValidationAndFailures(t *testing.T) {
 	}
 }
 
+func TestScoreboardServiceTerminationCancelsPendingCallback(t *testing.T) {
+	var finish func(playdate.Score, string)
+	called := 0
+	service := NewScoreboardService(ScoreboardDriver{AddScore: func(_ string, _ uint32, callback func(playdate.Score, string)) bool {
+		finish = callback
+		return true
+	}})
+	if err := service.AddScore("daily", 42, func(playdate.Score, error) { called++ }); err != nil {
+		t.Fatal(err)
+	}
+	service.Terminate()
+	finish(playdate.Score{}, "late failure")
+	if called != 0 {
+		t.Fatalf("callback count after termination = %d", called)
+	}
+	if err := service.AddScore("daily", 43, func(playdate.Score, error) {}); !errors.Is(err, playdate.ErrScoreboardUnavailable) {
+		t.Fatalf("request after termination = %v", err)
+	}
+}
+
+func TestScoreboardCallbackQueueBoundsDefersAndTerminates(t *testing.T) {
+	queue := &ScoreboardCallbackQueue{}
+	called := 0
+	for range 4 {
+		if !queue.Push(func() { called++ }) {
+			t.Fatal("queue rejected bounded completion")
+		}
+	}
+	overflowAccepted := queue.Push(func() { called++ })
+	if overflowAccepted || called != 0 {
+		t.Fatalf("overflow accepted or callback re-entered: accepted=%v called=%d", overflowAccepted, called)
+	}
+	queue.Drain()
+	if called != 4 {
+		t.Fatalf("drained callbacks = %d", called)
+	}
+	if !queue.Push(func() { called++ }) {
+		t.Fatal("queue did not accept after drain")
+	}
+	queue.Terminate()
+	queue.Drain()
+	if called != 4 || queue.Push(func() { called++ }) {
+		t.Fatalf("termination did not suppress callbacks: %d", called)
+	}
+}
+
 func TestDebugMessageQueueBounds(t *testing.T) {
 	queue := NewDebugMessageQueue(2, 4)
 	queue.Push("first")

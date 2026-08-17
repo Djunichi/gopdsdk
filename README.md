@@ -806,13 +806,22 @@ measurement, and post-run device-log inspection remain unverified.
 `playdate.Scoreboards` provides bounded asynchronous board discovery, score
 submission, and personal-best retrieval without implying general networking or
 multiplayer support. `playdate.DebugMessages` separately provides a bounded
-FIFO for Simulator `!msg` and device serial `msg` diagnostics. Both callbacks
-copy SDK-owned data and suppress delivery after lifecycle termination.
+FIFO for Simulator `!msg` and device serial `msg` diagnostics. Scoreboard
+completions copy SDK-owned data into a fixed four-slot queue and deliver game
+callbacks at the next update boundary. Both facilities suppress delivery after
+lifecycle termination.
 
 The focused consumers pass deterministic adapter tests, Simulator builds, and
 conservative device packaging. Serial `msg` delivery was confirmed on physical
-hardware; configured-board and live online-scoreboard behavior remain
-unverified.
+hardware. On 2026-08-17 the scoreboard scene delivered authentication-related
+board-discovery and score-submission failures and an unregistered-player
+personal-best failure in the official Windows SDK 3.1.1 Simulator, remaining
+responsive across sequential requests. The same artifact was installed and
+launched on a physical Playdate, where user-confirmed interaction covered board
+discovery, score submission, personal-best retrieval, and score-list retrieval
+while remaining responsive. Successful configured-board responses,
+pending-request termination, soak, memory growth, and post-run device-log
+inspection remain unverified.
 
 ## Integrated persistence acceptance
 

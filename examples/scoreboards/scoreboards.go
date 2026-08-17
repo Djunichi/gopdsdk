@@ -1,4 +1,4 @@
-// Package scoreboards exercises the P4.5 optional online-scoreboards contract.
+// Package scoreboards exercises the P11.2 optional online-scoreboards contract.
 package scoreboards
 
 import (
@@ -15,7 +15,7 @@ type game struct {
 	value   uint32
 }
 
-// New creates the P4.5 scoreboards acceptance scene. Its configured-board and
+// New creates the P11.2 scoreboards acceptance scene. Its configured-board and
 // online-service acceptance remain unverified.
 func New() playdate.Game { return &game{status: "REQUESTING BOARDS", value: 100} }
 
@@ -37,9 +37,10 @@ func (game *game) Init(context playdate.Context) error {
 
 func (game *game) Update(context playdate.Context) (bool, error) {
 	context.Clear()
-	context.DrawText("P4.5 SCOREBOARDS", 12, 20)
+	context.DrawText("P11.2 SCOREBOARDS", 12, 20)
 	context.DrawText(game.status, 12, 60)
-	context.DrawText("A: ADD  B: PERSONAL BEST", 12, 190)
+	context.DrawText("A: ADD  B: PERSONAL BEST", 12, 180)
+	context.DrawText("DOWN: LIST SCORES", 12, 200)
 	if game.service == nil {
 		return true, nil
 	}
@@ -66,6 +67,18 @@ func (game *game) Update(context playdate.Context) (bool, error) {
 		})
 		if err != nil {
 			game.status = "BEST: " + err.Error()
+		}
+	}
+	if context.Input().Pressed.Has(playdate.ButtonDown) {
+		err := game.service.GetScores(boardID, func(list playdate.ScoresList, callbackErr error) {
+			if callbackErr != nil {
+				game.status = "SCORES: " + callbackErr.Error()
+				return
+			}
+			game.status = "SCORES " + strconv.Itoa(len(list.Scores))
+		})
+		if err != nil {
+			game.status = "SCORES: " + err.Error()
 		}
 	}
 	return true, nil

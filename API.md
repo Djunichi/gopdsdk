@@ -460,6 +460,14 @@ read-source flags distinguish packaged resources from the Data directory.
 Every successful `OpenFile` result must be closed. Native failures are copied
 into `FileOperationError` and classify as `ErrFileIO`.
 
+`File.Seek` follows `io.Seeker`: after the official seek succeeds, it uses the
+official current-position operation and returns that position. Consequently,
+`Seek(0, io.SeekCurrent)` reports the current position without a separate
+public `Tell` method. A failure to obtain the position is reported as a
+`FileOperationError` for the `tell` operation. The official transient `geterr`
+pointer is never exposed or retained; adapters copy it only while constructing
+the error for the failing filesystem operation.
+
 The separate `playdate/store` package provides bounded checksummed envelopes,
 atomic temporary-file replacement, backup recovery, and explicit one-version
 migrations. Serialization and corrupt-save policy remain application-owned.
@@ -487,8 +495,12 @@ capability.
 
 `Scoreboards` is an optional bounded asynchronous service, not general
 networking. `DebugMessages` is a separate bounded diagnostic FIFO for Simulator
-and serial input. Neither capability may re-enter game code from a native
-callback, and callbacks after termination are suppressed.
+and serial input. Scoreboards allow one pending request of each of their four
+operation kinds; native completions copy SDK-owned data into a fixed four-slot
+queue, and game callbacks run at the next update boundary. Immediate request
+failure releases the operation slot. Neither capability may re-enter game code
+from a native callback, and queued or late callbacks after termination are
+suppressed.
 
 ## Device Go subset
 

@@ -82,6 +82,40 @@ func TestOwnedFileErrors(t *testing.T) {
 	}
 }
 
+func TestOwnedFileSeekReturnsOfficialCurrentPosition(t *testing.T) {
+	var gotOffset int32
+	var gotWhence int
+	file := NewOwnedFile(11, "save.bin", FileDriver{
+		Seek: func(_ uintptr, offset int32, whence int) (int, string) {
+			gotOffset = offset
+			gotWhence = whence
+			return 0, ""
+		},
+		Tell: func(uintptr) (int, string) { return 37, "" },
+	})
+
+	position, err := file.Seek(0, io.SeekCurrent)
+	if err != nil || position != 37 || gotOffset != 0 || gotWhence != io.SeekCurrent {
+		t.Fatalf("Seek(0, SeekCurrent) = %d, %v; native seek = (%d, %d)", position, err, gotOffset, gotWhence)
+	}
+}
+
+func TestOwnedFileSeekClassifiesTellFailureAtOperationBoundary(t *testing.T) {
+	file := NewOwnedFile(13, "save.bin", FileDriver{
+		Seek: func(uintptr, int32, int) (int, string) { return 0, "" },
+		Tell: func(uintptr) (int, string) { return -1, "position unavailable" },
+	})
+
+	_, err := file.Seek(4, io.SeekStart)
+	var failure playdate.FileOperationError
+	if !errors.As(err, &failure) || !errors.Is(err, playdate.ErrFileIO) {
+		t.Fatalf("Seek() error = %v, want FileOperationError classified as ErrFileIO", err)
+	}
+	if failure.Operation != "tell" || failure.Path != "save.bin" || failure.Message != "position unavailable" {
+		t.Fatalf("Seek() failure = %#v", failure)
+	}
+}
+
 func TestValidateFileInputs(t *testing.T) {
 	for _, valid := range []string{"save.bin", "settings/config", "folder"} {
 		if err := ValidateFilePath(valid, false); err != nil {
