@@ -86,7 +86,7 @@ func TestProbeSourceContainsCollisionBridge(t *testing.T) {
 
 func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"sdkPlaydate.FileSystem", "sdkRuntime.NewOwnedFile", "bridgeFileOpen", "bridgeFileList", "bridgeFileRename", "copiedCString(bridgeFileListItem", "return copiedCString(pointer)"} {
+	for _, want := range []string{"sdkPlaydate.FileSystem", "sdkRuntime.NewOwnedFile", "bridgeFileOpen", "bridgeFileList", "bridgeFileRename", "copiedCString(bridgeFileListItem", "func fileErrorMessage() string { pointer:=bridgeFileError();if pointer==0{return \"\"};return copiedCString(pointer) }"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}
@@ -110,7 +110,7 @@ func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
 
 func TestBothDeviceAdaptersContainOnlineAndDebugBridges(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"sdkPlaydate.Scoreboards", "sdkPlaydate.DebugMessages", "goSerialMessage", "goScoreCallback", "sdkRuntime.NewScoreboardService", "bridgeGetScores"} {
+	for _, want := range []string{"sdkPlaydate.Scoreboards", "sdkPlaydate.DebugMessages", "goSerialMessage", "goScoreCallback", "sdkRuntime.NewScoreboardService", "sdkRuntime.ScoreboardCallbackQueue", "scoreboardCallbacks.Drain()", "scoreboardService.Terminate()", "bridgeGetScores"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}

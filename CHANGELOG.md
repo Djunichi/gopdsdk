@@ -4,6 +4,38 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
+## Unreleased
+
+- Hardened the P11.2 scoreboard callback boundary on both native adapters.
+  SDK-owned results are copied during native completion and game callbacks are
+  deferred through a fixed four-slot queue to the next update. One request per
+  operation kind remains pending at a time; immediate failures release their
+  slot, and termination cancels retained callbacks, clears queued results, and
+  rejects later requests. Live configured-service Simulator and physical-device
+  acceptance still requires external board configuration.
+- On 2026-08-17 the P11.2 consumer and generated-adapter tests, full unit suite,
+  and `go vet ./...` passed. The consumer compiled and packaged for the official
+  Windows SDK 3.1.1 Simulator. Its conservative hard-float device build used
+  282,420 bytes of static RAM and produced a 1,177,872-byte ELF and a
+  48,645-byte PDX. User-confirmed Simulator interaction on the same date covered
+  asynchronous failure delivery for board discovery and score submission with
+  authentication-credential diagnostics, followed by a personal-best failure
+  reporting an unregistered player. The scene remained responsive across the
+  sequential requests, exercising update-boundary delivery and release of each
+  pending operation slot. The same conservative artifact was then installed and
+  launched over COM3; user-confirmed physical-device interaction covered board
+  discovery, score submission, personal-best retrieval, and score-list
+  retrieval, with the scene remaining responsive across all four paths.
+  Successful configured-service responses, termination during a pending live
+  request, soak, memory-growth measurement, and post-run device-log inspection
+  remain unverified.
+- Completed P11.1 without widening the public filesystem API. `File.Seek`
+  already preserves the official current-position behavior by returning
+  `tell` after a successful native seek; `Seek(0, io.SeekCurrent)` therefore
+  provides position reporting. Deterministic coverage now includes the
+  current-position path, `tell` failure classification, and adapter-side
+  copying of transient `geterr` diagnostics at the failing operation boundary.
+
 ## v0.10.0 (2026-08-17)
 
 - Completed the P10.3 public-system audit without adding low-level runtime

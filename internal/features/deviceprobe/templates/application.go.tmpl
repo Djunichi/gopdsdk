@@ -881,13 +881,14 @@ var addScoreCallback func(sdkPlaydate.Score,string)
 var personalBestCallback func(sdkPlaydate.Score,string)
 var boardsCallback func(sdkPlaydate.BoardsList,string)
 var scoresCallback func(sdkPlaydate.ScoresList,string)
+var scoreboardCallbacks sdkRuntime.ScoreboardCallbackQueue
 func copiedScore(pointer uintptr)sdkPlaydate.Score{return sdkPlaydate.Score{Rank:bridgeScoreNumber(pointer,0),Value:bridgeScoreNumber(pointer,1),Player:copiedCString(bridgeScoreText(pointer,0)),BoardID:copiedCString(bridgeScoreText(pointer,1))}}
 //export goScoreCallback
-func goScoreCallback(kind int32,pointer,message uintptr){callback:=addScoreCallback;if kind==1{callback=personalBestCallback};if callback!=nil{callback(copiedScore(pointer),copiedCString(message))};if kind==0{addScoreCallback=nil}else{personalBestCallback=nil}}
+func goScoreCallback(kind int32,pointer,message uintptr){callback:=addScoreCallback;if kind==1{callback=personalBestCallback};score:=copiedScore(pointer);text:=copiedCString(message);if kind==0{addScoreCallback=nil}else{personalBestCallback=nil};if callback!=nil{scoreboardCallbacks.Push(func(){callback(score,text)})}}
 //export goBoardsCallback
-func goBoardsCallback(pointer,message uintptr){list:=sdkPlaydate.BoardsList{};if pointer!=0{list.LastUpdated=bridgeListNumber(pointer,1);count:=int(bridgeListNumber(pointer,0));list.Boards=make([]sdkPlaydate.Board,count);for i:=range list.Boards{list.Boards[i]=sdkPlaydate.Board{ID:copiedCString(bridgeListText(pointer,int32(i),0)),Name:copiedCString(bridgeListText(pointer,int32(i),1))}}};callback:=boardsCallback;boardsCallback=nil;if callback!=nil{callback(list,copiedCString(message))}}
+func goBoardsCallback(pointer,message uintptr){list:=sdkPlaydate.BoardsList{};if pointer!=0{list.LastUpdated=bridgeListNumber(pointer,1);count:=int(bridgeListNumber(pointer,0));list.Boards=make([]sdkPlaydate.Board,count);for i:=range list.Boards{list.Boards[i]=sdkPlaydate.Board{ID:copiedCString(bridgeListText(pointer,int32(i),0)),Name:copiedCString(bridgeListText(pointer,int32(i),1))}}};callback:=boardsCallback;boardsCallback=nil;text:=copiedCString(message);if callback!=nil{scoreboardCallbacks.Push(func(){callback(list,text)})}}
 //export goScoresCallback
-func goScoresCallback(pointer,message uintptr){list:=sdkPlaydate.ScoresList{};if pointer!=0{list.BoardID=copiedCString(bridgeListText(pointer,-1,0));list.LastUpdated=bridgeListNumber(pointer,1);list.PlayerIncluded=bridgeListNumber(pointer,2)!=0;list.Limit=bridgeListNumber(pointer,3);count:=int(bridgeListNumber(pointer,0));list.Scores=make([]sdkPlaydate.ListScore,count);for i:=range list.Scores{list.Scores[i]=sdkPlaydate.ListScore{Rank:bridgeListItemNumber(pointer,int32(i),0),Value:bridgeListItemNumber(pointer,int32(i),1),Player:copiedCString(bridgeListText(pointer,int32(i),2))}}};callback:=scoresCallback;scoresCallback=nil;if callback!=nil{callback(list,copiedCString(message))}}
+func goScoresCallback(pointer,message uintptr){list:=sdkPlaydate.ScoresList{};if pointer!=0{list.BoardID=copiedCString(bridgeListText(pointer,-1,0));list.LastUpdated=bridgeListNumber(pointer,1);list.PlayerIncluded=bridgeListNumber(pointer,2)!=0;list.Limit=bridgeListNumber(pointer,3);count:=int(bridgeListNumber(pointer,0));list.Scores=make([]sdkPlaydate.ListScore,count);for i:=range list.Scores{list.Scores[i]=sdkPlaydate.ListScore{Rank:bridgeListItemNumber(pointer,int32(i),0),Value:bridgeListItemNumber(pointer,int32(i),1),Player:copiedCString(bridgeListText(pointer,int32(i),2))}}};callback:=scoresCallback;scoresCallback=nil;text:=copiedCString(message);if callback!=nil{scoreboardCallbacks.Push(func(){callback(list,text)})}}
 var scoreboardService=sdkRuntime.NewScoreboardService(sdkRuntime.ScoreboardDriver{AddScore:func(board string,value uint32,callback func(sdkPlaydate.Score,string))bool{addScoreCallback=callback;if bridgeAddScore(terminatedPath(board),value)==0{addScoreCallback=nil;return false};return true},PersonalBest:func(board string,callback func(sdkPlaydate.Score,string))bool{personalBestCallback=callback;if bridgeGetPersonalBest(terminatedPath(board))==0{personalBestCallback=nil;return false};return true},Scoreboards:func(callback func(sdkPlaydate.BoardsList,string))bool{boardsCallback=callback;if bridgeGetScoreboards()==0{boardsCallback=nil;return false};return true},Scores:func(board string,callback func(sdkPlaydate.ScoresList,string))bool{scoresCallback=callback;if bridgeGetScores(terminatedPath(board))==0{scoresCallback=nil;return false};return true}})
 func (playdateContext) AddScore(board string,value uint32,callback func(sdkPlaydate.Score,error))error{return scoreboardService.AddScore(board,value,callback)}
 func (playdateContext) GetPersonalBest(board string,callback func(sdkPlaydate.Score,error))error{return scoreboardService.GetPersonalBest(board,callback)}
@@ -1176,7 +1177,7 @@ func mustApplication() *sdkRuntime.Application {
 
 //export goEventHandler
 func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
-	if sdkRuntime.Event(event) == sdkRuntime.EventTerminate { spriteDisplayList.TerminateSpriteCallbacks() }
+	if sdkRuntime.Event(event) == sdkRuntime.EventTerminate { spriteDisplayList.TerminateSpriteCallbacks(); scoreboardService.Terminate(); scoreboardCallbacks.Terminate(); addScoreCallback=nil;personalBestCallback=nil;boardsCallback=nil;scoresCallback=nil }
 	if err := application.Handle(sdkRuntime.Event(event), arg); err != nil {
 		bridgeLog(terminatedPath("gopdsdk event error: " + err.Error()))
 		return -1
@@ -1186,6 +1187,7 @@ func goEventHandler(_ uintptr, event int32, arg uint32) int32 {
 
 //export goUpdate
 func goUpdate() int32 {
+	scoreboardCallbacks.Drain()
 	for buttonCallback != nil {
 		var button, when uint32
 		var down int32

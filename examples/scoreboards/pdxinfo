@@ -1,6 +1,6 @@
-name=P4 Scoreboards
+name=P11 Scoreboards
 author=gopdsdk
-description=P4.5 online scoreboards acceptance (unverified)
+description=P11.2 online scoreboards acceptance (configuration required)
 bundleID=dev.gopdsdk.scoreboards
 version=1.0.0
 buildNumber=1
