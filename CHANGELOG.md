@@ -24,9 +24,16 @@ that out.
   generated Simulator/device ABI tests passed. The focused consumer compiled
   and packaged with the official Windows SDK 3.1.1. Its conservative hard-float
   device build used 283,228 bytes of static RAM and produced a 1,196,892-byte
-  ELF and a 49,261-byte PDX. Visual Simulator execution, USB deployment,
-  physical-device behavior, soak, memory-growth measurement, and post-run
-  device-log inspection remain unverified for this unreleased slice.
+  ELF and a 49,261-byte PDX. On 2026-08-17 user-confirmed Simulator interaction
+  covered the menu image, auto-lock and crank-sound settings, ordered button
+  delivery with zero overflow, and mirror lifecycle state. Invoking restart
+  closed the Simulator application instead of demonstrating a restarted
+  instance. The same build installed over COM3, launched on a physical
+  Playdate, and passed the user-confirmed full interaction matrix, including
+  empty initial launch arguments, restart with `p10-restarted` arguments, the
+  menu image, settings, ordered button delivery with zero overflow, and mirror
+  lifecycle state. Soak, memory-growth measurement, and post-run inspection of
+  `crashlog.txt` and `errorlog.txt` were not performed.
 
 ## v0.9.0 (2026-08-12)
 

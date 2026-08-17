@@ -2,7 +2,7 @@
 
 Status: `v0.9.0` released; P10 is in progress. The remaining offline
 official-SDK capability gaps are allocated through `v0.12.0`, followed by the
-`v1.0.0` contract release, updated 2026-08-13.
+`v1.0.0` contract release, updated 2026-08-17.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -106,8 +106,13 @@ P10 completes system facilities that can affect a shipped offline game.
   bridge overflow, expose the drop count, and are suppressed at termination.
 - Pure-Go consumer, runtime, public-API snapshot, generated ABI tests, official
   Windows SDK 3.1.1 compilation/packaging, and conservative hard-float device
-  build pass. Visual Simulator execution, USB deployment, physical-device
-  behavior, soak, memory growth, and post-run device logs remain open.
+  build pass. On 2026-08-17 user-confirmed Simulator interaction covered the
+  menu image, settings, ordered button delivery without overflow, and mirror
+  lifecycle state; restart closed the Simulator application instead of showing
+  a restarted instance. USB installation and launch on a physical Playdate
+  passed the complete user-confirmed matrix, including restart and changed
+  launch arguments. Simulator restart behavior, soak, memory growth, and
+  post-run device logs remain open.
 
 ### P10.2 — clock, calendar, and device information
 

@@ -313,9 +313,12 @@ Its pure-Go consumer, runtime, public-API snapshot, and generated
 Simulator/device ABI tests pass. On 2026-08-13 the consumer compiled and
 packaged with the official Windows SDK 3.1.1, and its conservative hard-float
 device build used 283,228 bytes of static RAM and produced a 1,196,892-byte ELF
-and a 49,261-byte PDX. Visual Simulator behavior, USB deployment,
-physical-device behavior, soak, memory growth, and post-run device-log checks
-remain unverified for P10.1.
+and a 49,261-byte PDX. On 2026-08-17 Simulator interaction covered the menu
+image, settings, buttons without overflow, and mirror state; restart closed the
+Simulator application instead of demonstrating a restarted instance. USB
+installation and launch on a physical Playdate then passed the complete
+interaction matrix, including restart with `p10-restarted` launch arguments.
+Soak, memory growth, and post-run device-log checks remain unverified for P10.1.
 
 ## Bitmap acceptance
 
