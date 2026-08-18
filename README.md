@@ -11,7 +11,7 @@ reflection-free decode and streaming encode with explicit byte, depth, node,
 and string limits; `examples/jsoncodec` demonstrates packaged-file decoding and
 fixed-buffer encoding on the conservative device profile.
 
-The declared **`v0.11.0`** release completes the remaining offline
+The released **`v0.11.0`** completes the remaining offline
 filesystem, scoreboard, JSON, and media audit scope. Scoreboard completions are
 copied and delivered through a bounded update queue, `playdate/json` provides a
 device-safe replacement for the official callback API, and packaged PDV
@@ -48,6 +48,34 @@ relevant probe succeeds.
 Native CI proves Go behavior, path policy, CLI composition, and external-module
 consumption. It does not prove that an official Simulator starts or that USB
 deployment works on that host.
+
+## Device Go profile
+
+Device applications use sequential Go compiled by TinyGo with conservative GC,
+`scheduler none`, and fail-stop panic handling. The profile deliberately does
+not promise compatibility with every Go language mechanism or standard-library
+package.
+
+| Mechanism                                                                                                         | Decision                               | Available in device builds                                                             |
+| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------- |
+| Ordinary sequential Go: functions, methods, interfaces, structs, arrays, slices, maps, pointers, and control flow | Supported                              | Yes                                                                                    |
+| Allocation, conservative GC, and `runtime.GC`                                                                     | Supported                              | Yes; memory and pause bounds remain workload-specific                                  |
+| `panic`                                                                                                           | Supported as a terminal fail-stop trap | Yes; no unwinding, deferred cleanup, or recovery                                       |
+| `defer` on normal return                                                                                          | Supported bounded subset               | Not yet; P12.2 owns enablement and regression coverage                                 |
+| Public `reflect` inspection, extraction, conversion, and mutation                                                 | Supported bounded subset               | Not yet; P12.3 owns exact symbol gates and bounds                                      |
+| Goroutines                                                                                                        | Replaced                               | P12.1 plans stackless `playdate/schedule` tasks                                        |
+| Channels and `select`                                                                                             | Replaced                               | P12.1 plans bounded non-blocking queues and explicit polling                           |
+| `time.Now`, `Sleep`, timers, and tickers                                                                          | Replaced                               | P12.1 plans Playdate-clock delayed tasks; pure duration/value operations are supported |
+| `fmt`                                                                                                             | Replaced                               | Use typed `strconv`, bounded buffers, builders, and writers                            |
+| `encoding/json`                                                                                                   | Replaced                               | Use the bounded reflection-free `playdate/json` package                                |
+| `recover`                                                                                                         | Unsupported                            | Use explicit error returns                                                             |
+| Finalizers                                                                                                        | Unsupported                            | Use explicit ownership and lifecycle cleanup                                           |
+| Application cgo                                                                                                   | Unsupported                            | Native integration remains owned by gopdsdk bridges                                    |
+
+The decision column records the audit outcome; the availability column controls
+what applications may rely on in current device builds. See [API.md](API.md) for
+the public contract and [docs/ROADMAP.md](docs/ROADMAP.md) for the accepted audit
+decisions and pending implementation.
 
 ## Requirements
 
@@ -1165,11 +1193,12 @@ toolchain without pretending to verify GUI or USB behavior.
 
 ## Current limitations
 
-- Device execution uses a single-threaded TinyGo subset: goroutines, channels,
-  `select`, public reflection, and finalizers are rejected.
+- The device Go-profile table above is authoritative. The current production
+  linker still rejects goroutines, channels, `select`, normal-return `defer`,
+  public reflection, finalizers, and application cgo.
 - OOM and panic are deterministic fail-stop traps, not recoverable errors.
-- Device `defer`/`recover` is rejected because TinyGo 0.41.1 accesses an ARM
-  system register unavailable to Playdate applications through that path.
+- `recover` is unsupported; accepted future `defer` enablement is limited to
+  normal returns and will not add panic unwinding.
 - macOS and Linux official SDK integration remains unverified.
 - Graphics cover clear/text, bitmaps, sprites, animation, custom fonts,
   callback-scoped framebuffer access, and drawing into owned bitmaps. Audio
