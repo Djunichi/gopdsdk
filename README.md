@@ -63,9 +63,9 @@ package.
 | `panic`                                                                                                           | Supported as a terminal fail-stop trap | Yes; no unwinding, deferred cleanup, or recovery                                       |
 | `defer` on normal return                                                                                          | Supported bounded subset               | Not yet; P12.2 owns enablement and regression coverage                                 |
 | Public `reflect` inspection, extraction, conversion, and mutation                                                 | Supported bounded subset               | Not yet; P12.3 owns exact symbol gates and bounds                                      |
-| Goroutines                                                                                                        | Replaced                               | P12.1 plans stackless `playdate/schedule` tasks                                        |
-| Channels and `select`                                                                                             | Replaced                               | P12.1 plans bounded non-blocking queues and explicit polling                           |
-| `time.Now`, `Sleep`, timers, and tickers                                                                          | Replaced                               | P12.1 plans Playdate-clock delayed tasks; pure duration/value operations are supported |
+| Goroutines                                                                                                        | Replaced                               | Use stackless `playdate/schedule` tasks                                                 |
+| Channels and `select`                                                                                             | Replaced                               | Use bounded non-blocking queues and round-robin polling from `playdate/schedule`        |
+| `time.Now`, `Sleep`, timers, and tickers                                                                          | Replaced                               | Use Playdate-clock delayed, deadline, and repeating tasks; pure duration/value operations are supported |
 | `fmt`                                                                                                             | Replaced                               | Use typed `strconv`, bounded buffers, builders, and writers                            |
 | `encoding/json`                                                                                                   | Replaced                               | Use the bounded reflection-free `playdate/json` package                                |
 | `recover`                                                                                                         | Unsupported                            | Use explicit error returns                                                             |
@@ -389,6 +389,32 @@ epoch/calendar display, exact seconds round-trip, elapsed growth and reset, and
 copied system information. The final combined release artifacts passed
 physical-device installation, execution, soak, bounded-memory, and unchanged
 post-run device-log checks.
+
+## Bounded cooperative scheduling
+
+`playdate/schedule` spreads explicit task steps across update frames without
+goroutines, blocking, or hidden callbacks. Construction fixes task capacity and
+the maximum steps per frame; `Update` runs each ready task at most once in FIFO
+order. Tasks return `Yield`, `Complete`, `Delay`, or `Repeat`, and can also be
+scheduled at a wrapping `CurrentTimeMilliseconds` deadline. The optional elapsed
+budget is checked only between steps, so task steps must remain small.
+
+The package also provides fixed-capacity non-blocking generic queues and a
+deterministic round-robin poller. Full, empty, and nothing-ready states are
+explicit results rather than waits or panics. Queue operations are sequential;
+native callback bridges must continue to copy records into their own bounded
+update-boundary queues.
+
+`examples/schedule` processes 120 items through four cooperative tasks and
+terminates its scheduler with the application lifecycle. Pure-Go tests, the
+official Windows SDK 3.1.1 Simulator build and launch, and the TinyGo 0.41.1
+conservative device build, COM3 installation, and launch pass. The final device
+artifact uses 283,068 bytes of static RAM and produces a 1,188,160-byte ELF and
+a 48,729-byte PDX. On 2026-08-18 the user confirmed physical-device `PASS`
+markers for a two-step peak, exactly 40 task steps, completion in 20 frames, and
+equal 30-item progress across all four tasks. The physical frame-time,
+bounded-memory, memory-growth, soak, and unchanged post-run device-log gates
+also passed by user confirmation; exact measurement values were not recorded.
 
 ## Bounded JSON
 

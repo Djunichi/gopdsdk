@@ -6,6 +6,23 @@ that out.
 
 ## Unreleased
 
+- Added `playdate/schedule`, a stackless cooperative scheduler with fixed task
+  capacity, deterministic FIFO frame ordering, cancellation-safe task IDs,
+  explicit yield/completion, wrap-safe delayed/deadline/repeating work, an
+  optional secondary elapsed-time guard, bounded non-blocking generic queues,
+  and deterministic round-robin multi-queue polling. Scheduler updates perform
+  no scheduler-owned allocation.
+- Added `examples/schedule`, a repository-owned incremental-work consumer.
+  Pure-Go tests, the official Windows SDK 3.1.1 Simulator build and launch, and
+  the TinyGo 0.41.1 conservative device build, COM3 installation, and launch
+  pass. The final device artifact uses 283,068 bytes of static RAM and produces
+  a 1,188,160-byte ELF and a 48,729-byte PDX. On 2026-08-18 the user confirmed
+  physical-device `PASS` markers for a two-step peak, exactly 40 task steps,
+  completion in 20 frames, and equal 30-item progress across four tasks. The
+  physical frame-time, bounded-memory, memory-growth, soak, and unchanged
+  post-run device-log gates also passed by user confirmation; exact measurement
+  values were not recorded.
+
 ## v0.11.0 (2026-08-18)
 
 - Added `playdate/json`, a dependency-free bounded JSON replacement for the

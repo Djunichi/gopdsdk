@@ -22,6 +22,41 @@ Applications that need device-safe JSON import
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or
 `recover`.
 
+Applications that need bounded cooperative work import
+`github.com/Djunichi/gopdsdk/playdate/schedule`.
+
+## Bounded cooperative scheduling
+
+`schedule.New` allocates fixed task and FIFO-order storage from `Capacity` and
+requires a positive `StepsPerFrame`. `Scheduler.Update` is called only from the
+application update boundary. It runs each ready task at most once per call,
+preserves FIFO order, and performs no scheduler-owned per-frame allocation.
+Each `Step` returns `Yield`, `Complete`, `Delay`, or `Repeat`; there is no
+parallelism, preemption, transparent async function, or hidden task execution
+from native callbacks.
+
+`Schedule`, `ScheduleAfter`, and `ScheduleAt` return generation-bearing task
+identifiers. `Cancel` and `Pending` reject completed, cancelled, unknown, and
+stale identifiers. Capacity exhaustion, nil steps, invalid delays, nested
+updates, and use after `Terminate` return sentinel errors. Steps may enqueue or
+cancel work; newly enqueued tasks do not run until a later update. Termination
+clears retained step closures and permanently rejects new work.
+
+Delayed, absolute-deadline, and repeating tasks use the wrapping
+`CurrentTimeMilliseconds` clock. Intervals are limited to
+`MaxDelayMilliseconds`, the unambiguous signed half of the `uint32` range.
+Repeats remain anchored to the previous deadline. An optional elapsed-time
+budget is checked between steps after at least one step runs; it is secondary
+to `StepsPerFrame` and cannot prevent one oversized step from overrunning a
+frame.
+
+`Queue[T]` is a fixed-capacity sequential FIFO with explicit non-blocking
+`TrySend` and `TryReceive` results. `Poller[T]` checks multiple queues with
+deterministic round-robin priority beginning after the last successful queue;
+when no queue is ready it returns `ready == false` and index `-1`. These types
+do not claim Go channel or `select` semantics and are not safe for concurrent
+use.
+
 ## Bounded JSON
 
 `json.Decode` and `DecodeBytes` produce a reflection-free `Value` tree under
@@ -548,8 +583,9 @@ pause and memory bounds as workload-specific. Panic is a terminal trap without
 stack unwinding, deferred cleanup, or recovery.
 
 Goroutines, channels, `select`, standard-library clocks, sleep, timers, and
-tickers are currently unsupported. `fmt` is replaced by typed `strconv` and
-bounded writers, while `encoding/json` is replaced by `playdate/json`.
+tickers are unsupported. Their bounded sequential use cases are replaced by
+`playdate/schedule`. `fmt` is replaced by typed `strconv` and bounded writers,
+while `encoding/json` is replaced by `playdate/json`.
 
 Normal-return `defer` and the audited reflection inspection, extraction,
 conversion, and mutation subset have been accepted for future enablement but
