@@ -62,7 +62,7 @@ package.
 | Allocation, conservative GC, and `runtime.GC`                                                                     | Supported                              | Yes; memory and pause bounds remain workload-specific                                  |
 | `panic`                                                                                                           | Supported as a terminal fail-stop trap | Yes; no unwinding, deferred cleanup, or recovery                                       |
 | `defer` on normal return                                                                                          | Supported bounded subset               | Yes with conservative GC; dynamic registration can allocate                            |
-| Public `reflect` inspection, extraction, conversion, and mutation                                                 | Supported bounded subset               | Not yet; P12.3 owns exact symbol gates and bounds                                      |
+| Public `reflect` inspection, extraction, conversion, and mutation                                                 | Supported bounded subset               | Yes with conservative GC; only documented operations pass the exact symbol gate         |
 | Goroutines                                                                                                        | Replaced                               | Use stackless `playdate/schedule` tasks                                                 |
 | Channels and `select`                                                                                             | Replaced                               | Use bounded non-blocking queues and round-robin polling from `playdate/schedule`        |
 | `time.Now`, `Sleep`, timers, and tickers                                                                          | Replaced                               | Use Playdate-clock delayed, deadline, and repeating tasks; pure duration/value operations are supported |
@@ -415,6 +415,20 @@ markers for a two-step peak, exactly 40 task steps, completion in 20 frames, and
 equal 30-item progress across all four tasks. The physical frame-time,
 bounded-memory, memory-growth, soak, and unchanged post-run device-log gates
 also passed by user confirmation; exact measurement values were not recorded.
+
+`examples/reflection` exercises the bounded public reflection subset: type kind,
+name and struct-field metadata; struct tags; `Interface`; numeric `Convert`;
+and mutable struct fields, slice elements, and map entries. The device linker
+uses a fail-closed symbol allowlist, so dynamic calls and construction, reflected
+methods and channels, unsupported function-type APIs, and new TinyGo reflection
+paths are rejected. Prefer direct typed code or generated accessors when the
+shape is known. The TinyGo 0.41.1 conservative device build uses 282,684 bytes
+of static RAM and produces a 1,279,604-byte ELF and a 59,359-byte PDX. The
+Simulator launch and COM3 device installation and launch commands pass. Visual
+device acceptance on 2026-08-18 confirmed `Operations PASS`, a stable
+12,544-byte aggregate allocation measurement, `Memory PASS`, and `Soak PASS`
+after 60 seconds. The user also confirmed that post-run `crashlog.txt` and
+`errorlog.txt` remained unchanged.
 
 ## Bounded JSON
 
@@ -1220,8 +1234,9 @@ toolchain without pretending to verify GUI or USB behavior.
 ## Current limitations
 
 - The device Go-profile table above is authoritative. The current production
-  linker still rejects goroutines, channels, `select`, normal-return `defer`,
-  public reflection, finalizers, and application cgo.
+  linker still rejects goroutines, channels, `select`, reflection outside the
+  documented bounded subset, finalizers, and application cgo. Normal-return
+  `defer` is available only with conservative GC.
 - OOM and panic are deterministic fail-stop traps, not recoverable errors.
 - `recover` is unsupported; accepted future `defer` enablement is limited to
   normal returns and will not add panic unwinding.

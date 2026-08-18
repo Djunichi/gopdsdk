@@ -6,6 +6,21 @@ that out.
 
 ## Unreleased
 
+- Enabled the audited bounded public `reflect` subset for conservative device
+  builds with a fail-closed linked-symbol allowlist. Metadata and tag access,
+  `Interface`, numeric conversion, and struct, slice, and map mutation have
+  deterministic fixtures; dynamic calls and construction, reflected methods
+  and channels, unsupported function Type APIs, and new TinyGo reflection paths
+  remain rejected.
+- Added `examples/reflection`, including per-operation allocation measurement
+  and a repeated update-frame memory-growth soak. Pure-Go tests, the official
+  Windows SDK 3.1.1 Simulator build, and the TinyGo 0.41.1 conservative device
+  build pass. The artifact uses 282,684 bytes of static RAM and produces a
+  1,279,604-byte ELF and a 59,359-byte PDX. The Simulator launch and COM3
+  installation and launch commands pass. On 2026-08-18 the user confirmed
+  physical-device `Operations PASS`, a stable 12,544-byte aggregate allocation
+  measurement, `Memory PASS`, and `Soak PASS` after 60 seconds. Unchanged
+  post-run `crashlog.txt` and `errorlog.txt` were also confirmed.
 - Enabled normal-return `defer` for conservative device builds while retaining
   the linked-symbol rejection for `recover` and the legacy non-collecting
   profile. Added deterministic coverage for normal return, early return, LIFO

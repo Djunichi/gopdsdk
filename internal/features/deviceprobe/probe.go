@@ -505,12 +505,12 @@ func unsupportedRuntimeSymbols(output string, memory buildplan.DeviceMemoryStrat
 		"runtime._recover",
 		"runtime.SetFinalizer",
 		"runtime.setFinalizer",
-		" reflect.",
 	} {
 		if strings.Contains(output, forbidden) {
 			symbols = append(symbols, strings.TrimSpace(forbidden))
 		}
 	}
+	symbols = append(symbols, unsupportedReflectionSymbols(output)...)
 	for _, forbidden := range []string{"runtime.chanMake", "runtime.chanSend", "runtime.chanRecv", "runtime.chanClose", "runtime.chanSelect"} {
 		if strings.Contains(output, forbidden) {
 			symbols = append(symbols, "runtime.chan")
@@ -521,6 +521,44 @@ func unsupportedRuntimeSymbols(output string, memory buildplan.DeviceMemoryStrat
 		symbols = append(symbols, "runtime/interrupt.In")
 	}
 	return symbols
+}
+
+var supportedReflectionSymbols = []string{
+	"reflect.(*rtype).Field", "reflect.(*rtype).Kind", "reflect.(*rtype).Name",
+	"reflect.(*rtype).NumField", "reflect.TypeOf", "reflect.ValueOf",
+	"reflect.toRawType", "reflect.toStructField", "reflect.toType",
+	"reflect.Value.CanInterface", "reflect.Value.CanSet", "reflect.Value.Convert",
+	"reflect.Value.Elem", "reflect.Value.Field", "reflect.Value.Index",
+	"reflect.Value.Int", "reflect.Value.Interface", "reflect.Value.IsValid",
+	"reflect.Value.Kind", "reflect.Value.MapIndex", "reflect.Value.SetInt",
+	"reflect.Value.SetMapIndex", "reflect.Value.SetString",
+}
+
+func unsupportedReflectionSymbols(output string) []string {
+	var unsupported []string
+	seen := make(map[string]bool)
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		symbol := fields[len(fields)-1]
+		if !strings.HasPrefix(symbol, "reflect.") || reflectionSymbolSupported(symbol) || seen[symbol] {
+			continue
+		}
+		seen[symbol] = true
+		unsupported = append(unsupported, symbol)
+	}
+	return unsupported
+}
+
+func reflectionSymbolSupported(symbol string) bool {
+	for _, supported := range supportedReflectionSymbols {
+		if symbol == supported || strings.HasPrefix(symbol, supported+"$") {
+			return true
+		}
+	}
+	return false
 }
 
 const conservativeHeapSize = uint64(256 * 1024)
