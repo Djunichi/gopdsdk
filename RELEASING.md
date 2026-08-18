@@ -1,9 +1,9 @@
 # Release procedure
 
-The latest declared release is `v0.11.0`; publication remains pending until its
-tag and hosted release exist. Go module versions come from Git tags; no separate
-VERSION file is maintained. The procedure below applies to the next planned
-release selected from the roadmap.
+The latest stable release is `v0.11.0`. Its tag, hosted release, and Go module
+proxy resolution were verified on 2026-08-18. Go module versions come from Git
+tags; no separate VERSION file is maintained. The procedure below applies to
+the next planned release selected from the roadmap.
 
 ## Release gates
 

@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The declared `v0.11.0` retains the exact toolchain profile accepted by
+The released `v0.11.0` retains the exact toolchain profile accepted by
 the published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
@@ -40,6 +40,11 @@ does not itself prove target timing or memory behavior.
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
 actually exercised.
+
+The stable `v0.11.0` tag and hosted GitHub release were published on
+2026-08-18 from commit `3a5d288e54fef2d3daefb05eed165a6f902f64d8`.
+The Go module proxy resolves `github.com/Djunichi/gopdsdk@v0.11.0` to that
+exact commit without a local `replace`.
 
 The v0.11.0 release candidate passed formatting, the full Go suite and vet on
 Windows, green Windows/macOS/Linux native CI for commit

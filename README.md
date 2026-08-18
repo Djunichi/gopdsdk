@@ -11,7 +11,7 @@ reflection-free decode and streaming encode with explicit byte, depth, node,
 and string limits; `examples/jsoncodec` demonstrates packaged-file decoding and
 fixed-buffer encoding on the conservative device profile.
 
-The declared **`v0.11.0`** release completes the remaining offline
+The released **`v0.11.0`** completes the remaining offline
 filesystem, scoreboard, JSON, and media audit scope. Scoreboard completions are
 copied and delivered through a bounded update queue, `playdate/json` provides a
 device-safe replacement for the official callback API, and packaged PDV

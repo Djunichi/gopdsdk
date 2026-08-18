@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.11.0` declared; publication is pending. The remaining device Go
-profile work is allocated to `v0.12.0`, followed by the `v1.0.0` contract
-release, updated 2026-08-18.
+Status: `v0.11.0` is released. The remaining device Go profile work is
+allocated to `v0.12.0`, followed by the `v1.0.0` contract release, updated
+2026-08-18.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in

@@ -1,6 +1,6 @@
 # Public API
 
-This document describes the declared `v0.11.0` public contract. The
+This document describes the released `v0.11.0` public contract. The
 contract includes advanced drawing, bitmap data and masks, text and font
 metrics, display introspection, complete offline sprite and collision
 facilities, offline sound, optional video, and the bounded diagnostics package.
