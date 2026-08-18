@@ -175,15 +175,21 @@ Games that need PDV playback assert the optional `Videos` capability.
 `RenderFrame` validates the frame index and reports native decoder errors as
 `VideoOperationError`. `SetContext` borrows a live owned bitmap without taking
 ownership; keep it open until selecting the screen or another bitmap.
-`NewVideoStream` incrementally decodes an already open `File`. The stream
-borrows that file until `Close`; callers select bounded video/audio byte
-buffers, call `Update`, and inspect buffered-frame and byte progress. Its
-`Player` is borrowed from the stream and cannot be closed independently.
-
-In `playdate_videostream`, file source, buffering, update, video-player access,
-frame count, and byte progress are implemented; HTTP/TCP sources are v1.1
-networking. `playdate_video.getContext` is equivalent to the Go wrapper's
-retained target state.
+SDK 3.1.1 declares `playdate_videostream`, but does not document its input
+container, call contract, or HTTP/TCP protocol and ships no fixture or producer.
+Its `setFile` entry point does not accept an ordinary seekable PDV as an offline
+replacement for `loadVideo`: direct official C API testing in the Windows
+Simulator read the complete valid PDV, returned a native video-player pointer
+and no decoder error, but reported zero frames and drew no output. The same
+result occurred through the generated Go bridge. A conservative physical-device
+probe then failed before the native update call: TinyGo 0.41.1 rejected the
+returned stream's dynamic type at its first interface dispatch and entered
+`runtime.nilPanic`. The experimental wrapper was removed rather than exposing a
+Simulator-only contract with no usable source. Treat the complete capability as
+post-v1.0 networking research until Panic documents a source format and protocol
+and both native targets can execute it safely. Games should use `LoadVideo` for
+packaged PDV playback. `playdate_video.getContext` remains equivalent to the Go
+wrapper's retained target state.
 The four-second `examples/video` consumer passed visual and audible acceptance
 in the official Windows Simulator and on a physical Playdate on 2026-08-08.
 This evidence covers synchronized companion audio, pause/resume, looping,

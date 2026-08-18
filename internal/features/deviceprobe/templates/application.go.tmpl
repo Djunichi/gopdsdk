@@ -258,22 +258,6 @@ func bridgeVideoSetContext(uintptr,uintptr) int32
 func bridgeVideoUseScreenContext(uintptr)
 //go:linkname bridgeVideoRenderFrame bridgeVideoRenderFrame
 func bridgeVideoRenderFrame(uintptr,int32) int32
-//go:linkname bridgeNewVideoStream bridgeNewVideoStream
-func bridgeNewVideoStream() uintptr
-//go:linkname bridgeFreeVideoStream bridgeFreeVideoStream
-func bridgeFreeVideoStream(uintptr)
-//go:linkname bridgeVideoStreamSetBufferSize bridgeVideoStreamSetBufferSize
-func bridgeVideoStreamSetBufferSize(uintptr,int32,int32)
-//go:linkname bridgeVideoStreamSetFile bridgeVideoStreamSetFile
-func bridgeVideoStreamSetFile(uintptr,uintptr)
-//go:linkname bridgeVideoStreamVideoPlayer bridgeVideoStreamVideoPlayer
-func bridgeVideoStreamVideoPlayer(uintptr) uintptr
-//go:linkname bridgeVideoStreamUpdate bridgeVideoStreamUpdate
-func bridgeVideoStreamUpdate(uintptr) int32
-//go:linkname bridgeVideoStreamBufferedFrames bridgeVideoStreamBufferedFrames
-func bridgeVideoStreamBufferedFrames(uintptr) int32
-//go:linkname bridgeVideoStreamBytesRead bridgeVideoStreamBytesRead
-func bridgeVideoStreamBytesRead(uintptr) uint32
 //go:linkname bridgeDisplaySetRefreshRateBits bridgeDisplaySetRefreshRateBits
 func bridgeDisplaySetRefreshRateBits(uint32)
 //go:linkname bridgeDisplayWidth bridgeDisplayWidth
@@ -997,10 +981,8 @@ func (playdateContext) DrawRotatedBitmap(bitmap sdkPlaydate.Bitmap,x,y int,degre
 	if err:=sdkRuntime.ValidateBitmapTransform(degrees,centerX,centerY,scaleX,scaleY);err!=nil{return err};handle,err:=sdkRuntime.BitmapHandle(bitmap);if err!=nil{return err};bridgeDrawRotatedBitmapBits(handle,int32(x),int32(y),float32Bits(degrees),float32Bits(centerX),float32Bits(centerY),float32Bits(scaleX),float32Bits(scaleY));return nil
 }
 func videoError(handle uintptr)string{pointer:=bridgeVideoError(handle);if pointer==0{return ""};return cString(pointer)}
-var videoDriver=sdkRuntime.VideoDriver{Info:func(handle uintptr)sdkPlaydate.VideoInfo{var w,h,c,f int32;var r uint32;bridgeVideoInfoBits(handle,&w,&h,&r,&c,&f);return sdkPlaydate.VideoInfo{Width:int(w),Height:int(h),FrameRate:*(*float32)(unsafe.Pointer(&r)),FrameCount:int(c),CurrentFrame:int(f)}},SetContext:func(p,b uintptr)(bool,string){if bridgeVideoSetContext(p,b)==0{return false,videoError(p)};return true,""},UseScreenContext:bridgeVideoUseScreenContext,RenderFrame:func(p uintptr,f int)(bool,string){if bridgeVideoRenderFrame(p,int32(f))==0{return false,videoError(p)};return true,""},Free:bridgeFreeVideo}
+var videoDriver=sdkRuntime.VideoDriver{Info:func(handle uintptr)sdkPlaydate.VideoInfo{var w,h,c,f int32;var r uint32;bridgeVideoInfoBits(handle,&w,&h,&r,&c,&f);return sdkPlaydate.VideoInfo{Width:int(w),Height:int(h),FrameRate:*(*float32)(unsafe.Pointer(&r)),FrameCount:int(c),CurrentFrame:int(f)}},Error:videoError,SetContext:func(p,b uintptr)(bool,string){if bridgeVideoSetContext(p,b)==0{return false,videoError(p)};return true,""},UseScreenContext:bridgeVideoUseScreenContext,RenderFrame:func(p uintptr,f int)(bool,string){if bridgeVideoRenderFrame(p,int32(f))==0{return false,videoError(p)};return true,""},Free:bridgeFreeVideo}
 func(playdateContext)LoadVideo(path string)(sdkPlaydate.VideoPlayer,error){if path==""{return nil,sdkPlaydate.ErrVideoPath};terminated:=path+"\x00";handle:=bridgeLoadVideo(unsafe.StringData(terminated));if handle==0{return nil,sdkPlaydate.ErrVideoLoad};return sdkRuntime.NewVideoPlayer(handle,videoDriver),nil}
-var videoStreamDriver=sdkRuntime.VideoStreamDriver{SetBufferSize:func(p uintptr,v,a int){bridgeVideoStreamSetBufferSize(p,int32(v),int32(a))},SetFile:bridgeVideoStreamSetFile,VideoPlayer:bridgeVideoStreamVideoPlayer,Update:func(p uintptr)bool{return bridgeVideoStreamUpdate(p)!=0},BufferedFrames:func(p uintptr)int{return int(bridgeVideoStreamBufferedFrames(p))},BytesRead:bridgeVideoStreamBytesRead,Free:bridgeFreeVideoStream}
-func(playdateContext)NewVideoStream(source sdkPlaydate.File)(sdkPlaydate.VideoStream,error){h:=bridgeNewVideoStream();if h==0{return nil,sdkPlaydate.ErrVideoUnavailable};stream,err:=sdkRuntime.NewVideoStream(h,source,videoStreamDriver,videoDriver);if err!=nil{bridgeFreeVideoStream(h);return nil,err};return stream,nil}
 func drawPrimitive(kind, x1, y1, x2, y2, x3, y3, lineWidth int, startAngle, endAngle float32, paint sdkPlaydate.Paint) { solid, pattern, patterned := paint.Components(); flag := int32(0); if patterned { flag = 1 }; bridgeDrawPrimitive(int32(kind),int32(x1),int32(y1),int32(x2),int32(y2),int32(x3),int32(y3),int32(lineWidth),int32(solid),float32Bits(startAngle),float32Bits(endAngle),uintptr(unsafe.Pointer(&pattern[0])),flag) }
 func (playdateContext) DrawLine(x1,y1,x2,y2,width int, paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,1,1,0,0); err!=nil{return err}; drawPrimitive(0,x1,y1,x2,y2,0,0,width,0,0,paint); return nil }
 func (playdateContext) DrawRect(x,y,width,height int, paint sdkPlaydate.Paint) error { if err:=sdkRuntime.ValidatePrimitiveGeometry(width,height,1,0,0); err!=nil{return err}; drawPrimitive(1,x,y,width,height,0,0,1,0,0,paint); return nil }

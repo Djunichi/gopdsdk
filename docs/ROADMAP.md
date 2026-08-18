@@ -119,9 +119,14 @@ and system releases.
 
 ### P11.3 — video, JSON, and residual audit
 
-- Implemented the offline `playdate_videostream` slice with a borrowed file,
-  bounded video/audio buffers, update, decoded-player access, buffered-frame
-  count, and byte progress. HTTP/TCP sources remain v1.1 networking.
+- Audited `playdate_videostream` and found no usable documented offline source.
+  SDK 3.1.1 reads an ordinary PDV file without producing frames or an error,
+  and ships no streaming fixture, producer, container specification, or
+  protocol documentation. Classify the complete surface, including `setFile`,
+  as post-v1.0 `v1.1 networking` research until Panic publishes a usable source
+  contract. The experimental wrapper was removed after its first interface
+  method call also produced a reproducible TinyGo 0.41.1 `runtime.nilPanic` on
+  physical hardware; packaged PDV playback remains covered by `VideoPlayer`.
 - Provide a device-safe Go JSON codec. Standard-library `encoding/json` was
   rejected by the conservative device link gate because it retains reflection,
   defer, and recover runtime symbols.

@@ -23,6 +23,7 @@ type player struct {
 func (*player) Info() (playdate.VideoInfo, error) {
 	return playdate.VideoInfo{Width: 160, Height: 96, FrameRate: 10, FrameCount: 12}, nil
 }
+func (*player) LastError() (string, error)           { return "", nil }
 func (p *player) SetContext(b playdate.Bitmap) error { p.target = b; p.screen = false; return nil }
 func (p *player) UseScreenContext() error            { p.screen = true; return nil }
 func (p *player) RenderFrame(f int) error            { p.frame = f; return nil }
@@ -82,10 +83,6 @@ func (*context) LoadSoundEffect(string) (playdate.SoundEffect, error)           
 func (c *context) LoadFilePlayer(string) (playdate.FilePlayer, error)               { return c.audio, nil }
 func (c *context) LoadSamplePlayer(string) (playdate.SamplePlayer, error)           { return c.audio, nil }
 func (c *context) LoadVideo(path string) (playdate.VideoPlayer, error)              { return c.player, nil }
-func (*context) NewVideoStream(playdate.File) (playdate.VideoStream, error) {
-	return nil, playdate.ErrVideoUnavailable
-}
-
 func TestVideoPlaybackTargetsAndCleanup(t *testing.T) {
 	p := &player{}
 	a := &audio{}

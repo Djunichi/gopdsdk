@@ -33,18 +33,6 @@ func NewOwnedFile(handle uintptr, filePath string, driver FileDriver) playdate.F
 	return &ownedFile{handle: handle, path: filePath, driver: driver}
 }
 
-func fileHandle(value playdate.File) (uintptr, *ownedFile, error) {
-	file, ok := value.(*ownedFile)
-	if !ok {
-		return 0, nil, playdate.ErrVideoSource
-	}
-	handle, err := file.nativeHandle()
-	if err != nil {
-		return 0, nil, playdate.ErrVideoSource
-	}
-	return handle, file, nil
-}
-
 func (file *ownedFile) nativeHandle() (uintptr, error) {
 	if file == nil || file.closed || file.handle == 0 {
 		return 0, playdate.ErrFileClosed
@@ -1597,6 +1585,7 @@ func OwnedBitmapTableHandle(table playdate.BitmapTable) (uintptr, error) {
 // VideoDriver contains platform operations for one native video player.
 type VideoDriver struct {
 	Info             func(uintptr) playdate.VideoInfo
+	Error            func(uintptr) string
 	SetContext       func(uintptr, uintptr) (bool, string)
 	UseScreenContext func(uintptr)
 	RenderFrame      func(uintptr, int) (bool, string)
@@ -1609,15 +1598,10 @@ type VideoPlayer struct {
 	driver  VideoDriver
 	context *Bitmap
 	closed  bool
-	owned   bool
 }
 
 // NewVideoPlayer wraps an owned native PDV decoder.
 func NewVideoPlayer(handle uintptr, driver VideoDriver) *VideoPlayer {
-	return &VideoPlayer{handle: handle, driver: driver, owned: true}
-}
-
-func newBorrowedVideoPlayer(handle uintptr, driver VideoDriver) *VideoPlayer {
 	return &VideoPlayer{handle: handle, driver: driver}
 }
 
@@ -1632,6 +1616,12 @@ func (p *VideoPlayer) Info() (playdate.VideoInfo, error) {
 		return playdate.VideoInfo{}, err
 	}
 	return p.driver.Info(p.handle), nil
+}
+func (p *VideoPlayer) LastError() (string, error) {
+	if err := p.live(); err != nil {
+		return "", err
+	}
+	return p.driver.Error(p.handle), nil
 }
 func (p *VideoPlayer) SetContext(bitmap playdate.Bitmap) error {
 	if err := p.live(); err != nil {
@@ -1681,109 +1671,10 @@ func (p *VideoPlayer) Close() error {
 	if err := p.live(); err != nil {
 		return err
 	}
-	if !p.owned {
-		return playdate.ErrVideoPlayerBorrowed
-	}
 	p.driver.Free(p.handle)
 	p.closed = true
 	p.handle = 0
 	p.context = nil
-	return nil
-}
-
-// VideoStreamDriver contains platform operations for one native stream player.
-type VideoStreamDriver struct {
-	SetBufferSize  func(uintptr, int, int)
-	SetFile        func(uintptr, uintptr)
-	VideoPlayer    func(uintptr) uintptr
-	Update         func(uintptr) bool
-	BufferedFrames func(uintptr) int
-	BytesRead      func(uintptr) uint32
-	Free           func(uintptr)
-}
-
-type videoStream struct {
-	handle      uintptr
-	driver      VideoStreamDriver
-	videoDriver VideoDriver
-	source      *ownedFile
-	player      *VideoPlayer
-	closed      bool
-}
-
-// NewVideoStream wraps a native incremental PDV decoder and borrows source.
-func NewVideoStream(handle uintptr, source playdate.File, driver VideoStreamDriver, videoDriver VideoDriver) (playdate.VideoStream, error) {
-	fileHandle, file, err := fileHandle(source)
-	if err != nil {
-		return nil, err
-	}
-	s := &videoStream{handle: handle, driver: driver, videoDriver: videoDriver, source: file}
-	driver.SetFile(handle, fileHandle)
-	return s, nil
-}
-
-func (s *videoStream) live() error {
-	if s == nil || s.closed || s.handle == 0 {
-		return playdate.ErrVideoStreamClosed
-	}
-	if _, err := s.source.nativeHandle(); err != nil {
-		return playdate.ErrVideoSource
-	}
-	return nil
-}
-func (s *videoStream) SetBufferSize(videoBytes, audioBytes int) error {
-	if err := s.live(); err != nil {
-		return err
-	}
-	if videoBytes < 0 || audioBytes < 0 {
-		return playdate.ErrVideoBufferSize
-	}
-	s.driver.SetBufferSize(s.handle, videoBytes, audioBytes)
-	return nil
-}
-func (s *videoStream) Player() (playdate.VideoPlayer, error) {
-	if err := s.live(); err != nil {
-		return nil, err
-	}
-	if s.player == nil {
-		h := s.driver.VideoPlayer(s.handle)
-		if h == 0 {
-			return nil, playdate.ErrVideoUnavailable
-		}
-		s.player = newBorrowedVideoPlayer(h, s.videoDriver)
-	}
-	return s.player, nil
-}
-func (s *videoStream) Update() (bool, error) {
-	if err := s.live(); err != nil {
-		return false, err
-	}
-	return s.driver.Update(s.handle), nil
-}
-func (s *videoStream) BufferedFrames() (int, error) {
-	if err := s.live(); err != nil {
-		return 0, err
-	}
-	return s.driver.BufferedFrames(s.handle), nil
-}
-func (s *videoStream) BytesRead() (uint32, error) {
-	if err := s.live(); err != nil {
-		return 0, err
-	}
-	return s.driver.BytesRead(s.handle), nil
-}
-func (s *videoStream) Close() error {
-	if err := s.live(); err != nil {
-		return err
-	}
-	s.driver.Free(s.handle)
-	s.closed = true
-	s.handle = 0
-	if s.player != nil {
-		s.player.closed = true
-		s.player.handle = 0
-	}
-	s.source = nil
 	return nil
 }
 
@@ -2810,14 +2701,6 @@ func (context *applicationContext) LoadVideo(path string) (playdate.VideoPlayer,
 		return nil, playdate.ErrVideoPath
 	}
 	return videos.LoadVideo(path)
-}
-
-func (context *applicationContext) NewVideoStream(source playdate.File) (playdate.VideoStream, error) {
-	videos, ok := context.Context.(playdate.Videos)
-	if !ok {
-		return nil, playdate.ErrVideoUnavailable
-	}
-	return videos.NewVideoStream(source)
 }
 
 func (context *applicationContext) display() (playdate.Display, error) {

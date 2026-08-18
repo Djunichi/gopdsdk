@@ -1353,6 +1353,7 @@ func TestVideoPlayerOwnershipValidationAndErrors(t *testing.T) {
 		Info: func(uintptr) playdate.VideoInfo {
 			return playdate.VideoInfo{Width: 80, Height: 60, FrameRate: 20, FrameCount: 3}
 		},
+		Error:            func(uintptr) string { return "decoder status" },
 		SetContext:       func(player, context uintptr) (bool, string) { return player == 9 && context == 7, "bad context" },
 		UseScreenContext: func(uintptr) {},
 		RenderFrame:      func(_ uintptr, frame int) (bool, string) { return frame != 1, "decode failed" },
@@ -1360,6 +1361,9 @@ func TestVideoPlayerOwnershipValidationAndErrors(t *testing.T) {
 	})
 	if info, err := player.Info(); err != nil || info.FrameCount != 3 {
 		t.Fatalf("Info() = %+v, %v", info, err)
+	}
+	if message, err := player.LastError(); err != nil || message != "decoder status" {
+		t.Fatalf("LastError() = %q, %v", message, err)
 	}
 	if err := player.SetContext(bitmap); err != nil {
 		t.Fatal(err)
@@ -1400,56 +1404,6 @@ func (c videoContext) LoadVideo(path string) (playdate.VideoPlayer, error) {
 		return nil, errors.New("wrong path")
 	}
 	return c.player, nil
-}
-func (c videoContext) NewVideoStream(playdate.File) (playdate.VideoStream, error) {
-	return nil, playdate.ErrVideoUnavailable
-}
-
-func TestVideoStreamOwnershipBufferingAndProgress(t *testing.T) {
-	file := NewOwnedFile(4, "movie.pdv", FileDriver{})
-	var setFile uintptr
-	var videoBytes, audioBytes int
-	freed := 0
-	stream, err := NewVideoStream(8, file, VideoStreamDriver{
-		SetFile:        func(_ uintptr, f uintptr) { setFile = f },
-		SetBufferSize:  func(_ uintptr, v, a int) { videoBytes, audioBytes = v, a },
-		VideoPlayer:    func(uintptr) uintptr { return 9 },
-		Update:         func(uintptr) bool { return true },
-		BufferedFrames: func(uintptr) int { return 3 },
-		BytesRead:      func(uintptr) uint32 { return 1200 },
-		Free:           func(uintptr) { freed++ },
-	}, VideoDriver{})
-	if err != nil || setFile != 4 {
-		t.Fatalf("NewVideoStream = %v, %v", setFile, err)
-	}
-	if err := stream.SetBufferSize(4096, 2048); err != nil || videoBytes != 4096 || audioBytes != 2048 {
-		t.Fatalf("SetBufferSize = %d,%d, %v", videoBytes, audioBytes, err)
-	}
-	if err := stream.SetBufferSize(-1, 0); !errors.Is(err, playdate.ErrVideoBufferSize) {
-		t.Fatalf("negative buffer = %v", err)
-	}
-	player, err := stream.Player()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := player.Close(); !errors.Is(err, playdate.ErrVideoPlayerBorrowed) {
-		t.Fatalf("borrowed close = %v", err)
-	}
-	if drew, err := stream.Update(); err != nil || !drew {
-		t.Fatalf("Update = %v,%v", drew, err)
-	}
-	if frames, err := stream.BufferedFrames(); err != nil || frames != 3 {
-		t.Fatalf("BufferedFrames = %d,%v", frames, err)
-	}
-	if bytes, err := stream.BytesRead(); err != nil || bytes != 1200 {
-		t.Fatalf("BytesRead = %d,%v", bytes, err)
-	}
-	if err := stream.Close(); err != nil || freed != 1 {
-		t.Fatalf("Close = %d,%v", freed, err)
-	}
-	if _, err := player.Info(); !errors.Is(err, playdate.ErrVideoClosed) {
-		t.Fatalf("player after stream close = %v", err)
-	}
 }
 
 type videoCapabilityGame struct{ got playdate.VideoPlayer }

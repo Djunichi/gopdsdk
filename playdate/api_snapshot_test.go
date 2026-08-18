@@ -395,9 +395,8 @@ type TwoPoleFilter interface{SetFrequency(float32) error; SetFrequencyModulator(
 type VariableRatePlayer interface{Rate() (float32, error); SetRate(rate float32) error}
 type VideoInfo struct{Width int; Height int; FrameRate float32; FrameCount int; CurrentFrame int}
 type VideoOperationError struct{Operation string; Message string}
-type VideoPlayer interface{Close() error; Info() (VideoInfo, error); RenderFrame(frame int) error; SetContext(Bitmap) error; UseScreenContext() error}
-type VideoStream interface{BufferedFrames() (int, error); BytesRead() (uint32, error); Close() error; Player() (VideoPlayer, error); SetBufferSize(videoBytes int, audioBytes int) error; Update() (bool, error)}
-type Videos interface{LoadVideo(path string) (VideoPlayer, error); NewVideoStream(source File) (VideoStream, error)}
+type VideoPlayer interface{Close() error; Info() (VideoInfo, error); LastError() (string, error); RenderFrame(frame int) error; SetContext(Bitmap) error; UseScreenContext() error}
+type Videos interface{LoadVideo(path string) (VideoPlayer, error)}
 type Waveform uint8
 var ErrAnimationConfig error
 var ErrAudioBufferLength error
@@ -512,13 +511,9 @@ var ErrSystemEnvironmentUnavailable error
 var ErrTileMapBitmap error
 var ErrTileMapConfig error
 var ErrTileMapDraw error
-var ErrVideoBufferSize error
 var ErrVideoClosed error
 var ErrVideoFrame error
 var ErrVideoLoad error
 var ErrVideoPath error
-var ErrVideoPlayerBorrowed error
-var ErrVideoSource error
-var ErrVideoStreamClosed error
 var ErrVideoUnavailable error
 `

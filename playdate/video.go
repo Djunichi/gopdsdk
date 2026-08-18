@@ -13,25 +13,14 @@ type VideoInfo struct {
 // player is closed.
 type VideoPlayer interface {
 	Info() (VideoInfo, error)
+	LastError() (string, error)
 	SetContext(Bitmap) error
 	UseScreenContext() error
 	RenderFrame(frame int) error
 	Close() error
 }
 
-// VideoStream incrementally decodes a PDV file with bounded video and audio
-// buffers. The source file is borrowed and must remain open until Close.
-type VideoStream interface {
-	SetBufferSize(videoBytes, audioBytes int) error
-	Player() (VideoPlayer, error)
-	Update() (bool, error)
-	BufferedFrames() (int, error)
-	BytesRead() (uint32, error)
-	Close() error
-}
-
 // Videos is the optional specialized video capability.
 type Videos interface {
 	LoadVideo(path string) (VideoPlayer, error)
-	NewVideoStream(source File) (VideoStream, error)
 }

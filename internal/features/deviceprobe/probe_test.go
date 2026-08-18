@@ -44,7 +44,7 @@ func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 
 func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
-	for _, want := range []string{"bridgeLoadVideo", "bridgeVideoRenderFrame", "sdkRuntime.NewVideoPlayer", "bridgeNewVideoStream", "bridgeVideoStreamBytesRead", "sdkRuntime.NewVideoStream"} {
+	for _, want := range []string{"bridgeLoadVideo", "bridgeVideoRenderFrame", "sdkRuntime.NewVideoPlayer"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
 		}

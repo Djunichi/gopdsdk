@@ -6,11 +6,24 @@ that out.
 
 ## Unreleased
 
-- Completed P11.3's offline media surface with an explicitly owned incremental
-  video stream. Streams borrow an open Playdate file, accept bounded video and
-  audio buffer sizes, expose update/buffered-frame/byte progress, and return a
-  borrowed video player that cannot be freed independently. Both generated
-  native adapters and `NewApplication` forward the capability.
+- Audited the undocumented SDK 3.1.1 `playdate_videostream` file source. On
+  2026-08-18 a direct C API diagnostic in the official Windows Simulator and
+  the generated Go adapter produced the same result for the repository-owned
+  valid PDV: all 8,155 bytes were read, a native video-player pointer existed,
+  `getError` returned no error, but `update` drew nothing and the decoder
+  reported zero frames and zero buffered frames. Ordinary PDV playback remains
+  supported through `LoadVideo`.
+- Removed the experimental public `VideoStream`, its errors, runtime ownership
+  layer, generated native bridges, and diagnostic consumer. A conservative
+  TinyGo 0.41.1 physical-device build passed the device link gate with 284,460
+  bytes of static RAM, but both launches crashed at the first `VideoStream`
+  interface method dispatch. The two fresh device crash records symbolize to
+  `runtime.nilPanic`/`runtime.runtimePanicAt`; native `videostream->update` was
+  not reached. Videostream is now post-v1.0 `v1.1 networking` research until a
+  source container and protocol are documented and both adapters can execute
+  a real stream safely. A valid streaming-source Simulator run, native device
+  behavior, soak, memory growth, and unchanged device-log gates remain
+  unverified.
 - Hardened the P11.2 scoreboard callback boundary on both native adapters.
   SDK-owned results are copied during native completion and game callbacks are
   deferred through a fixed four-slot queue to the next update. One request per
