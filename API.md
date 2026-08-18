@@ -1,12 +1,23 @@
 # Public API
 
-This document describes the released `v0.11.0` public contract. The
+This document describes the stable `v1.0.0` public contract. The
 contract includes advanced drawing, bitmap data and masks, text and font
 metrics, display introspection, complete offline sprite and collision
 facilities, offline sound, optional video, and the bounded diagnostics package.
-The module is still pre-v1: minor releases may make intentional breaking
-changes, which must be called out in release notes. Patch releases preserve the
-documented API and behavior.
+The `v1.x` line follows semantic versioning: minor releases may add
+backward-compatible API and behavior, and patch releases may make compatible
+fixes. Intentional source- or behavior-breaking changes require a new major
+version. Security, correctness, official-SDK, or toolchain changes that cannot
+be made compatibly are documented explicitly with their migration path and
+evidence rather than silently weakening an existing contract.
+
+Public API is the exported surface of `playdate` and its documented
+subpackages, plus the documented CLI commands and flags. Deprecated API remains
+available throughout `v1.x` unless retaining it would violate a security or
+correctness guarantee; deprecations name a replacement in Go documentation and
+the changelog. Compatibility applies to documented behavior and ownership,
+error identity, callback ordering and lifetime contracts, not to unspecified
+implementation details or exact error strings.
 
 Applications import the native contract from
 `github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional

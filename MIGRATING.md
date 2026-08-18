@@ -1,9 +1,38 @@
-# Migrating to v0.11.0
+# Migrating to v1.0.0
 
-`v0.11.0` adds the bounded `playdate/json` package and hardens scoreboard
-completion delivery. Existing v0.10 games can update their module requirement
-and continue unchanged unless they used the unreleased experimental video-stream
-surface described below.
+`v1.0.0` freezes the public offline-game contract accumulated through
+`v0.11.0` and adds bounded cooperative scheduling, the conservative-device
+normal-return `defer` and reflection subsets, nested audio-channel routing,
+complete LFO controls, and borrowed dry/wet channel-level signals. No released
+`v0.11.0` API is intentionally removed or renamed, so existing games can update
+their module requirement without source changes.
+
+## Stable v1 contract
+
+From `v1.0.0`, compatible additions may ship in minor releases and compatible
+fixes in patch releases. Breaking documented source or behavior changes require
+a new major version. Deprecated API remains for the `v1.x` line unless a
+security or correctness issue makes that impossible; every deprecation names a
+replacement and migration path.
+
+The stable contract covers documented ownership, sentinel and typed errors,
+callback ordering and lifetime, CLI commands and flags, and the exported
+`playdate` packages. It does not expand the device Go profile: goroutines,
+blocking channels and select, `recover`, finalizers, application cgo, and the
+documented unsupported standard-library paths remain unavailable. Use
+`playdate/schedule`, explicit ownership and error returns, and the bounded
+replacement packages described in [API.md](API.md).
+
+## New v1 facilities
+
+- Use `playdate/schedule` for fixed-capacity frame-spanning tasks, delayed work,
+  bounded queues, and deterministic multi-queue polling.
+- Conservative device builds may use documented normal-return `defer`; panic
+  remains a fail-stop trap and does not unwind deferred calls.
+- Only the reflection operations listed in [API.md](API.md) are accepted by the
+  fail-closed device link gate.
+- Audio channels expose borrowed outputs plus dry/wet level signals. Retained
+  wrappers expire when their owner closes and never transfer native ownership.
 
 ## System control
 
@@ -33,5 +62,5 @@ post-v1.0 `v1.1 networking` research.
 ## Published-module verification
 
 After publication, remove any local `replace`, require
-`github.com/Djunichi/gopdsdk v0.11.0`, and
+`github.com/Djunichi/gopdsdk v1.0.0`, and
 repeat the clean module-proxy check from [RELEASING.md](RELEASING.md).

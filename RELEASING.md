@@ -1,7 +1,6 @@
 # Release procedure
 
-The latest stable release is `v0.11.0`. Its tag, hosted release, and Go module
-proxy resolution were verified on 2026-08-18. Go module versions come from Git
+The latest stable release is `v1.0.0`. Go module versions come from Git
 tags; no separate VERSION file is maintained. The procedure below applies to
 the next planned release selected from the roadmap.
 
@@ -48,3 +47,9 @@ proxy availability or tag contents.
 
 Creating a commit, tag, push, or hosted release is an explicit publishing
 action and is not part of routine implementation verification.
+
+For the `v1.x` line, release notes must classify public API changes as compatible
+additions, deprecations, or fixes. A deprecation names its replacement and
+remains available throughout `v1.x` unless an explicitly documented security or
+correctness exception applies. Source- or behavior-breaking changes to the
+documented stable contract require a new major version.

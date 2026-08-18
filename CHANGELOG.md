@@ -1,10 +1,33 @@
 # Changelog
 
-All notable release changes are documented here. The module remains pre-v1;
-minor releases may intentionally change the public API when release notes call
-that out.
+All notable release changes are documented here. Beginning with `v1.0.0`, the
+documented public API and behavior follow semantic versioning. Deprecations
+remain available throughout `v1.x` unless a security or correctness guarantee
+requires an explicitly documented exception.
 
 ## Unreleased
+
+## v1.0.0 (2026-08-18)
+
+- Released the stable `v1.0.0` contract. The exported `playdate` APIs,
+  ownership and error identities, callback ordering and lifetime rules, CLI
+  commands and flags, compatibility matrix, migration guidance, support policy,
+  and deprecation policy are frozen for the `v1.x` line.
+- The release passed Windows formatting, the full Go suite, vet,
+  `git diff --check`, the
+  external-consumer CLI tests, official SDK 3.1.1 Simulator and conservative
+  device build probes, and read-only Playdate detection on COM3. GitHub Actions
+  run 161 passed native jobs on Windows, macOS, and Linux plus the Linux race
+  detector. The user confirmed the final combined Simulator interaction and
+  physical-device regression, conservative-GC soak, bounded memory and resource
+  behavior, lifecycle cleanup, and unchanged post-run `crashlog.txt` and
+  `errorlog.txt` checks. Exact additional measurements were not recorded.
+- From the release worktree, `examples/schedule`,
+  `examples/defercleanup`, `examples/reflection`, and `examples/synthesis` all
+  pass official SDK 3.1.1 Simulator builds and conservative hard-float device
+  builds. Their device static-RAM/ELF/PDX measurements are respectively
+  283,324/1,198,472/48,898 bytes, 284,156/1,377,284/67,994 bytes,
+  282,940/1,289,892/59,495 bytes, and 285,856/1,539,220/61,460 bytes.
 
 - Added borrowed `AudioChannel.DryLevelSignal` and `WetLevelSignal` values for
   modulation driven by the channel level before and after effects. Explicit
