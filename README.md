@@ -1,5 +1,9 @@
 # gopdsdk
 
+<p align="center">
+  <img src="docs/assets/gopdsdk-logo.svg" alt="gopdsdk" width="720">
+</p>
+
 An independent Go SDK and toolchain for building Playdate applications.
 
 The latest release is **`v0.9.0`**. It completes offline sound, including owned
@@ -28,11 +32,11 @@ relevant probe succeeds.
 
 ## Support status
 
-| Host | Native CI | Official SDK/Simulator | Device build/deploy |
-| --- | --- | --- | --- |
-| Windows | passing | verified with SDK 3.1.1 | verified on physical hardware |
-| macOS | passing | unverified | unverified |
-| Linux | passing | unverified | unverified |
+| Host    | Native CI | Official SDK/Simulator  | Device build/deploy           |
+| ------- | --------- | ----------------------- | ----------------------------- |
+| Windows | passing   | verified with SDK 3.1.1 | verified on physical hardware |
+| macOS   | passing   | unverified              | unverified                    |
+| Linux   | passing   | unverified              | unverified                    |
 
 Native CI proves Go behavior, path policy, CLI composition, and external-module
 consumption. It does not prove that an official Simulator starts or that USB
