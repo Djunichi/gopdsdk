@@ -421,6 +421,12 @@ func TestUnsupportedRuntimeSymbolsRejectsUnsupportedSubset(t *testing.T) {
 	if got := unsupportedRuntimeSymbols("00000100 t runtime/interrupt.In\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
 		t.Fatalf("unsupportedRuntimeSymbols(adapted interrupt query) = %v, want none", got)
 	}
+	if got := unsupportedRuntimeSymbols("00000100 t runtime.setupDeferFrame\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
+		t.Fatalf("unsupportedRuntimeSymbols(conservative defer) = %v, want none", got)
+	}
+	if got := unsupportedRuntimeSymbols("00000100 t runtime.setupDeferFrame\n00000110 t runtime._recover\n", buildplan.DeviceMemoryConservative); strings.Join(got, ",") != "runtime._recover" {
+		t.Fatalf("unsupportedRuntimeSymbols(conservative recover) = %v, want runtime._recover", got)
+	}
 	if got := unsupportedRuntimeSymbols("00000100 t internal/reflectlite.Value.Kind\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
 		t.Fatalf("unsupportedRuntimeSymbols(internal reflectlite) = %v, want none", got)
 	}

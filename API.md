@@ -587,13 +587,26 @@ tickers are unsupported. Their bounded sequential use cases are replaced by
 `playdate/schedule`. `fmt` is replaced by typed `strconv` and bounded writers,
 while `encoding/json` is replaced by `playdate/json`.
 
-Normal-return `defer` and the audited reflection inspection, extraction,
-conversion, and mutation subset have been accepted for future enablement but
-remain unavailable through the production device linker. `recover`, finalizers,
-application cgo, dynamic reflection calls and construction, and application
-runtime-control hooks are unsupported. Allocation inside `Update` is allowed
-but remains workload- and hardware-tested. Future enablement and bounded
-replacements are tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+Normal-return `defer` is supported by conservative device builds. This includes
+normal and early returns, LIFO execution, argument evaluation at registration,
+named-result mutation, and repeated registration. Dynamic registration,
+including `defer` in a loop, can allocate and should not be used in update hot
+paths without measuring heap growth. Device builds use `-panic trap`: panic is
+terminal and does not unwind the stack or run deferred cleanup.
+
+The audited reflection inspection, extraction, conversion, and mutation subset
+has been accepted for future enablement but remains unavailable through the
+production device linker. `recover`, finalizers, application cgo, dynamic
+reflection calls and construction, and application runtime-control hooks are
+unsupported. Allocation inside `Update` is allowed but remains workload- and
+hardware-tested. Future enablement and bounded replacements are tracked in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
+Pure `time.Duration` value, parsing, and formatting operations are supported.
+This does not enable `time.Now`, sleep, timers, or tickers; use Playdate-clock
+tasks from `playdate/schedule` for those cases. Duration formatting can retain
+normal-return defer and allocate, so measure it before use in an update hot
+path.
 
 Simulator compilation alone does not prove device compatibility for a standard
 library package. See [COMPATIBILITY.md](COMPATIBILITY.md) for the evidence

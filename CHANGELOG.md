@@ -6,6 +6,24 @@ that out.
 
 ## Unreleased
 
+- Enabled normal-return `defer` for conservative device builds while retaining
+  the linked-symbol rejection for `recover` and the legacy non-collecting
+  profile. Added deterministic coverage for normal return, early return, LIFO
+  order, argument evaluation, named results, repeated dynamic defer, and the
+  audited `time.Duration` parse/format fixture.
+- Added `examples/defercleanup`, a repository-owned cleanup and repeated-defer
+  soak consumer. Pure-Go tests, official Windows SDK 3.1.1 Simulator build and
+  launch, and the TinyGo 0.41.1 conservative device build pass; the device
+  artifact uses 283,900 bytes of static RAM and produces a 1,367,000-byte ELF
+  and a 67,781-byte PDX. On 2026-08-18 a user-provided Simulator screenshot
+  confirmed `PASS` for defer semantics, 1,288 cleanup calls, duration parsing
+  and formatting, and the current memory bound. The screenshot preceded soak
+  completion. The same conservative artifact was installed on COM3 and launched
+  on a physical Playdate on 2026-08-18. The user confirmed all five physical
+  `PASS` markers for defer semantics, repeated resource cleanup, duration
+  parsing and formatting, bounded memory growth, and the completed 60-second
+  soak. The user also confirmed that the post-run `crashlog.txt` and
+  `errorlog.txt` remained unchanged.
 - Added `playdate/schedule`, a stackless cooperative scheduler with fixed task
   capacity, deterministic FIFO frame ordering, cancellation-safe task IDs,
   explicit yield/completion, wrap-safe delayed/deadline/repeating work, an

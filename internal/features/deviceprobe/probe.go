@@ -498,8 +498,10 @@ func strongUndefinedSymbols(output string) []string {
 
 func unsupportedRuntimeSymbols(output string, memory buildplan.DeviceMemoryStrategy) []string {
 	var symbols []string
+	if memory != buildplan.DeviceMemoryConservative && strings.Contains(output, "runtime.setupDeferFrame") {
+		symbols = append(symbols, "runtime.setupDeferFrame")
+	}
 	for _, forbidden := range []string{
-		"runtime.setupDeferFrame",
 		"runtime._recover",
 		"runtime.SetFinalizer",
 		"runtime.setFinalizer",

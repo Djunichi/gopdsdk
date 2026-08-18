@@ -166,6 +166,20 @@ were not recorded.
 
 ### P12.2 — normal-return `defer`
 
+Complete. The conservative-only linked-symbol gate, deterministic semantic
+fixtures, A.11 duration parse/format fixture, and repository-owned cleanup and
+repeated-defer soak consumer are implemented. Pure-Go tests, official Windows
+SDK 3.1.1 Simulator build and launch, and the TinyGo 0.41.1 conservative device
+build pass. On 2026-08-18 a user-provided Simulator screenshot confirmed
+`PASS` for defer semantics, 1,288 cleanup calls, duration parsing and
+formatting, and the current memory bound; its `Soak` marker was not yet
+complete. The same conservative artifact was installed on COM3 and launched on
+a physical Playdate on 2026-08-18. The user confirmed all five physical `PASS`
+markers for defer semantics, repeated resource cleanup, duration parsing and
+formatting, bounded memory growth, and the completed 60-second soak. The user
+also confirmed that the post-run `crashlog.txt` and `errorlog.txt` remained
+unchanged.
+
 Enable the physically verified normal-return `defer` subset for conservative
 device builds without enabling `recover` or promising panic unwinding.
 
