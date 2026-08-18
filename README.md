@@ -6,32 +6,27 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
-Device-safe JSON is available from `playdate/json`. It provides bounded,
-reflection-free decode and streaming encode with explicit byte, depth, node,
-and string limits; `examples/jsoncodec` demonstrates packaged-file decoding and
-fixed-buffer encoding on the conservative device profile.
+gopdsdk provides a stable public Go API for creating complete offline Playdate
+games without a game-owned C bridge or imports from internal packages. It
+covers graphics, sprites and collisions, input, system integration, files and
+persistence, video, diagnostics, and the complete offline audio surface. Native
+resources have explicit ownership and lifecycle contracts, while callbacks and
+frame-spanning work use bounded, device-aware designs.
 
-The released **`v1.0.0`** completes the offline SDK contract, including
-bounded cooperative scheduling, normal-return `defer`, the audited public
-reflection subset, nested audio routing, complete LFO controls, and borrowed
-channel-level modulation signals. The public API is snapshot-tested and
-documented as the stable `v1.x` contract. Hardware evidence varies by feature
-and is reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The
-official Playdate C API is the normative source; third-party
-projects, including pdgo, may be studied only as behavioral and product
-references. Their implementation is not copied.
+The accompanying `gopdsdk` CLI owns the development workflow: it can inspect a
+host, create a project, build and package games for the official Simulator or a
+physical Playdate, launch them, deploy through USB, and retrieve device logs.
+Projects remain ordinary Go modules, so game logic can be tested with the Go
+toolchain before target-specific compilation.
 
-The target matrix is Windows, macOS, and Linux. Host policy selects `.dll`,
-`.dylib`, or `.so`, official SDK tool names, native compiler candidates, and
-Simulator layout. GitHub Actions executes the pure Go and
-external-consumer CLI suite natively on all three hosts. Windows is additionally
-verified with the official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
-Linux SDK/Simulator/device execution remain explicitly unverified.
-
-The exact `v1.0.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
-TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
-solely by version number: `doctor` reports them as `UNVERIFIED` until the
-relevant probe succeeds.
+Device builds use a documented sequential Go profile designed around
+Playdate's memory and callback constraints. Bounded packages such as
+`playdate/schedule`, `playdate/json`, `playdate/store`, and
+`playdate/diagnostics` provide practical replacements for desktop-runtime
+facilities that do not fit the device. Focused examples demonstrate each public
+capability, and [API.md](API.md) defines the stable contract. Supported hosts,
+toolchains, target evidence, and known limitations are tracked separately in
+[COMPATIBILITY.md](COMPATIBILITY.md).
 
 ## Support status
 
