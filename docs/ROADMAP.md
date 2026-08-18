@@ -1,8 +1,8 @@
 # Product roadmap
 
-Status: `v0.10.0` declared; publication is pending. The remaining offline
-official-SDK capability gaps are allocated through `v0.12.0`, followed by the
-`v1.0.0` contract release, updated 2026-08-17.
+Status: `v0.11.0` declared; publication is pending. The remaining device Go
+profile work is allocated to `v0.12.0`, followed by the `v1.0.0` contract
+release, updated 2026-08-18.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -52,7 +52,6 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P11 | `v0.11.0` | Remaining offline filesystem, scoreboards, and media gaps | In progress |
 | P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | Planned |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
 
@@ -89,55 +88,6 @@ both native contexts, deterministic tests, a repository-owned acceptance
 consumer, official Simulator integration, device build, and applicable physical
 device behavior. Callback APIs additionally require bounded queues, no unsafe
 re-entry into Go, termination suppression, and overflow behavior.
-
-## P11 — remaining offline services and media — `v0.11.0`
-
-P11 closes residual subsystem gaps after the focused graphics, sprite, sound,
-and system releases.
-
-### P11.1 — filesystem completion
-
-- Completed: `io.Seeker` preserves the official current-position behavior by
-  returning `tell` after a successful native seek, including
-  `Seek(0, io.SeekCurrent)`, so no separate public position method is needed.
-- Completed: `FileOperationError` is the remaining filesystem diagnostic needed
-  for classification. Both adapters continue copying transient `geterr` text
-  only at the failing operation boundary and never expose or retain its pointer.
-
-### P11.2 — scoreboards acceptance
-
-- Retain scoreboards as the sole pre-1.0 online exception already present in
-  the SDK. Implemented gates defer copied native completions through a fixed
-  four-slot update queue, allow one pending request per operation kind, reject
-  immediate request failures, and suppress queued or late completions after
-  termination.
-- Asynchronous failure and sequential-request interaction passed in the
-  Simulator and on a physical Playdate. Successful live responses and
-  termination during a pending live request remain gated on a scoreboard
-  configured for `dev.gopdsdk.scoreboards` outside this repository.
-- This scope does not introduce general network access or multiplayer.
-
-### P11.3 — video, JSON, and residual audit
-
-- Audited `playdate_videostream` and found no usable documented offline source.
-  SDK 3.1.1 reads an ordinary PDV file without producing frames or an error,
-  and ships no streaming fixture, producer, container specification, or
-  protocol documentation. Classify the complete surface, including `setFile`,
-  as post-v1.0 `v1.1 networking` research until Panic publishes a usable source
-  contract. The experimental wrapper was removed after its first interface
-  method call also produced a reproducible TinyGo 0.41.1 `runtime.nilPanic` on
-  physical hardware; packaged PDV playback remains covered by `VideoPlayer`.
-- Implemented `playdate/json` as the bounded Go-owned replacement for the C
-  callback API after standard-library `encoding/json` was rejected for retaining
-  reflection, defer, and recover runtime symbols. The replacement preserves the
-  useful offline grammar, ordering, duplicate names, number spelling, Unicode,
-  path diagnostics, reader/writer boundaries, and pretty output without those
-  runtime facilities. Unit, Simulator build and launch, conservative device
-  link, installation, and user-confirmed physical-device behavior pass;
-  Simulator visual confirmation, soak, memory growth, and post-run logs remain
-  open.
-- Reconcile every remaining installed SDK 3.1.1 header entry under the offline
-  completion policy. This residual audit remains open before P11 closure.
 
 ## P12 — device Go profile and runtime hardening — `v0.12.0`
 

@@ -11,11 +11,13 @@ reflection-free decode and streaming encode with explicit byte, depth, node,
 and string limits; `examples/jsoncodec` demonstrates packaged-file decoding and
 fixed-buffer encoding on the conservative device profile.
 
-The latest release is **`v0.9.0`**. It completes offline sound, including owned
-samples and streaming controls, routing and output state, synthesis,
-modulation, sequencing, effects, and bounded PCM/custom-generator callbacks.
-Sound acceptance, soak, bounded-memory, and post-run device-log checks passed on
-the verified Windows Simulator and physical-device profile.
+The declared **`v0.11.0`** release completes the remaining offline
+filesystem, scoreboard, JSON, and media audit scope. Scoreboard completions are
+copied and delivered through a bounded update queue, `playdate/json` provides a
+device-safe replacement for the official callback API, and packaged PDV
+playback remains available through explicitly owned video players. The
+undocumented videostream source is deferred until Panic publishes a usable
+container and protocol contract.
 The public API is snapshot-tested and documented,
 but remains pre-v1. Hardware evidence varies by feature and is
 reported without promotion in [COMPATIBILITY.md](COMPATIBILITY.md). The official Playdate C API is the
@@ -30,7 +32,7 @@ external-consumer CLI suite natively on all three hosts. Windows is additionally
 official SDK, Simulator, GNU Arm toolchain, and a physical Playdate. macOS and
 Linux SDK/Simulator/device execution remain explicitly unverified.
 
-The exact `v0.9.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
+The exact `v0.11.0` verified toolchain profile is Go 1.26.5, Playdate SDK 3.1.1,
 TinyGo 0.41.1, and Arm GNU Toolchain GCC 15.3.1. Other versions are not rejected
 solely by version number: `doctor` reports them as `UNVERIFIED` until the
 relevant probe succeeds.
@@ -57,13 +59,13 @@ deployment works on that host.
 Set `PLAYDATE_SDK_PATH` when the SDK is outside its conventional host location.
 TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 
-## Install v0.9.0
+## Install v0.11.0
 
-Run the released CLI directly at that version:
+After the tag is published, run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.9.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.9.0 init --module example.com/my-game ./my-game
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.11.0 doctor
+go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.11.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -359,6 +361,43 @@ epoch/calendar display, exact seconds round-trip, elapsed growth and reset, and
 copied system information. The final combined release artifacts passed
 physical-device installation, execution, soak, bounded-memory, and unchanged
 post-run device-log checks.
+
+## Bounded JSON
+
+`playdate/json` provides a reflection-free value tree for device-safe JSON
+without native callbacks, userdata, `defer`, or `recover`. Decoding accepts an
+`io.Reader` or byte slice and applies explicit document-byte, nesting-depth,
+node-count, and decoded-string limits. Objects preserve source order and
+duplicate names; numbers retain their original valid spelling. Encoding streams
+validated compact or pretty output to an `io.Writer` without buffering the
+complete result.
+
+```go
+config, err := json.DecodeBytes(data, json.Limits{
+	MaxBytes: 4096,
+	MaxDepth: 8,
+})
+if err != nil {
+	return err
+}
+
+level, ok := config.Lookup("level")
+if !ok || level.Type != json.Number {
+	return errors.New("missing numeric level")
+}
+
+return json.Encode(output, config, json.EncodeOptions{})
+```
+
+`examples/jsoncodec` reads a packaged configuration, performs bounded decoding,
+schema lookup and mutation, then writes into a fixed-capacity buffer. Unit tests,
+the full Go suite, Windows SDK 3.1.1 Simulator build and launch, conservative
+hard-float device build, USB installation, and user-confirmed physical behavior
+passed. The accepted artifact uses 283,900 bytes of static RAM and produces a
+1,279,000-byte ELF and a 62,029-byte PDX. The final P11 soak, bounded-memory,
+memory-growth, and unchanged post-run device-log checks passed by user
+confirmation on 2026-08-18; separate Simulator visual confirmation remains
+unverified.
 
 ## Bitmap acceptance
 
@@ -781,9 +820,9 @@ removed after `LifecycleTerminate`. `playdate.Localization` exposes only the
 system language and `.strings` lookup; a missing key is reported explicitly so
 fallback text stays in game code.
 
-The `examples/systemmenu` consumer combines these capabilities with the versioned store
-store, persisting its checkmark and option values while localizing the visible
-labels. On 2026-08-02 it passed Windows SDK 3.1.1 Simulator execution, the
+The `examples/systemmenu` consumer combines these capabilities with the
+versioned store, persisting its checkmark and option values while localizing the
+visible labels. On 2026-08-02 it passed Windows SDK 3.1.1 Simulator execution, the
 conservative device gate at 268,932 bytes of static RAM and a 35,674-byte PDX,
 USB deployment, and physical Playdate execution. The menu callbacks changed
 both settings and their values survived a game restart. Extended
@@ -813,9 +852,9 @@ measurement, and post-run device-log inspection remain unverified.
 ## Optional online and debug facilities
 
 `playdate.Scoreboards` provides bounded asynchronous board discovery, score
-submission, and personal-best retrieval without implying general networking or
-multiplayer support. `playdate.DebugMessages` separately provides a bounded
-FIFO for Simulator `!msg` and device serial `msg` diagnostics. Scoreboard
+submission, personal-best retrieval, and score-list retrieval without implying
+general networking or multiplayer support. `playdate.DebugMessages` separately
+provides a bounded FIFO for Simulator `!msg` and device serial `msg` diagnostics. Scoreboard
 completions copy SDK-owned data into a fixed four-slot queue and deliver game
 callbacks at the next update boundary. Both facilities suppress delivery after
 lifecycle termination.
@@ -828,9 +867,11 @@ personal-best failure in the official Windows SDK 3.1.1 Simulator, remaining
 responsive across sequential requests. The same artifact was installed and
 launched on a physical Playdate, where user-confirmed interaction covered board
 discovery, score submission, personal-best retrieval, and score-list retrieval
-while remaining responsive. Successful configured-board responses,
-pending-request termination, soak, memory growth, and post-run device-log
-inspection remain unverified.
+while remaining responsive. Successful configured-board responses and
+pending-request termination remain unverified because they require external
+board configuration. The final P11 soak, bounded-memory, memory-growth, and
+unchanged post-run `crashlog.txt` and `errorlog.txt` checks passed by user
+confirmation on 2026-08-18.
 
 ## Integrated persistence acceptance
 
