@@ -210,6 +210,14 @@ void bridgeVideoInfo(uintptr_t p,int* w,int* h,float* r,int* c,int* f) { bridgeP
 int bridgeVideoSetContext(uintptr_t p,uintptr_t b) { return bridgePlaydate->graphics->video->setContext((LCDVideoPlayer*)p,(LCDBitmap*)b); }
 void bridgeVideoUseScreenContext(uintptr_t p) { bridgePlaydate->graphics->video->useScreenContext((LCDVideoPlayer*)p); }
 int bridgeVideoRenderFrame(uintptr_t p,int f) { return bridgePlaydate->graphics->video->renderFrame((LCDVideoPlayer*)p,f); }
+uintptr_t bridgeNewVideoStream(void) { return (uintptr_t)bridgePlaydate->graphics->videostream->newPlayer(); }
+void bridgeFreeVideoStream(uintptr_t p) { bridgePlaydate->graphics->videostream->freePlayer((LCDStreamPlayer*)p); }
+void bridgeVideoStreamSetBufferSize(uintptr_t p,int video,int audio) { bridgePlaydate->graphics->videostream->setBufferSize((LCDStreamPlayer*)p,video,audio); }
+void bridgeVideoStreamSetFile(uintptr_t p,uintptr_t f) { bridgePlaydate->graphics->videostream->setFile((LCDStreamPlayer*)p,(SDFile*)f); }
+uintptr_t bridgeVideoStreamVideoPlayer(uintptr_t p) { return (uintptr_t)bridgePlaydate->graphics->videostream->getVideoPlayer((LCDStreamPlayer*)p); }
+int bridgeVideoStreamUpdate(uintptr_t p) { return bridgePlaydate->graphics->videostream->update((LCDStreamPlayer*)p); }
+int bridgeVideoStreamBufferedFrames(uintptr_t p) { return bridgePlaydate->graphics->videostream->getBufferedFrameCount((LCDStreamPlayer*)p); }
+unsigned int bridgeVideoStreamBytesRead(uintptr_t p) { return bridgePlaydate->graphics->videostream->getBytesRead((LCDStreamPlayer*)p); }
 void bridgeDisplaySetRefreshRate(float rate) { bridgePlaydate->display->setRefreshRate(rate); }
 int bridgeDisplayWidth(void) { return bridgePlaydate->display->getWidth(); }
 int bridgeDisplayHeight(void) { return bridgePlaydate->display->getHeight(); }

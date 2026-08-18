@@ -6,6 +6,11 @@ that out.
 
 ## Unreleased
 
+- Completed P11.3's offline media surface with an explicitly owned incremental
+  video stream. Streams borrow an open Playdate file, accept bounded video and
+  audio buffer sizes, expose update/buffered-frame/byte progress, and return a
+  borrowed video player that cannot be freed independently. Both generated
+  native adapters and `NewApplication` forward the capability.
 - Hardened the P11.2 scoreboard callback boundary on both native adapters.
   SDK-owned results are copied during native completion and game callbacks are
   deferred through a fixed four-slot queue to the next update. One request per

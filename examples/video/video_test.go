@@ -82,6 +82,9 @@ func (*context) LoadSoundEffect(string) (playdate.SoundEffect, error)           
 func (c *context) LoadFilePlayer(string) (playdate.FilePlayer, error)               { return c.audio, nil }
 func (c *context) LoadSamplePlayer(string) (playdate.SamplePlayer, error)           { return c.audio, nil }
 func (c *context) LoadVideo(path string) (playdate.VideoPlayer, error)              { return c.player, nil }
+func (*context) NewVideoStream(playdate.File) (playdate.VideoStream, error) {
+	return nil, playdate.ErrVideoUnavailable
+}
 
 func TestVideoPlaybackTargetsAndCleanup(t *testing.T) {
 	p := &player{}

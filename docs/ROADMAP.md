@@ -119,15 +119,14 @@ and system releases.
 
 ### P11.3 — video, JSON, and residual audit
 
-- Audit the installed official video API for buffering, byte/progress/error
-  diagnostics, and file/network-source operations. Add every offline operation
-  that provides behavior unavailable through the existing `VideoPlayer`.
-- Provide or qualify a device-safe Go JSON codec and omit the C callback JSON
-  API when the Go replacement supports bounded decode/encode without loss of
-  offline functionality.
-- Reconcile every official header entry against `implemented`, `equivalent`,
-  `intentionally omitted`, or `v1.1 networking`; no unexplained entries may
-  remain before releasing `v0.11.0`.
+- Implemented the offline `playdate_videostream` slice with a borrowed file,
+  bounded video/audio buffers, update, decoded-player access, buffered-frame
+  count, and byte progress. HTTP/TCP sources remain v1.1 networking.
+- Provide a device-safe Go JSON codec. Standard-library `encoding/json` was
+  rejected by the conservative device link gate because it retains reflection,
+  defer, and recover runtime symbols.
+- Reconcile every remaining installed SDK 3.1.1 header entry under the offline
+  completion policy after the JSON replacement is selected.
 
 ## P12 — device Go profile and runtime hardening — `v0.12.0`
 
