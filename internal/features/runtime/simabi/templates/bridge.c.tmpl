@@ -344,6 +344,7 @@ void bridgeFreeFilePlayer(uintptr_t player) { bridgePlaydate->sound->fileplayer-
 uintptr_t bridgeSoundEffectSource(uintptr_t effect){return(uintptr_t)bridgeEffect(effect)->player;}
 uintptr_t bridgeNewAudioChannel(void){SoundChannel* channel=bridgePlaydate->sound->channel->newChannel();if(!channel)return 0;bridgePlaydate->sound->addChannel(channel);return(uintptr_t)channel;}
 uintptr_t bridgeAudioChannelOutput(uintptr_t channel){return(uintptr_t)bridgePlaydate->sound->channel->getOutputAsSource((SoundChannel*)channel);}
+uintptr_t bridgeAudioChannelDryLevelSignal(uintptr_t channel){return(uintptr_t)bridgePlaydate->sound->channel->getDryLevelSignal((SoundChannel*)channel);} uintptr_t bridgeAudioChannelWetLevelSignal(uintptr_t channel){return(uintptr_t)bridgePlaydate->sound->channel->getWetLevelSignal((SoundChannel*)channel);}
 uintptr_t bridgeDefaultAudioChannel(void){return(uintptr_t)bridgePlaydate->sound->getDefaultChannel();}
 void bridgeAudioOutputState(int*headphones,int*headsetMic){bridgePlaydate->sound->getHeadphoneState(headphones,headsetMic,NULL);}
 void bridgeSetAudioOutputsActive(int headphones,int speaker){bridgePlaydate->sound->setOutputsActive(headphones,speaker);}

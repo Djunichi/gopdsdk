@@ -1,6 +1,6 @@
 name=gopdsdk Synthesis
 author=gopdsdk
-description=P12.4 nested routing, LFO, and envelope acceptance
+description=P12.5 nested routing, LFO, and channel-level signal acceptance
 bundleID=dev.gopdsdk.synthesis
 version=0.1.0
 buildNumber=1

@@ -6,6 +6,8 @@ import "github.com/Djunichi/gopdsdk/playdate"
 type game struct {
 	synth     playdate.Synth
 	lfo       playdate.LFO
+	drySignal playdate.Signal
+	wetSignal playdate.Signal
 	synthBus  playdate.AudioChannel
 	masterBus playdate.AudioChannel
 	clock     playdate.AudioClock
@@ -89,6 +91,20 @@ func (g *game) Init(context playdate.Context) error {
 	if err = g.masterBus.AddSource(output); err != nil {
 		return err
 	}
+	g.drySignal, err = g.synthBus.DryLevelSignal()
+	if err != nil {
+		return err
+	}
+	g.wetSignal, err = g.synthBus.WetLevelSignal()
+	if err != nil {
+		return err
+	}
+	if err = g.masterBus.SetPanModulator(g.drySignal); err != nil {
+		return err
+	}
+	if err = g.masterBus.SetVolumeModulator(g.wetSignal); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -126,7 +142,7 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 	g.dirty = false
 	context.Clear()
-	context.DrawText("P12.4 nested synthesis", 12, 20)
+	context.DrawText("P12.5 level signals", 12, 20)
 	context.DrawText("Tap A after each change", 12, 52)
 	context.DrawText("Left/Right: curve by 0.5", 12, 76)
 	context.DrawText("Curve: "+curveName(g.curvature), 12, 112)

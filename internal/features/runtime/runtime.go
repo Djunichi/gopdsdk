@@ -443,6 +443,9 @@ func (p *audioPlayer) SetRateModulator(v playdate.Signal) error {
 type AudioChannelDriver struct {
 	Output             func(uintptr) uintptr
 	OutputAudio        AudioDriver
+	DryLevelSignal     func(uintptr) uintptr
+	WetLevelSignal     func(uintptr) uintptr
+	LevelSignal        SignalDriver
 	AddSource          func(uintptr, uintptr) bool
 	RemoveSource       func(uintptr, uintptr) bool
 	AddEffect          func(uintptr, uintptr) bool
@@ -473,6 +476,7 @@ type audioChannel struct {
 	closed                  bool
 	volumeSignal, panSignal *signalNode
 	output                  *audioPlayer
+	drySignal, wetSignal    *signalNode
 }
 
 func (c *audioChannel) setModulator(value playdate.Signal, pan bool) error {
@@ -598,6 +602,36 @@ func (c *audioChannel) Output() (playdate.AudioSource, error) {
 	c.output = &audioPlayer{handle: output, driver: c.driver.OutputAudio, channels: make(map[*audioChannel]struct{}), ownerChannel: c}
 	return c.output, nil
 }
+
+func (c *audioChannel) levelSignal(wet bool) (playdate.Signal, error) {
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return nil, err
+	}
+	slot := &c.drySignal
+	get := c.driver.DryLevelSignal
+	kind := uint8(1)
+	if wet {
+		slot = &c.wetSignal
+		get = c.driver.WetLevelSignal
+		kind = 2
+	}
+	if *slot != nil {
+		return *slot, nil
+	}
+	if get == nil {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	signal := get(handle)
+	if signal == 0 {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	*slot = newBorrowedSignalNode(signal, c.driver.LevelSignal, c, kind)
+	return *slot, nil
+}
+
+func (c *audioChannel) DryLevelSignal() (playdate.Signal, error) { return c.levelSignal(false) }
+func (c *audioChannel) WetLevelSignal() (playdate.Signal, error) { return c.levelSignal(true) }
 
 func audioSource(value playdate.AudioSource) (*audioPlayer, error) {
 	switch source := value.(type) {
@@ -746,6 +780,12 @@ func (c *audioChannel) Close() error {
 		c.output.channels = nil
 		c.output.handle = 0
 		c.output.closed = true
+	}
+	if c.drySignal != nil {
+		_ = c.drySignal.Close()
+	}
+	if c.wetSignal != nil {
+		_ = c.wetSignal.Close()
 	}
 	for source := range c.sources {
 		sourceHandle, sourceErr := source.nativeHandle()

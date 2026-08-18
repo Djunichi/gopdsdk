@@ -427,6 +427,13 @@ owning channel closes; closing the owner first detaches the output from its
 downstream channel. A source remains attached to at most one channel, duplicate
 attachment refreshes the native route, and direct or transitive channel cycles
 return `ErrAudioRoute` before native mutation.
+`DryLevelSignal` and `WetLevelSignal` return borrowed SDK-owned signals that
+follow the channel level before and after effects, respectively. They implement
+the existing `Signal` interface and can drive any current modulation setter.
+Closing a wrapper detaches its tracked graph edges without freeing native state;
+a later request creates a fresh wrapper. Closing the owning channel detaches and
+expires both wrappers, after which their operations return
+`ErrAudioGraphClosed`.
 `AudioOutputState` synchronously reports headphone and headset-microphone
 presence at the time of the call; poll it during updates when the UI or routing
 must react to connection changes. `SetAudioOutputsActive` selects headphone and

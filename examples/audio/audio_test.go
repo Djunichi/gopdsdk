@@ -106,6 +106,8 @@ type channel struct {
 }
 
 func (c *channel) Output() (playdate.AudioSource, error)  { return c.source, nil }
+func (*channel) DryLevelSignal() (playdate.Signal, error) { return &signal{}, nil }
+func (*channel) WetLevelSignal() (playdate.Signal, error) { return &signal{}, nil }
 func (c *channel) AddSource(s playdate.AudioSource) error { c.source = s; c.adds++; return nil }
 func (c *channel) RemoveSource(playdate.AudioSource) error {
 	c.source = nil

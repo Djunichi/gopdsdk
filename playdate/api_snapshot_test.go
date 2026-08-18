@@ -249,7 +249,7 @@ func XORPaint() Paint
 type Accelerometer interface{AccelerometerXYZ() (x float32, y float32, z float32); SetAccelerometerEnabled(bool)}
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
-type AudioChannel interface{AddEffect(effect AudioEffect) error; AddSource(source AudioSource) error; Close() error; Output() (AudioSource, error); RemoveEffect(effect AudioEffect) error; RemoveSource(source AudioSource) error; SetPan(pan float32) error; SetPanModulator(Signal) error; SetVolume(volume float32) error; SetVolumeModulator(Signal) error; Volume() (float32, error)}
+type AudioChannel interface{AddEffect(effect AudioEffect) error; AddSource(source AudioSource) error; Close() error; DryLevelSignal() (Signal, error); Output() (AudioSource, error); RemoveEffect(effect AudioEffect) error; RemoveSource(source AudioSource) error; SetPan(pan float32) error; SetPanModulator(Signal) error; SetVolume(volume float32) error; SetVolumeModulator(Signal) error; Volume() (float32, error); WetLevelSignal() (Signal, error)}
 type AudioChannels interface{NewAudioChannel() (AudioChannel, error)}
 type AudioClock interface{CurrentAudioTime() (uint32, error)}
 type AudioEffect interface{Close() error; SetMix(level float32) error; SetMixModulator(signal Signal) error}

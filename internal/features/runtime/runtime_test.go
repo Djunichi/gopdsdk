@@ -576,6 +576,58 @@ func TestAudioChannelOutputRoutingRejectsCyclesAndExpiresOnClose(t *testing.T) {
 	}
 }
 
+func TestAudioChannelLevelSignalsAreBorrowedAndExpireWithOwner(t *testing.T) {
+	var volumeModulator, panModulator uintptr
+	freed := 0
+	driver := AudioChannelDriver{
+		DryLevelSignal: func(channel uintptr) uintptr { return channel + 200 },
+		WetLevelSignal: func(channel uintptr) uintptr { return channel + 300 },
+		LevelSignal: SignalDriver{
+			Value:    func(handle uintptr) float32 { return float32(handle) / 1000 },
+			SetScale: func(uintptr, float32) {}, SetOffset: func(uintptr, float32) {},
+			Free: func(uintptr) { freed++ },
+		},
+		SetVolumeModulator: func(_ uintptr, signal uintptr) { volumeModulator = signal },
+		SetPanModulator:    func(_ uintptr, signal uintptr) { panModulator = signal },
+		Remove:             func(uintptr) bool { return true }, Free: func(uintptr) {},
+	}
+	owner := NewAudioChannel(1, driver)
+	consumer := NewAudioChannel(2, driver)
+	dry, err := owner.DryLevelSignal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value, err := dry.Value(); err != nil || value != .201 {
+		t.Fatalf("dry Value = %v, %v", value, err)
+	}
+	if err := dry.Close(); err != nil || freed != 0 {
+		t.Fatalf("borrowed dry Close = %v, frees %d", err, freed)
+	}
+	reopenedDry, err := owner.DryLevelSignal()
+	if err != nil || reopenedDry == dry {
+		t.Fatalf("reopened dry = %v, %v", reopenedDry, err)
+	}
+	wet, err := owner.WetLevelSignal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := consumer.SetVolumeModulator(reopenedDry); err != nil || volumeModulator != 201 {
+		t.Fatalf("dry volume modulator = %v, %d", err, volumeModulator)
+	}
+	if err := consumer.SetPanModulator(wet); err != nil || panModulator != 301 {
+		t.Fatalf("wet pan modulator = %v, %d", err, panModulator)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if volumeModulator != 0 || panModulator != 0 || freed != 0 {
+		t.Fatalf("owner Close modulators/frees = %d, %d, %d", volumeModulator, panModulator, freed)
+	}
+	if _, err := reopenedDry.Value(); !errors.Is(err, playdate.ErrAudioGraphClosed) {
+		t.Fatalf("expired dry Value = %v", err)
+	}
+}
+
 type audioOutputContext struct {
 	testContext
 	channel playdate.AudioChannel

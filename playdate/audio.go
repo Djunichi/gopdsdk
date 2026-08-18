@@ -229,6 +229,12 @@ type AudioChannel interface {
 	// output. The source expires when the channel closes and may be routed into
 	// another channel; routing cycles are rejected.
 	Output() (AudioSource, error)
+	// DryLevelSignal returns a borrowed signal that follows the channel level
+	// before effects. Close detaches the wrapper but never frees native ownership.
+	DryLevelSignal() (Signal, error)
+	// WetLevelSignal returns a borrowed signal that follows the channel level
+	// after effects. Close detaches the wrapper but never frees native ownership.
+	WetLevelSignal() (Signal, error)
 	AddSource(source AudioSource) error
 	RemoveSource(source AudioSource) error
 	AddEffect(effect AudioEffect) error
