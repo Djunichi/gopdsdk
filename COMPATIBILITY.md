@@ -1,7 +1,7 @@
 # Compatibility and evidence
 
-The released `v0.11.0` retains the exact toolchain profile accepted by
-the published `v0.5.0` baseline.
+The released `v1.0.0` retains the exact toolchain profile accepted by the
+published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
@@ -40,6 +40,27 @@ does not itself prove target timing or memory behavior.
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
 actually exercised.
+
+The `v1.0.0` release passed formatting, the full Go suite, vet,
+`git diff --check`, external-consumer CLI coverage, and official
+Windows SDK 3.1.1 `doctor --probe` for Simulator compilation and packaging plus
+TinyGo conservative hard-float compile, link, relocation, and packaging on
+2026-08-18. Read-only USB probing detected a Playdate on COM3. GitHub Actions
+[run 161](https://github.com/Djunichi/gopdsdk/actions/runs/32177000844)
+passed native jobs on Windows, macOS, and Linux and the Linux race detector for
+the release code. The user confirmed the final combined acceptance-scene
+Simulator interaction, extended physical-device regression, memory/resource
+soak, lifecycle cleanup, and unchanged post-run `crashlog.txt` and
+`errorlog.txt` checks on 2026-08-18. Exact additional measurements were not
+recorded. Go module proxy availability is verified separately after publication
+and is not claimed by the contents of the release tag.
+
+The release worktree also builds the P12 `schedule`, `defercleanup`,
+`reflection`, and `synthesis` consumers for the official Windows Simulator and
+the conservative hard-float device profile. The device artifacts use 283,324,
+284,156, 282,940, and 285,856 bytes of static RAM respectively. Build and
+packaging evidence does not promote deployment, execution, interaction, soak,
+or post-run logs.
 
 The stable `v0.11.0` tag and hosted GitHub release were published on
 2026-08-18 from commit `3a5d288e54fef2d3daefb05eed165a6f902f64d8`.
