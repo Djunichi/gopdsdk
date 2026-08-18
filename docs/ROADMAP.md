@@ -127,11 +127,17 @@ and system releases.
   contract. The experimental wrapper was removed after its first interface
   method call also produced a reproducible TinyGo 0.41.1 `runtime.nilPanic` on
   physical hardware; packaged PDV playback remains covered by `VideoPlayer`.
-- Provide a device-safe Go JSON codec. Standard-library `encoding/json` was
-  rejected by the conservative device link gate because it retains reflection,
-  defer, and recover runtime symbols.
+- Implemented `playdate/json` as the bounded Go-owned replacement for the C
+  callback API after standard-library `encoding/json` was rejected for retaining
+  reflection, defer, and recover runtime symbols. The replacement preserves the
+  useful offline grammar, ordering, duplicate names, number spelling, Unicode,
+  path diagnostics, reader/writer boundaries, and pretty output without those
+  runtime facilities. Unit, Simulator build and launch, conservative device
+  link, installation, and user-confirmed physical-device behavior pass;
+  Simulator visual confirmation, soak, memory growth, and post-run logs remain
+  open.
 - Reconcile every remaining installed SDK 3.1.1 header entry under the offline
-  completion policy after the JSON replacement is selected.
+  completion policy. This residual audit remains open before P11 closure.
 
 ## P12 — device Go profile and runtime hardening — `v0.12.0`
 

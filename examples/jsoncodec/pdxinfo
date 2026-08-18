@@ -1,0 +1,6 @@
+name=P11.3 JSON Codec Acceptance
+author=gopdsdk
+description=Bounded reflection-free JSON decode and encode acceptance
+bundleID=com.gopdsdk.jsoncodec
+version=1.0.0
+buildNumber=1

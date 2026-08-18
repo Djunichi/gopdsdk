@@ -17,6 +17,28 @@ performance evidence import
 generated runtime bridges, CLI build plans, and example internals are not
 public API.
 
+Applications that need device-safe JSON import
+`github.com/Djunichi/gopdsdk/playdate/json`. The package replaces the official
+callback JSON surface without C callbacks, userdata, reflection, `defer`, or
+`recover`.
+
+## Bounded JSON
+
+`json.Decode` and `DecodeBytes` produce a reflection-free `Value` tree under
+explicit document-byte, nesting-depth, node-count, and decoded-string limits.
+Zero limits select conservative defaults of 64 KiB, depth 32, 4,096 nodes, and
+16 KiB per decoded string. Objects preserve source order and duplicate member
+names. Numbers preserve their original valid JSON spelling, avoiding implicit
+precision loss. Strings validate UTF-8 and decode all JSON escapes, including
+UTF-16 surrogate pairs.
+
+`SyntaxError` reports a byte offset, JSON Pointer path, and stable diagnostic.
+`Encode` writes directly to an `io.Writer`, validates programmatically-created
+values, optionally pretty-prints, and bounds recursive depth without buffering
+the complete output. Callers choose their schema and can use a fixed writer to
+cap output allocation. Reflection-based struct tags and automatic Go-value
+marshaling are intentionally outside this device profile.
+
 ## Bounded diagnostics
 
 `playdate/diagnostics.Collector` records a fixed number of samples without

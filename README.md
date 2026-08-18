@@ -6,6 +6,11 @@
 
 An independent Go SDK and toolchain for building Playdate applications.
 
+Device-safe JSON is available from `playdate/json`. It provides bounded,
+reflection-free decode and streaming encode with explicit byte, depth, node,
+and string limits; `examples/jsoncodec` demonstrates packaged-file decoding and
+fixed-buffer encoding on the conservative device profile.
+
 The latest release is **`v0.9.0`**. It completes offline sound, including owned
 samples and streaming controls, routing and output state, synthesis,
 modulation, sequencing, effects, and bounded PCM/custom-generator callbacks.
