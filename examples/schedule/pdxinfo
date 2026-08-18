@@ -1,0 +1,5 @@
+name=gopdsdk Schedule
+author=gopdsdk contributors
+bundleID=sdk.gopdsdk.schedule
+version=0.0.1
+buildNumber=1

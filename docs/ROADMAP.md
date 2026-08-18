@@ -120,6 +120,8 @@ speculative language or standard-library expansion remains out of scope.
 
 ### P12.1 — `playdate/schedule`
 
+Complete.
+
 Provide a stackless cooperative task scheduler for work that must be spread
 across update frames. It is a replacement for the useful game-development
 cases of goroutines, channels, and `select`, not an implementation of those Go
@@ -147,6 +149,20 @@ facilities, parallelism, preemption, or transparent async functions.
 - Prove the public contract with a repository-owned incremental-work consumer,
   pure-Go ordering and lifecycle tests, Simulator integration, device build,
   and physical-device frame-time and bounded-memory evidence.
+
+Implemented on 2026-08-18 with fixed-capacity task storage, FIFO frame ordering,
+generation-bearing cancellation, explicit completion and yielding, wrap-safe
+delays/deadlines/repeats, a secondary elapsed-time guard, non-blocking bounded
+queues, and deterministic round-robin polling. Pure-Go tests, the official
+Windows SDK 3.1.1 Simulator build and launch, and the TinyGo 0.41.1 conservative
+device build, COM3 installation, and launch pass for `examples/schedule`. The
+final device artifact uses 283,068 bytes of static RAM and produces a
+1,188,160-byte ELF and a 48,729-byte PDX. On 2026-08-18 the user confirmed
+physical-device `PASS` markers for a two-step peak, exactly 40 task steps,
+completion in 20 frames, and equal 30-item progress across four tasks. The
+physical frame-time, bounded-memory, memory-growth, soak, and unchanged post-run
+device-log gates also passed by user confirmation; exact measurement values
+were not recorded.
 
 ### P12.2 — normal-return `defer`
 
