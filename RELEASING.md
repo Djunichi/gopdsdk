@@ -1,6 +1,6 @@
 # Release procedure
 
-The latest declared release is `v0.10.0`; publication remains pending until its
+The latest declared release is `v0.11.0`; publication remains pending until its
 tag and hosted release exist. Go module versions come from Git tags; no separate
 VERSION file is maintained. The procedure below applies to the next planned
 release selected from the roadmap.

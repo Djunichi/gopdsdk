@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-The released `v0.10.0` retains the exact toolchain profile accepted by
+The declared `v0.11.0` retains the exact toolchain profile accepted by
 the published `v0.5.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
@@ -40,6 +40,28 @@ does not itself prove target timing or memory behavior.
 Run `gopdsdk doctor` for discovery and `gopdsdk doctor --probe` for current-host
 SDK integration. A successful probe applies only to the capability and host it
 actually exercised.
+
+The v0.11.0 release candidate passed formatting, the full Go suite and vet on
+Windows, green Windows/macOS/Linux native CI for commit
+`e879458213497eefc47c68d99ef59299d197742e`, the Linux race detector, and the
+external-consumer workflow. Official Windows SDK 3.1.1 `doctor --probe` passed
+Simulator compilation and packaging plus TinyGo conservative hard-float
+compile, link, relocation, and packaging on 2026-08-18.
+
+The JSON consumer passed Windows Simulator build and launch, conservative
+device build, USB installation, and user-confirmed physical behavior covering
+packaged-file reading, bounded decoding, schema lookup, mutation, and bounded
+encoding. The scoreboard consumer passed user-confirmed Simulator and physical
+failure and sequential-request interaction for all four operation paths.
+Successful live responses and termination during a pending live request remain
+unverified because they require external configuration for
+`dev.gopdsdk.scoreboards`.
+
+On 2026-08-18 the user confirmed the final P11 conservative-GC soak,
+bounded-memory and memory-growth checks, and unchanged post-run
+`crashlog.txt` and `errorlog.txt`. The residual SDK 3.1.1 header reconciliation
+found no additional materially useful offline capability outside the public Go
+equivalents and documented intentional omissions accumulated through P1-P11.
 
 The v0.10.0 release passed the full Go suite and vet on Windows,
 green Windows/macOS/Linux native CI, the Linux race detector, and official

@@ -1,8 +1,9 @@
-# Migrating to v0.10.0
+# Migrating to v0.11.0
 
-`v0.10.0` adds optional offline system-control and system-environment
-capabilities. Existing v0.9 games can update their module requirement and
-continue unchanged; the new capabilities and lifecycle events are additive.
+`v0.11.0` adds the bounded `playdate/json` package and hardens scoreboard
+completion delivery. Existing v0.10 games can update their module requirement
+and continue unchanged unless they used the unreleased experimental video-stream
+surface described below.
 
 ## System control
 
@@ -19,7 +20,7 @@ calendar conversion, the independent elapsed timer, and copied OS, language,
 and PDX version information. `Input.DeltaSeconds` now uses the wrapping
 monotonic millisecond clock and no longer resets the SDK elapsed timer.
 
-## Unreleased: video streams
+## Removed experimental video streams
 
 The experimental `VideoStream`, `Videos.NewVideoStream`, and stream-specific
 errors were removed after SDK 3.1.1 acceptance showed that ordinary PDV files
@@ -32,5 +33,5 @@ post-v1.0 `v1.1 networking` research.
 ## Published-module verification
 
 After publication, remove any local `replace`, require
-`github.com/Djunichi/gopdsdk v0.10.0`, and
+`github.com/Djunichi/gopdsdk v0.11.0`, and
 repeat the clean module-proxy check from [RELEASING.md](RELEASING.md).

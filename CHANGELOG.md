@@ -4,7 +4,7 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
-## Unreleased
+## v0.11.0 (2026-08-18)
 
 - Added `playdate/json`, a dependency-free bounded JSON replacement for the
   official C callback API. It decodes from `io.Reader` or bytes into an ordered
@@ -19,7 +19,9 @@ that out.
   launched over COM3 on 2026-08-18; the user-confirmed physical-device output
   `JSON: Crank & Key L3 flags 2 bytes 96` covers packaged-file reading, bounded
   decoding, schema lookup, tree mutation, and fixed-buffer encoding. Simulator
-  visual behavior, soak, memory growth, and post-run logs remain unverified.
+  visual behavior remains unverified. The final P11 soak, bounded-memory,
+  memory-growth, and unchanged post-run log checks passed by user confirmation
+  on 2026-08-18.
 - Audited the undocumented SDK 3.1.1 `playdate_videostream` file source. On
   2026-08-18 a direct C API diagnostic in the official Windows Simulator and
   the generated Go adapter produced the same result for the repository-owned
@@ -58,15 +60,20 @@ that out.
   launched over COM3; user-confirmed physical-device interaction covered board
   discovery, score submission, personal-best retrieval, and score-list
   retrieval, with the scene remaining responsive across all four paths.
-  Successful configured-service responses, termination during a pending live
-  request, soak, memory-growth measurement, and post-run device-log inspection
-  remain unverified.
+  Successful configured-service responses and termination during a pending live
+  request remain unverified because they require external board configuration.
+  The final P11 soak, bounded-memory, memory-growth, and unchanged post-run
+  `crashlog.txt` and `errorlog.txt` checks passed by user confirmation on
+  2026-08-18.
 - Completed P11.1 without widening the public filesystem API. `File.Seek`
   already preserves the official current-position behavior by returning
   `tell` after a successful native seek; `Seek(0, io.SeekCurrent)` therefore
   provides position reporting. Deterministic coverage now includes the
   current-position path, `tell` failure classification, and adapter-side
   copying of transient `geterr` diagnostics at the failing operation boundary.
+- Completed the residual SDK 3.1.1 header reconciliation. No additional
+  materially useful offline capability remains outside the public Go
+  equivalents and documented intentional omissions accumulated through P1-P11.
 
 ## v0.10.0 (2026-08-17)
 
