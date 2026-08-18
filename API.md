@@ -542,10 +542,22 @@ suppressed.
 ## Device Go subset
 
 The accepted device profile is sequential Go with TinyGo conservative GC,
-`scheduler none`, and fail-stop panic handling. Goroutines, channels, `select`,
-`defer`/`recover`, finalizers, public reflection, cgo, and application runtime
-hooks are unsupported. Applications must keep their live object graph bounded;
-allocation inside `Update` is allowed but remains workload- and hardware-tested.
+`scheduler none`, and fail-stop panic handling. Allocation and `runtime.GC` are
+supported, but applications must keep their live object graph bounded and treat
+pause and memory bounds as workload-specific. Panic is a terminal trap without
+stack unwinding, deferred cleanup, or recovery.
+
+Goroutines, channels, `select`, standard-library clocks, sleep, timers, and
+tickers are currently unsupported. `fmt` is replaced by typed `strconv` and
+bounded writers, while `encoding/json` is replaced by `playdate/json`.
+
+Normal-return `defer` and the audited reflection inspection, extraction,
+conversion, and mutation subset have been accepted for future enablement but
+remain unavailable through the production device linker. `recover`, finalizers,
+application cgo, dynamic reflection calls and construction, and application
+runtime-control hooks are unsupported. Allocation inside `Update` is allowed
+but remains workload- and hardware-tested. Future enablement and bounded
+replacements are tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Simulator compilation alone does not prove device compatibility for a standard
 library package. See [COMPATIBILITY.md](COMPATIBILITY.md) for the evidence
