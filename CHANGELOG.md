@@ -4,6 +4,15 @@ All notable release changes are documented here. The module remains pre-v1;
 minor releases may intentionally change the public API when release notes call
 that out.
 
+## Unreleased
+
+- Began the P12.1 executable device Go-profile audit. The new
+  `gopdsdk probe device-profile` command compiles isolated language and
+  standard-library fixtures with the accepted TinyGo target and classifies
+  compiler rejection, forbidden runtime symbols, and compile-only success. It
+  can emit a JSON matrix and explicitly does not promote compile evidence to
+  Simulator or physical-device support.
+
 ## v0.11.0 (2026-08-18)
 
 - Added `playdate/json`, a dependency-free bounded JSON replacement for the

@@ -52,7 +52,7 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | Planned |
+| P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | In progress |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
 
 ## Remaining capability milestones
@@ -95,6 +95,44 @@ P12 is deliberately the last feature stage before `v1.0.0`. Earlier releases
 close official-SDK capability gaps without expanding the accepted Go language
 subset; this stage then audits whether the remaining runtime restrictions block
 otherwise supported offline game architectures.
+
+P12.1 has started with an executable compile-stage matrix. The isolated probes
+distinguish TinyGo rejection, objects that retain forbidden runtime symbols,
+and compile-only success without claiming Simulator or physical-device
+execution. Device-run probes and the final support decisions remain open.
+
+### P12.1 — device Go-profile investigations
+
+Every probe is an independent investigation. A result for one probe does not
+promote a related language feature or standard-library package. Each track must
+retain its exact source fixture, record TinyGo diagnostics and linked symbols,
+pass the full Playdate ELF link gate when possible, and then receive an explicit
+`supported`, `unsupported`, `replaced`, or `compile-only` decision. A
+`supported` decision additionally requires a packaged PDX and applicable
+physical-device behavior; Simulator execution or compilation alone is not
+sufficient.
+
+| Track | Probe | Current compile evidence | Remaining investigation |
+| --- | --- | --- | --- |
+| P12.1.0 | Baseline | `build-only`; isolated TinyGo object compiles | Establish the control ELF/PDX, Simulator, and physical-device result used by every other track. |
+| P12.1.1 | Goroutine | `rejected`; TinyGo refuses goroutine start with `scheduler none` | Test applicable scheduler choices, runtime hooks, memory bounds, update-loop interaction, and whether any safe device profile exists. |
+| P12.1.2 | Channel | `unsafe`; object retains channel runtime symbols | Link with each viable scheduler result, test bounded send/receive and shutdown, then accept or reject the runtime cost and semantics. |
+| P12.1.3 | `select` | `unsafe`; object retains channel runtime symbols | Investigate separately from basic channels, including default, blocking, fairness, shutdown, and bounded scheduler behavior. |
+| P12.1.4 | `defer` | `unsafe`; object retains `runtime.setupDeferFrame` | Isolate zero-, one-, and repeated-defer paths, verify the Cortex-M register failure boundary, code size, cleanup semantics, and device behavior. |
+| P12.1.5 | Panic | `build-only`; isolated TinyGo object compiles | Link and run a separate intentional-failure PDX, confirm fail-stop trap behavior, symbolization, logs, and absence of accidental recovery claims. |
+| P12.1.6 | `recover` | `unsafe`; object retains defer and recover runtime symbols | Test only after the defer investigation; verify nested panic, cleanup ordering, runtime boundary safety, and whether recovery is supportable at all. |
+| P12.1.7 | Public reflection | `unsafe`; object retains public reflection symbols | Split inspection, conversion, mutation, and call operations; measure code/heap cost and document reflection-free replacements where support is rejected. |
+| P12.1.8 | Finalizer | `unsafe`; object retains finalizer runtime symbols | Verify registration, GC interaction, execution ordering, shutdown behavior, and prove that correctness never depends on finalizer delivery. |
+| P12.1.9 | cgo | `build-only`; isolated TinyGo object compiles | Link a real owned C function through the Playdate build, verify calls and data ownership on device, and decide whether this adds a safe public workflow. |
+| P12.1.10 | `runtime.GC` | `build-only`; isolated TinyGo object compiles | Link and measure explicit collection, frame pause, heap reuse, repeated calls, lifecycle interaction, and physical-device stability. |
+| P12.1.11 | `time` fixture | `unsafe`; `time.Second.String` retains defer runtime | Decompose duration arithmetic, formatting, timers, clocks, and sleep; classify each useful subset rather than rejecting the entire package from one fixture. |
+| P12.1.12 | `fmt` fixture | `unsafe`; `fmt.Sprint` retains defer, recover, and reflection | Separate formatting operations and writers, measure footprint and allocation, and compare bounded `strconv`-based alternatives. |
+| P12.1.13 | `encoding/json` fixture | `unsafe`; `json.Marshal` retains defer, recover, and reflection | Audit encode/decode separately, measure bounds and footprint, and compare the supported reflection-free `playdate/json` replacement. |
+
+The compile matrix is a discovery tool, not the final compatibility matrix.
+Tracks may add narrower fixtures when a package contains both viable and unsafe
+subsets, but a broader package-level claim requires evidence for every operation
+included in that claim.
 
 - Reassess goroutines, channels, `select`, `defer`, panic/recover, reflection,
   finalizers, cgo, standard-library coverage, scheduler choice, GC strategy,
