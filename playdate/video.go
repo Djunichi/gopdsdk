@@ -13,6 +13,7 @@ type VideoInfo struct {
 // player is closed.
 type VideoPlayer interface {
 	Info() (VideoInfo, error)
+	LastError() (string, error)
 	SetContext(Bitmap) error
 	UseScreenContext() error
 	RenderFrame(frame int) error

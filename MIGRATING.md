@@ -19,6 +19,16 @@ calendar conversion, the independent elapsed timer, and copied OS, language,
 and PDX version information. `Input.DeltaSeconds` now uses the wrapping
 monotonic millisecond clock and no longer resets the SDK elapsed timer.
 
+## Unreleased: video streams
+
+The experimental `VideoStream`, `Videos.NewVideoStream`, and stream-specific
+errors were removed after SDK 3.1.1 acceptance showed that ordinary PDV files
+produce no frames and the first stream interface method dispatch crashed under
+TinyGo 0.41.1 on physical hardware. Use `Videos.LoadVideo` and an explicitly
+owned `VideoPlayer` for packaged PDV playback. There is no offline replacement
+for the undocumented stream container; the capability is deferred to
+post-v1.0 `v1.1 networking` research.
+
 ## Published-module verification
 
 After publication, remove any local `replace`, require

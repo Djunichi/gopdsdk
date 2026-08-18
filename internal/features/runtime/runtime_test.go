@@ -1353,6 +1353,7 @@ func TestVideoPlayerOwnershipValidationAndErrors(t *testing.T) {
 		Info: func(uintptr) playdate.VideoInfo {
 			return playdate.VideoInfo{Width: 80, Height: 60, FrameRate: 20, FrameCount: 3}
 		},
+		Error:            func(uintptr) string { return "decoder status" },
 		SetContext:       func(player, context uintptr) (bool, string) { return player == 9 && context == 7, "bad context" },
 		UseScreenContext: func(uintptr) {},
 		RenderFrame:      func(_ uintptr, frame int) (bool, string) { return frame != 1, "decode failed" },
@@ -1360,6 +1361,9 @@ func TestVideoPlayerOwnershipValidationAndErrors(t *testing.T) {
 	})
 	if info, err := player.Info(); err != nil || info.FrameCount != 3 {
 		t.Fatalf("Info() = %+v, %v", info, err)
+	}
+	if message, err := player.LastError(); err != nil || message != "decoder status" {
+		t.Fatalf("LastError() = %q, %v", message, err)
 	}
 	if err := player.SetContext(bitmap); err != nil {
 		t.Fatal(err)

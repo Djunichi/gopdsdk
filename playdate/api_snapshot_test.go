@@ -395,7 +395,7 @@ type TwoPoleFilter interface{SetFrequency(float32) error; SetFrequencyModulator(
 type VariableRatePlayer interface{Rate() (float32, error); SetRate(rate float32) error}
 type VideoInfo struct{Width int; Height int; FrameRate float32; FrameCount int; CurrentFrame int}
 type VideoOperationError struct{Operation string; Message string}
-type VideoPlayer interface{Close() error; Info() (VideoInfo, error); RenderFrame(frame int) error; SetContext(Bitmap) error; UseScreenContext() error}
+type VideoPlayer interface{Close() error; Info() (VideoInfo, error); LastError() (string, error); RenderFrame(frame int) error; SetContext(Bitmap) error; UseScreenContext() error}
 type Videos interface{LoadVideo(path string) (VideoPlayer, error)}
 type Waveform uint8
 var ErrAnimationConfig error

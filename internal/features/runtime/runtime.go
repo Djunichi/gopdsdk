@@ -1585,6 +1585,7 @@ func OwnedBitmapTableHandle(table playdate.BitmapTable) (uintptr, error) {
 // VideoDriver contains platform operations for one native video player.
 type VideoDriver struct {
 	Info             func(uintptr) playdate.VideoInfo
+	Error            func(uintptr) string
 	SetContext       func(uintptr, uintptr) (bool, string)
 	UseScreenContext func(uintptr)
 	RenderFrame      func(uintptr, int) (bool, string)
@@ -1615,6 +1616,12 @@ func (p *VideoPlayer) Info() (playdate.VideoInfo, error) {
 		return playdate.VideoInfo{}, err
 	}
 	return p.driver.Info(p.handle), nil
+}
+func (p *VideoPlayer) LastError() (string, error) {
+	if err := p.live(); err != nil {
+		return "", err
+	}
+	return p.driver.Error(p.handle), nil
 }
 func (p *VideoPlayer) SetContext(bitmap playdate.Bitmap) error {
 	if err := p.live(); err != nil {

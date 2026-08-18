@@ -6,6 +6,38 @@ that out.
 
 ## Unreleased
 
+- Added `playdate/json`, a dependency-free bounded JSON replacement for the
+  official C callback API. It decodes from `io.Reader` or bytes into an ordered
+  reflection-free value tree, preserves duplicate names and exact number
+  spelling, validates UTF-8 and surrogate pairs, reports byte/path syntax
+  errors, and streams validated compact or pretty output to `io.Writer`.
+- The `examples/jsoncodec` consumer passed pure-Go tests, the full unit suite,
+  `go vet ./...`, the official Windows SDK 3.1.1 Simulator build and launch,
+  and the conservative TinyGo 0.41.1 device link gate without forbidden runtime
+  symbols. Its installed hard-float artifact uses 283,900 bytes of static RAM
+  and produces a 1,279,000-byte ELF and a 62,029-byte PDX. It was installed and
+  launched over COM3 on 2026-08-18; the user-confirmed physical-device output
+  `JSON: Crank & Key L3 flags 2 bytes 96` covers packaged-file reading, bounded
+  decoding, schema lookup, tree mutation, and fixed-buffer encoding. Simulator
+  visual behavior, soak, memory growth, and post-run logs remain unverified.
+- Audited the undocumented SDK 3.1.1 `playdate_videostream` file source. On
+  2026-08-18 a direct C API diagnostic in the official Windows Simulator and
+  the generated Go adapter produced the same result for the repository-owned
+  valid PDV: all 8,155 bytes were read, a native video-player pointer existed,
+  `getError` returned no error, but `update` drew nothing and the decoder
+  reported zero frames and zero buffered frames. Ordinary PDV playback remains
+  supported through `LoadVideo`.
+- Removed the experimental public `VideoStream`, its errors, runtime ownership
+  layer, generated native bridges, and diagnostic consumer. A conservative
+  TinyGo 0.41.1 physical-device build passed the device link gate with 284,460
+  bytes of static RAM, but both launches crashed at the first `VideoStream`
+  interface method dispatch. The two fresh device crash records symbolize to
+  `runtime.nilPanic`/`runtime.runtimePanicAt`; native `videostream->update` was
+  not reached. Videostream is now post-v1.0 `v1.1 networking` research until a
+  source container and protocol are documented and both adapters can execute
+  a real stream safely. A valid streaming-source Simulator run, native device
+  behavior, soak, memory growth, and unchanged device-log gates remain
+  unverified.
 - Hardened the P11.2 scoreboard callback boundary on both native adapters.
   SDK-owned results are copied during native completion and game callbacks are
   deferred through a fixed four-slot queue to the next update. One request per
