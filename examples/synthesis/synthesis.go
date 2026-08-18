@@ -5,6 +5,9 @@ import "github.com/Djunichi/gopdsdk/playdate"
 
 type game struct {
 	synth     playdate.Synth
+	lfo       playdate.LFO
+	synthBus  playdate.AudioChannel
+	masterBus playdate.AudioChannel
 	clock     playdate.AudioClock
 	curvature float32
 	dirty     bool
@@ -23,7 +26,19 @@ func (g *game) Init(context playdate.Context) error {
 		return playdate.ErrAudioUnavailable
 	}
 	g.clock = clock
+	channels, ok := context.(playdate.AudioChannels)
+	if !ok {
+		return playdate.ErrAudioUnavailable
+	}
 	var err error
+	g.synthBus, err = channels.NewAudioChannel()
+	if err != nil {
+		return err
+	}
+	g.masterBus, err = channels.NewAudioChannel()
+	if err != nil {
+		return err
+	}
 	g.synth, err = synths.NewSynth(playdate.WaveformTriangle)
 	if err != nil {
 		return err
@@ -40,6 +55,38 @@ func (g *game) Init(context playdate.Context) error {
 		return err
 	}
 	if err = g.synth.SetEnvelopeRateScaling(.25, 36, 84); err != nil {
+		return err
+	}
+	g.lfo, err = synths.NewLFO(playdate.LFOTypeSampleAndHold)
+	if err != nil {
+		return err
+	}
+	if err = g.lfo.SetRate(3); err != nil {
+		return err
+	}
+	if err = g.lfo.SetDepth(.6); err != nil {
+		return err
+	}
+	if err = g.lfo.SetStartPhase(.25); err != nil {
+		return err
+	}
+	if err = g.lfo.SetRandomSeed(0x12_34); err != nil {
+		return err
+	}
+	if err = g.lfo.SetGlobal(true); err != nil {
+		return err
+	}
+	if err = g.synth.SetFrequencyModulator(g.lfo); err != nil {
+		return err
+	}
+	if err = g.synthBus.AddSource(g.synth); err != nil {
+		return err
+	}
+	output, err := g.synthBus.Output()
+	if err != nil {
+		return err
+	}
+	if err = g.masterBus.AddSource(output); err != nil {
 		return err
 	}
 	return nil
@@ -79,7 +126,7 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 	}
 	g.dirty = false
 	context.Clear()
-	context.DrawText("P9.3 synthesis", 12, 20)
+	context.DrawText("P12.4 nested synthesis", 12, 20)
 	context.DrawText("Tap A after each change", 12, 52)
 	context.DrawText("Left/Right: curve by 0.5", 12, 76)
 	context.DrawText("Curve: "+curveName(g.curvature), 12, 112)
@@ -88,7 +135,16 @@ func (g *game) Update(context playdate.Context) (bool, error) {
 
 func (g *game) HandleLifecycle(_ playdate.Context, event playdate.LifecycleEvent) error {
 	if event == playdate.LifecycleTerminate {
-		return g.synth.Close()
+		if err := g.synth.Close(); err != nil {
+			return err
+		}
+		if err := g.lfo.Close(); err != nil {
+			return err
+		}
+		if err := g.synthBus.Close(); err != nil {
+			return err
+		}
+		return g.masterBus.Close()
 	}
 	return nil
 }

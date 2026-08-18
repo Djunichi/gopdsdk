@@ -220,7 +220,7 @@ func TestP93DeviceABIBridges(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{"bridgeAudioChannelSetModulator", "bridgeSynthSetWavetable", "bridgeSynthSetParameterBits", "bridgeTrackInspect", "bridgeTrackMetric", "bridgeTrackNoteAtBits", "bridgeSequenceGetTrack", "bridgeSequenceCurrentStep", "bridgeSequenceAllNotesOff", "bridgeNewOnePole", "bridgeNewPCMCallbackSource", "bridgeNewGeneratorSynth"} {
+	for _, want := range []string{"bridgeAudioChannelSetModulator", "bridgeAudioChannelOutput", "bridgeLFOSetStartPhaseBits", "bridgeLFOSetRandomSeed", "bridgeLFOSetGlobal", "bridgeSynthSetWavetable", "bridgeSynthSetParameterBits", "bridgeTrackInspect", "bridgeTrackMetric", "bridgeTrackNoteAtBits", "bridgeSequenceGetTrack", "bridgeSequenceCurrentStep", "bridgeSequenceAllNotesOff", "bridgeNewOnePole", "bridgeNewPCMCallbackSource", "bridgeNewGeneratorSynth"} {
 		if !strings.Contains(bootstrapSource, want) {
 			t.Errorf("device bootstrap does not contain %q", want)
 		}

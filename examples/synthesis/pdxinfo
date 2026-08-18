@@ -1,6 +1,6 @@
 name=gopdsdk Synthesis
 author=gopdsdk
-description=P9.3 synthesis and envelope acceptance
+description=P12.4 nested routing, LFO, and envelope acceptance
 bundleID=dev.gopdsdk.synthesis
 version=0.1.0
 buildNumber=1
