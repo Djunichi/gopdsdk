@@ -550,8 +550,3 @@ allocation inside `Update` is allowed but remains workload- and hardware-tested.
 Simulator compilation alone does not prove device compatibility for a standard
 library package. See [COMPATIBILITY.md](COMPATIBILITY.md) for the evidence
 matrix and exact verified toolchain.
-
-`gopdsdk probe device-profile` compiles isolated language and standard-library
-fixtures with the accepted target, scheduler, GC, and panic settings. Its
-`rejected`, `unsafe`, and `build-only` results are compile-stage evidence only;
-`--json` emits the same matrix for automated inspection.

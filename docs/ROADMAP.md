@@ -1,8 +1,7 @@
 # Product roadmap
 
-Status: `v0.11.0` is released. The remaining device Go profile work is
-allocated to `v0.12.0`, followed by the `v1.0.0` contract release, updated
-2026-08-18.
+Status: `v0.11.0` is released. Bounded device Go enablement is allocated to
+`v0.12.0`; the stable contract then ships as `v1.0.0`, updated 2026-08-18.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -52,15 +51,15 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P12 | `v0.12.0` | Final device Go-profile audit and runtime hardening | In progress |
+| P12 | `v0.12.0` | Bounded device Go enablement and replacements accepted by the completed audit | Planned |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
 
 ## Remaining capability milestones
 
 - After P11, every materially useful offline official-SDK capability should be
   implemented or replaced without loss of game functionality.
-- P12 is the final feature stage before `v1.0.0` and owns the device Go-profile
-  limitations rather than allowing them to shape earlier capability releases.
+- P12 implements only enablement and bounded replacements accepted by the
+  completed device Go-profile audit.
 - P13 freezes and releases the stable `v1.0.0` contract. Real-game validation
   begins afterward.
 
@@ -89,63 +88,107 @@ consumer, official Simulator integration, device build, and applicable physical
 device behavior. Callback APIs additionally require bounded queues, no unsafe
 re-entry into Go, termination suppression, and overflow behavior.
 
-## P12 — device Go profile and runtime hardening — `v0.12.0`
+## Device Go-profile decisions
 
-P12 is deliberately the last feature stage before `v1.0.0`. Earlier releases
-close official-SDK capability gaps without expanding the accepted Go language
-subset; this stage then audits whether the remaining runtime restrictions block
-otherwise supported offline game architectures.
+The completed device audit is retained as a decision record rather than a release
+milestone. Implementation work appears in P12 only where the audit accepted
+enablement or a bounded replacement.
 
-P12.1 has started with an executable compile-stage matrix. The isolated probes
-distinguish TinyGo rejection, objects that retain forbidden runtime symbols,
-and compile-only success without claiming Simulator or physical-device
-execution. Device-run probes and the final support decisions remain open.
-
-### P12.1 — device Go-profile investigations
-
-Every probe is an independent investigation. A result for one probe does not
-promote a related language feature or standard-library package. Each track must
-retain its exact source fixture, record TinyGo diagnostics and linked symbols,
-pass the full Playdate ELF link gate when possible, and then receive an explicit
-`supported`, `unsupported`, `replaced`, or `compile-only` decision. A
-`supported` decision additionally requires a packaged PDX and applicable
-physical-device behavior; Simulator execution or compilation alone is not
-sufficient.
-
-| Track | Probe | Current compile evidence | Remaining investigation |
+| Audit track | Probe | Accepted decision | Implementation consequence |
 | --- | --- | --- | --- |
-| P12.1.0 | Baseline | `build-only`; isolated TinyGo object compiles | Establish the control ELF/PDX, Simulator, and physical-device result used by every other track. |
-| P12.1.1 | Goroutine | `rejected`; TinyGo refuses goroutine start with `scheduler none` | Test applicable scheduler choices, runtime hooks, memory bounds, update-loop interaction, and whether any safe device profile exists. |
-| P12.1.2 | Channel | `unsafe`; object retains channel runtime symbols | Link with each viable scheduler result, test bounded send/receive and shutdown, then accept or reject the runtime cost and semantics. |
-| P12.1.3 | `select` | `unsafe`; object retains channel runtime symbols | Investigate separately from basic channels, including default, blocking, fairness, shutdown, and bounded scheduler behavior. |
-| P12.1.4 | `defer` | `unsafe`; object retains `runtime.setupDeferFrame` | Isolate zero-, one-, and repeated-defer paths, verify the Cortex-M register failure boundary, code size, cleanup semantics, and device behavior. |
-| P12.1.5 | Panic | `build-only`; isolated TinyGo object compiles | Link and run a separate intentional-failure PDX, confirm fail-stop trap behavior, symbolization, logs, and absence of accidental recovery claims. |
-| P12.1.6 | `recover` | `unsafe`; object retains defer and recover runtime symbols | Test only after the defer investigation; verify nested panic, cleanup ordering, runtime boundary safety, and whether recovery is supportable at all. |
-| P12.1.7 | Public reflection | `unsafe`; object retains public reflection symbols | Split inspection, conversion, mutation, and call operations; measure code/heap cost and document reflection-free replacements where support is rejected. |
-| P12.1.8 | Finalizer | `unsafe`; object retains finalizer runtime symbols | Verify registration, GC interaction, execution ordering, shutdown behavior, and prove that correctness never depends on finalizer delivery. |
-| P12.1.9 | cgo | `build-only`; isolated TinyGo object compiles | Link a real owned C function through the Playdate build, verify calls and data ownership on device, and decide whether this adds a safe public workflow. |
-| P12.1.10 | `runtime.GC` | `build-only`; isolated TinyGo object compiles | Link and measure explicit collection, frame pause, heap reuse, repeated calls, lifecycle interaction, and physical-device stability. |
-| P12.1.11 | `time` fixture | `unsafe`; `time.Second.String` retains defer runtime | Decompose duration arithmetic, formatting, timers, clocks, and sleep; classify each useful subset rather than rejecting the entire package from one fixture. |
-| P12.1.12 | `fmt` fixture | `unsafe`; `fmt.Sprint` retains defer, recover, and reflection | Separate formatting operations and writers, measure footprint and allocation, and compare bounded `strconv`-based alternatives. |
-| P12.1.13 | `encoding/json` fixture | `unsafe`; `json.Marshal` retains defer, recover, and reflection | Audit encode/decode separately, measure bounds and footprint, and compare the supported reflection-free `playdate/json` replacement. |
+| A.0 | Baseline | `supported`; control ELF/PDX passed Simulator and physical-device acceptance | Complete; use this sequential `scheduler none` result as the control for every remaining track. |
+| A.1 | Goroutine | `replaced`; no safe scheduler profile fits the Playdate callback lifecycle and bounded frame execution | Complete; P12.1 `playdate/schedule` owns the bounded stackless replacement. |
+| A.2 | Channel | `replaced`; an immediately completing buffered subset passed physical-device acceptance, but any blocking operation fail-stops without a scheduler | Complete; P12.1 owns explicit bounded queue and task-coordination semantics without hidden blocking. |
+| A.3 | `select` | `replaced`; ready/default operations passed physical-device acceptance, but blocking fail-stops and TinyGo always favors the first ready case | Complete; P12.1 owns explicit multi-queue polling with a documented deterministic policy. |
+| A.4 | `defer` | `supported`; normal-return cleanup passed physical-device acceptance with the conservative SCB shadow, while fail-stop panic does not unwind deferred calls | Complete; P12.2 enables the verified subset and documents dynamic-defer allocation and panic boundaries. |
+| A.5 | Panic | `supported`; an intentional physical-device panic produced the verified fail-stop trap and a symbolized crash record | Complete; panic is a terminal trap without message output, stack unwinding, deferred cleanup, or recovery. |
+| A.6 | `recover` | `unsupported`; the accepted trap profile cannot unwind, while an experimental print profile silently diverged from Go for indirect recovery and `panic(nil)` | Complete; keep the runtime-symbol rejection, use explicit error returns, and reconsider only after the upstream runtime provides compatible semantics. |
+| A.7 | Public reflection | `supported` for the explicitly verified inspection, extraction, conversion, and mutation subset; dynamic invocation and construction remain `unsupported` | Complete; P12.3 replaces the blanket symbol rejection with exact gates, documents the footprint, and proves allocation and memory-growth bounds. |
+| A.8 | Finalizer | `unsupported`; conservative-GC `runtime.SetFinalizer` is a verified no-op and never delivers the callback | Complete; preserve the symbol rejection and require explicit resource ownership and lifecycle cleanup. |
+| A.9 | cgo | `unsupported` for gopdsdk game packages; isolated `package main` compiles, but the generated-main application model reproducibly crashes the TinyGo interpreter | Complete; retain isolated compilation as diagnostic evidence and use gopdsdk-owned native bridges rather than an application cgo contract. |
+| A.10 | `runtime.GC` | `supported`; the repository GC stress scene proved collection, heap reuse, bounded live memory, and sub-budget pauses in a 60-second physical-device soak | Complete; retain the existing production profile and document that pause and memory bounds remain workload-specific. |
+| A.11 | `time` fixture | `supported` for the verified pure duration/value subset; `time.Now`, `Sleep`, timers, and tickers are `unsupported` because the inherited QEMU clock is synthetic and scheduler timers fail-stop | Complete; P12.1 owns Playdate-clock timed tasks and P12.2 enables the verified formatting path that retains normal-return defer. |
+| A.12 | `fmt` fixture | `replaced`; basic print paths passed physically, but the dynamic `any` API retains unusable panic recovery and reflection at substantially higher cost than the verified `strconv` alternative | Complete; keep the symbol rejection and use typed `strconv`, bounded buffers, builders, and writers. |
+| A.13 | `encoding/json` fixture | `replaced`; typed marshal/unmarshal passed physically, but the package retains unusable panic recovery and broad reflection at far higher cost than `playdate/json` | Complete; keep the standard-package symbol rejection and use the existing bounded reflection-free replacement. |
 
-The compile matrix is a discovery tool, not the final compatibility matrix.
-Tracks may add narrower fixtures when a package contains both viable and unsafe
-subsets, but a broader package-level claim requires evidence for every operation
-included in that claim.
+## P12 — bounded device Go enablement — `v0.12.0`
 
-- Reassess goroutines, channels, `select`, `defer`, panic/recover, reflection,
-  finalizers, cgo, standard-library coverage, scheduler choice, GC strategy,
-  and application runtime hooks against the verified TinyGo/device toolchain.
-- Implement and prove every safely supportable facility whose absence causes a
-  material offline-game limitation. Keep restrictions that are inherent,
-  unsafe, unbounded, or replaceable without loss, with precise compile-time or
-  probe diagnostics and documented alternatives.
-- Stress callback queues introduced by P8 and P9 together with GC, allocation,
-  lifecycle transitions, long-running updates, panic policy, and native
-  resource cleanup.
-- Run extended physical-device soak, memory-growth, overflow, and unchanged-log
-  gates before releasing `v0.12.0`.
+P12 implements only facilities that the completed device Go-profile audit either
+accepted for enablement or identified as a material game-development need with a
+bounded replacement. Every item must trace back to an accepted audit decision;
+speculative language or standard-library expansion remains out of scope.
+
+### P12.1 — `playdate/schedule`
+
+Provide a stackless cooperative task scheduler for work that must be spread
+across update frames. It is a replacement for the useful game-development
+cases of goroutines, channels, and `select`, not an implementation of those Go
+facilities, parallelism, preemption, or transparent async functions.
+
+- Run user task steps only from the application update boundary; native audio,
+  network, and system callbacks may enqueue bounded records but never execute
+  scheduled user code directly.
+- Require tasks to yield explicitly by returning from a step. Bound queue
+  capacity and work per frame, define deterministic ordering, cancellation,
+  completion, overflow, and application-termination behavior, and avoid
+  per-frame allocation in the scheduler itself.
+- Expose non-blocking bounded queue operations with explicit full and empty
+  results; never translate queue occupancy into a hidden wait or panic.
+- Support polling across multiple queues with an explicit nothing-ready result
+  and a documented deterministic priority or round-robin policy. Never inherit
+  source-order bias accidentally or claim Go `select` fairness.
+- Treat an elapsed-time budget as an optional secondary guard rather than a
+  deterministic substitute for a step bound. Document that one task step can
+  still overrun a frame and must remain small.
+- Provide wrap-safe delayed and deadline task scheduling driven by
+  `Context.CurrentTimeMilliseconds`; it replaces the useful device cases of
+  `time.Sleep`, timers, and tickers without blocking the update callback or
+  depending on TinyGo's synthetic QEMU clock.
+- Prove the public contract with a repository-owned incremental-work consumer,
+  pure-Go ordering and lifecycle tests, Simulator integration, device build,
+  and physical-device frame-time and bounded-memory evidence.
+
+### P12.2 — normal-return `defer`
+
+Enable the physically verified normal-return `defer` subset for conservative
+device builds without enabling `recover` or promising panic unwinding.
+
+- Remove the blanket `runtime.setupDeferFrame` rejection only when the device
+  bootstrap provides and initializes the verified SCB shadow; continue to
+  reject `runtime._recover` and unsupported runtime combinations.
+- Preserve normal return, early return, LIFO, argument-evaluation, named-result,
+  and repeated-defer behavior with deterministic unit and linked-symbol tests.
+- Document that `-panic trap` does not run deferred cleanup and that dynamic
+  defer registration, including defer in loops, can allocate. Advise against
+  relying on dynamic defer in update hot paths without measurement.
+- Add linked-symbol and physical-device coverage for the A.11 duration
+  formatting/parsing fixture, documenting its code-size and allocation cost;
+  this does not enable `time.Now`, sleep, timers, or tickers.
+- Add a repository-owned resource-cleanup consumer, Simulator integration,
+  device build, physical-device cleanup behavior, repeated-defer memory-growth
+  soak, and unchanged post-run log evidence before declaring enablement ready.
+
+### P12.3 — bounded public reflection subset
+
+Enable only the A.7 operations physically verified under the accepted
+device profile; do not claim compatibility with the complete `reflect` package.
+
+- Replace the blanket `reflect.` linked-symbol rejection with exact allowed and
+  forbidden operation gates. Continue to reject `Value.Call`, `CallSlice`,
+  `MakeFunc`, reflected methods and channels, unsupported function Type APIs,
+  and any newly linked unimplemented TinyGo reflection path.
+- Cover metadata inspection, field and tag access, `Interface`, the accepted
+  numeric conversion, and struct, slice, and map mutation with deterministic
+  fixtures and negative linked-symbol tests.
+- Document the verified operation list, direct typed and generated alternatives,
+  and the measured code-size cost. Do not use public reflection internally where
+  a static implementation is practical.
+- Measure allocation behavior per accepted operation, repeat representative
+  work across update frames, and require Simulator integration, device build,
+  physical-device memory-growth soak, and unchanged post-run logs before
+  declaring enablement ready.
+
+Additional P12 tracks require another accepted device Go-profile decision.
 
 ## P13 — stable contract and `v1.0.0`
 

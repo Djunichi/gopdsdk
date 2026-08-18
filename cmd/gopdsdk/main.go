@@ -47,8 +47,6 @@ func main() {
 		case "probe":
 			if len(args) > 1 && args[1] == "connection" {
 				err = deviceconnect.Run(context.Background(), args, os.Stdout, os.Stderr)
-			} else if len(args) > 1 && args[1] == "device-profile" {
-				err = deviceprobe.RunProfileAudit(context.Background(), args, os.Stdout, os.Stderr)
 			} else if len(args) > 1 && args[1] == "device" {
 				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
 			} else {

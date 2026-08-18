@@ -131,19 +131,6 @@ Verify the first device compilation stage with:
 go run ./cmd/gopdsdk probe device
 ```
 
-Audit isolated Go language and standard-library facilities against the accepted
-TinyGo compile profile with:
-
-```sh
-go run ./cmd/gopdsdk probe device-profile
-go run ./cmd/gopdsdk probe device-profile --json
-```
-
-The audit reports `rejected` when TinyGo refuses a probe, `unsafe` when the
-object retains runtime symbols forbidden by the device link gate, and
-`build-only` when compile and symbol inspection pass. None of these statuses
-proves Simulator or physical-device execution.
-
 This currently proves a hard-float Cortex-M7 TinyGo object, the official
 Playdate `setup.c` and `link_map.ld` link, an ELF32/ARM executable with
 `eventHandlerShim`, a one-time TinyGo runtime bootstrap, no unresolved symbols,
