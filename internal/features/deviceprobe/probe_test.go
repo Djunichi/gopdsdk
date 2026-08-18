@@ -411,7 +411,7 @@ func TestDirectoryFileSizeSumsNestedRegularFiles(t *testing.T) {
 func TestUnsupportedRuntimeSymbolsRejectsUnsupportedSubset(t *testing.T) {
 	output := "00003ae0 t runtime.setupDeferFrame\n000056b8 t runtime._recover\n00006000 t runtime.chanSend\n00006100 t runtime.SetFinalizer\n00006200 t reflect.Value.Call\n00003298 t runtime/interrupt.In\n"
 	got := unsupportedRuntimeSymbols(output, buildplan.DeviceMemoryNone)
-	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime.SetFinalizer", "reflect.", "runtime.chan", "runtime/interrupt.In"}
+	want := []string{"runtime.setupDeferFrame", "runtime._recover", "runtime.SetFinalizer", "reflect.Value.Call", "runtime.chan", "runtime/interrupt.In"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("unsupportedRuntimeSymbols() = %v, want %v", got, want)
 	}
@@ -432,6 +432,18 @@ func TestUnsupportedRuntimeSymbolsRejectsUnsupportedSubset(t *testing.T) {
 	}
 	if got := unsupportedRuntimeSymbols("00000100 t runtime.chanLen\n00000110 t runtime.chanCap\n", buildplan.DeviceMemoryConservative); len(got) != 0 {
 		t.Fatalf("unsupportedRuntimeSymbols(channel queries) = %v, want none", got)
+	}
+}
+
+func TestUnsupportedReflectionSymbolsAllowsOnlyAuditedOperations(t *testing.T) {
+	output := "00000100 T reflect.TypeOf\n00000110 T reflect.Value.Field\n00000120 T reflect.Value.SetInt\n"
+	if got := unsupportedReflectionSymbols(output); len(got) != 0 {
+		t.Fatalf("unsupportedReflectionSymbols(audited) = %v, want none", got)
+	}
+	output += "00000130 T reflect.Value.Call\n00000140 T reflect.Value.CallSlice\n00000150 T reflect.MakeFunc\n00000160 T reflect.Value.Method\n00000170 T reflect.ChanOf\n00000180 T reflect.FuncOf\n00000190 T reflect.futureTinyGoStub\n"
+	want := []string{"reflect.Value.Call", "reflect.Value.CallSlice", "reflect.MakeFunc", "reflect.Value.Method", "reflect.ChanOf", "reflect.FuncOf", "reflect.futureTinyGoStub"}
+	if got := unsupportedReflectionSymbols(output); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("unsupportedReflectionSymbols(forbidden) = %v, want %v", got, want)
 	}
 }
 

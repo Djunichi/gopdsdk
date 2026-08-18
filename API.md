@@ -594,13 +594,17 @@ including `defer` in a loop, can allocate and should not be used in update hot
 paths without measuring heap growth. Device builds use `-panic trap`: panic is
 terminal and does not unwind the stack or run deferred cleanup.
 
-The audited reflection inspection, extraction, conversion, and mutation subset
-has been accepted for future enablement but remains unavailable through the
-production device linker. `recover`, finalizers, application cgo, dynamic
-reflection calls and construction, and application runtime-control hooks are
-unsupported. Allocation inside `Update` is allowed but remains workload- and
-hardware-tested. Future enablement and bounded replacements are tracked in
-[docs/ROADMAP.md](docs/ROADMAP.md).
+The production device linker permits the audited public reflection subset:
+`TypeOf`; type kind, name, and struct-field metadata; struct tags; `ValueOf`,
+`Elem`, `Field`, `Index`, `Kind`, validity and set/interface
+checks; `Interface`; the verified `int` to `int64` numeric `Convert`; and `SetInt`,
+`SetString`, and `SetMapIndex` mutation. It rejects every other newly linked
+public `reflect` symbol. In particular, dynamic calls and construction,
+reflected methods and channels, and unsupported function Type APIs remain
+unsupported, as do `recover`, finalizers, application cgo, and application
+runtime-control hooks. Prefer direct typed code or generated accessors where a
+static implementation is practical. Reflection allocation and memory bounds are
+workload-specific and require measurement before use in an update hot path.
 
 Pure `time.Duration` value, parsing, and formatting operations are supported.
 This does not enable `time.Now`, sleep, timers, or tickers; use Playdate-clock

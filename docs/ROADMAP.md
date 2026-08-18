@@ -200,6 +200,16 @@ device builds without enabling `recover` or promising panic unwinding.
 
 ### P12.3 — bounded public reflection subset
 
+The exact fail-closed symbol gate, deterministic operation fixture, allocation
+measurement, repository-owned soak consumer, Simulator build, and conservative
+device build are implemented. The TinyGo 0.41.1 device artifact uses 282,684
+bytes of static RAM and produces a 1,279,604-byte ELF and a 59,359-byte PDX.
+The Simulator launch and COM3 install and launch commands pass. Visual device
+acceptance on 2026-08-18 confirmed `Operations PASS`, a stable 12,544-byte
+aggregate allocation measurement, `Memory PASS`, and `Soak PASS` after 60
+seconds. The user also confirmed unchanged post-run `crashlog.txt` and
+`errorlog.txt`; all P12.3 acceptance gates are complete.
+
 Enable only the A.7 operations physically verified under the accepted
 device profile; do not claim compatibility with the complete `reflect` package.
 
