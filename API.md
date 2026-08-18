@@ -421,6 +421,12 @@ Advanced games may separately capability-assert `AudioChannels`,
 slices do not widen the base `Context`. `AudioOutputs.DefaultAudioChannel`
 returns a borrowed default-channel wrapper: closing the wrapper detaches graph
 edges tracked through it but never removes or frees the native default channel.
+`AudioChannel.Output` returns a borrowed post-effects, pre-volume-and-pan
+`AudioSource` for nested submix and bus routing. The output expires when its
+owning channel closes; closing the owner first detaches the output from its
+downstream channel. A source remains attached to at most one channel, duplicate
+attachment refreshes the native route, and direct or transitive channel cycles
+return `ErrAudioRoute` before native mutation.
 `AudioOutputState` synchronously reports headphone and headset-microphone
 presence at the time of the call; poll it during updates when the UI or routing
 must react to connection changes. `SetAudioOutputsActive` selects headphone and
@@ -434,6 +440,11 @@ ranges must be ordered from the lower note to the higher note; non-finite
 parameters and reversed ranges return `ErrAudioParameter`. A separately created
 `Envelope` remains an explicitly owned signal and exposes the corresponding
 setters for modulation graphs whose trigger is managed by the native graph.
+LFOs separately expose current phase and initial phase, reproducible
+sample-and-hold random seeding, and continuous global updating. Initial phase
+must be finite and within zero through one; invalid values return
+`ErrAudioParameter`. The similarly named envelope global-update method exists
+only in the official Lua API, not the C SDK contract.
 
 Microphone games capability-assert `Microphones`. Request permission before
 recording, handle pending/denied/granted explicitly, and close the owned

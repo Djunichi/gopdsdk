@@ -408,6 +408,7 @@ type audioPlayer struct {
 	sample         *audioSample
 	channels       map[*audioChannel]struct{}
 	rateSignal     *signalNode
+	ownerChannel   *audioChannel
 }
 
 func (p *audioPlayer) SetRateModulator(v playdate.Signal) error {
@@ -440,6 +441,8 @@ func (p *audioPlayer) SetRateModulator(v playdate.Signal) error {
 // AudioChannelDriver contains native operations for an explicitly owned
 // routing node.
 type AudioChannelDriver struct {
+	Output             func(uintptr) uintptr
+	OutputAudio        AudioDriver
 	AddSource          func(uintptr, uintptr) bool
 	RemoveSource       func(uintptr, uintptr) bool
 	AddEffect          func(uintptr, uintptr) bool
@@ -469,6 +472,7 @@ type audioChannel struct {
 	effects                 map[*effectNode]struct{}
 	closed                  bool
 	volumeSignal, panSignal *signalNode
+	output                  *audioPlayer
 }
 
 func (c *audioChannel) setModulator(value playdate.Signal, pan bool) error {
@@ -576,6 +580,25 @@ func (c *audioChannel) nativeHandle() (uintptr, error) {
 	return c.handle, nil
 }
 
+func (c *audioChannel) Output() (playdate.AudioSource, error) {
+	handle, err := c.nativeHandle()
+	if err != nil {
+		return nil, err
+	}
+	if c.output != nil {
+		return c.output, nil
+	}
+	if c.driver.Output == nil {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	output := c.driver.Output(handle)
+	if output == 0 {
+		return nil, playdate.ErrAudioUnavailable
+	}
+	c.output = &audioPlayer{handle: output, driver: c.driver.OutputAudio, channels: make(map[*audioChannel]struct{}), ownerChannel: c}
+	return c.output, nil
+}
+
 func audioSource(value playdate.AudioSource) (*audioPlayer, error) {
 	switch source := value.(type) {
 	case *audioPlayer:
@@ -593,6 +616,21 @@ func audioSource(value playdate.AudioSource) (*audioPlayer, error) {
 	}
 }
 
+func channelReaches(from, target *audioChannel) bool {
+	if from == target {
+		return true
+	}
+	if from == nil || from.output == nil {
+		return false
+	}
+	for next := range from.output.channels {
+		if channelReaches(next, target) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *audioChannel) AddSource(value playdate.AudioSource) error {
 	handle, err := c.nativeHandle()
 	if err != nil {
@@ -604,6 +642,9 @@ func (c *audioChannel) AddSource(value playdate.AudioSource) error {
 	source, err := audioSource(value)
 	if err != nil {
 		return err
+	}
+	if source.ownerChannel != nil && channelReaches(c, source.ownerChannel) {
+		return playdate.ErrAudioRoute
 	}
 	sourceHandle, err := source.nativeHandle()
 	if err != nil {
@@ -694,6 +735,17 @@ func (c *audioChannel) Close() error {
 	handle, err := c.nativeHandle()
 	if err != nil {
 		return err
+	}
+	if c.output != nil {
+		for downstream := range c.output.channels {
+			if !downstream.closed {
+				downstream.driver.RemoveSource(downstream.handle, c.output.driver.Source(c.output.handle))
+				delete(downstream.sources, c.output)
+			}
+		}
+		c.output.channels = nil
+		c.output.handle = 0
+		c.output.closed = true
 	}
 	for source := range c.sources {
 		sourceHandle, sourceErr := source.nativeHandle()

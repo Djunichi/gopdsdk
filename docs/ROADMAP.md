@@ -1,7 +1,8 @@
 # Product roadmap
 
-Status: `v0.11.0` is released. Bounded device Go enablement is allocated to
-`v0.12.0`; the stable contract then ships as `v1.0.0`, updated 2026-08-18.
+Status: `v0.11.0` is released. The remaining offline capability work and stable
+contract ship together as `v1.0.0`; there is no intermediate `v0.12.0` release,
+updated 2026-08-18.
 
 This is the only planning document under `docs/` and the canonical roadmap from
 the released foundation to `v1.0.0`. Completed-scope evidence lives in
@@ -51,15 +52,20 @@ cross-build does not promote a capability to device-ready.
 
 | Scope | Target | Outcome | Status |
 | --- | --- | --- | --- |
-| P12 | `v0.12.0` | Bounded device Go enablement and replacements accepted by the completed audit | Planned |
+| P12 | `v1.0.0` | Bounded device Go enablement plus final offline audio completion | Implemented |
 | P13 | `v1.0.0` | API freeze, compatibility contract, and release evidence | Planned |
+
+P12 is the feature-completion phase of the `v1.0.0` release candidate; it is
+not published as a separate minor release. P13 freezes and verifies that same
+candidate after P12 is complete.
 
 ## Remaining capability milestones
 
 - After P11, every materially useful offline official-SDK capability should be
   implemented or replaced without loss of game functionality.
-- P12 implements only enablement and bounded replacements accepted by the
-  completed device Go-profile audit.
+- P12 implements enablement and bounded replacements accepted by the completed
+  device Go-profile audit, then closes the final offline audio gaps found by the
+  pre-1.0 SDK reconciliation. This feature-completion phase is complete.
 - P13 freezes and releases the stable `v1.0.0` contract. Real-game validation
   begins afterward.
 
@@ -111,12 +117,15 @@ enablement or a bounded replacement.
 | A.12 | `fmt` fixture | `replaced`; basic print paths passed physically, but the dynamic `any` API retains unusable panic recovery and reflection at substantially higher cost than the verified `strconv` alternative | Complete; keep the symbol rejection and use typed `strconv`, bounded buffers, builders, and writers. |
 | A.13 | `encoding/json` fixture | `replaced`; typed marshal/unmarshal passed physically, but the package retains unusable panic recovery and broad reflection at far higher cost than `playdate/json` | Complete; keep the standard-package symbol rejection and use the existing bounded reflection-free replacement. |
 
-## P12 — bounded device Go enablement — `v0.12.0`
+## P12 — final feature completion — `v1.0.0`
 
-P12 implements only facilities that the completed device Go-profile audit either
-accepted for enablement or identified as a material game-development need with a
-bounded replacement. Every item must trace back to an accepted audit decision;
-speculative language or standard-library expansion remains out of scope.
+P12 implements facilities that the completed device Go-profile audit accepted
+for enablement or identified as a material game-development need with a bounded
+replacement, then closes concrete offline C API gaps found by the final SDK
+reconciliation. Device-profile work must trace back to an accepted audit
+decision; capability additions must trace to a normative official SDK contract.
+Speculative language and unrelated standard-library expansion remain out of
+scope.
 
 ### P12.1 — `playdate/schedule`
 
@@ -228,7 +237,40 @@ device profile; do not claim compatibility with the complete `reflect` package.
   physical-device memory-growth soak, and unchanged post-run logs before
   declaring enablement ready.
 
-Additional P12 tracks require another accepted device Go-profile decision.
+### P12.4 — final offline audio reconciliation
+
+Complete. The public API, ownership runtime, both generated native adapters,
+deterministic tests, and `examples/synthesis` implement the accepted scope. The
+official Windows SDK 3.1.1 Simulator build and launch pass. The TinyGo 0.41.1
+conservative hard-float device build uses 285,376 bytes of static RAM and
+produces a 1,504,256-byte ELF and a 60,456-byte PDX; COM3 installation and launch
+pass. On 2026-08-18 the user confirmed audible nested `synth bus` to `master bus`
+routing, note playback, curvature control, and responsive behavior in the
+Simulator and on a physical Playdate. The user also confirmed the physical
+conservative-GC soak, bounded memory growth, and unchanged post-run
+`crashlog.txt` and `errorlog.txt`.
+
+Close the remaining materially useful offline sound differences found by the
+pre-1.0 reconciliation against the official Playdate SDK 3.1.1 headers.
+
+- Expose a channel's post-effects, pre-volume-and-pan output as a borrowed audio
+  source so games can build nested submix and bus-routing graphs without a
+  game-owned C bridge. Define lifetime, detach-on-close behavior, cycle
+  rejection, duplicate-edge behavior, and the relationship between the
+  borrowed output and its owning channel.
+- Complete the public LFO contract with distinct initial-phase control,
+  reproducible random seeding for sample-and-hold sequences, and continuous
+  global update control. Do not treat current-phase mutation as a replacement
+  for the official initial-phase behavior.
+- Forward every new optional capability through both native ABI contexts and
+  runtime `applicationContext`, with regression coverage through
+  `NewApplication` and deterministic generated-bridge tests.
+- Add a repository-owned acceptance consumer that demonstrates nested channel
+  routing, reproducible sample-and-hold output, initial phase, and global LFO
+  behavior. Require official Simulator integration, device build,
+  physical audible/observable behavior, lifecycle cleanup, bounded-memory and
+  soak evidence, and unchanged post-run device logs before declaring P12
+  complete.
 
 ## P13 — stable contract and `v1.0.0`
 

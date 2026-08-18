@@ -517,6 +517,65 @@ func TestDefaultAudioChannelDoesNotRemoveOrFreeNativeChannel(t *testing.T) {
 	}
 }
 
+func TestAudioChannelOutputRoutingRejectsCyclesAndExpiresOnClose(t *testing.T) {
+	var added, removed [][2]uintptr
+	driver := AudioChannelDriver{
+		Output:      func(channel uintptr) uintptr { return channel + 100 },
+		OutputAudio: AudioDriver{Source: func(handle uintptr) uintptr { return handle }, Stop: func(uintptr) {}, SetVolume: func(uintptr, float32, float32) {}, Volume: func(uintptr) (float32, float32) { return 1, 1 }, IsPlaying: func(uintptr) bool { return true }, Pause: func(uintptr, bool) {}},
+		AddSource: func(channel, source uintptr) bool {
+			added = append(added, [2]uintptr{channel, source})
+			return true
+		},
+		RemoveSource: func(channel, source uintptr) bool {
+			removed = append(removed, [2]uintptr{channel, source})
+			return true
+		},
+		Remove: func(uintptr) bool { return true }, Free: func(uintptr) {},
+	}
+	first := NewAudioChannel(1, driver)
+	second := NewAudioChannel(2, driver)
+	third := NewAudioChannel(3, driver)
+	firstOutput, err := first.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again, err := first.Output(); err != nil || again != firstOutput {
+		t.Fatalf("cached Output() = %v, %v", again, err)
+	}
+	if err := second.AddSource(firstOutput); err != nil {
+		t.Fatal(err)
+	}
+	secondOutput, err := second.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := third.AddSource(secondOutput); err != nil {
+		t.Fatal(err)
+	}
+	thirdOutput, err := third.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := first.AddSource(thirdOutput); !errors.Is(err, playdate.ErrAudioRoute) {
+		t.Fatalf("cycle AddSource = %v", err)
+	}
+	if err := first.AddSource(firstOutput); !errors.Is(err, playdate.ErrAudioRoute) {
+		t.Fatalf("self AddSource = %v", err)
+	}
+	if len(added) != 2 {
+		t.Fatalf("native adds = %v", added)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 1 || removed[0] != [2]uintptr{2, 101} {
+		t.Fatalf("owner Close removals = %v", removed)
+	}
+	if _, _, err := firstOutput.Volume(); !errors.Is(err, playdate.ErrAudioClosed) {
+		t.Fatalf("expired output Volume = %v", err)
+	}
+}
+
 type audioOutputContext struct {
 	testContext
 	channel playdate.AudioChannel
@@ -535,7 +594,10 @@ func (c *audioOutputContext) SetAudioOutputsActive(headphones, speaker bool) err
 }
 
 func TestApplicationForwardsAudioOutputs(t *testing.T) {
-	native := &audioOutputContext{channel: DefaultAudioChannel(7, AudioChannelDriver{})}
+	native := &audioOutputContext{channel: DefaultAudioChannel(7, AudioChannelDriver{
+		Output:      func(uintptr) uintptr { return 17 },
+		OutputAudio: AudioDriver{Source: func(h uintptr) uintptr { return h }, Stop: func(uintptr) {}, SetVolume: func(uintptr, float32, float32) {}, Volume: func(uintptr) (float32, float32) { return 1, 1 }, IsPlaying: func(uintptr) bool { return true }, Pause: func(uintptr, bool) {}},
+	})}
 	application, err := NewApplication(testGame{init: func(context playdate.Context) error {
 		outputs, ok := context.(playdate.AudioOutputs)
 		if !ok {
@@ -544,6 +606,10 @@ func TestApplicationForwardsAudioOutputs(t *testing.T) {
 		channel, err := outputs.DefaultAudioChannel()
 		if err != nil || channel == nil {
 			t.Fatalf("DefaultAudioChannel() = %v, %v", channel, err)
+		}
+		output, err := channel.Output()
+		if err != nil || output == nil {
+			t.Fatalf("Output() = %v, %v", output, err)
 		}
 		state, err := outputs.AudioOutputState()
 		if err != nil || !state.Headphones || !state.HeadsetMicrophone {
@@ -590,6 +656,36 @@ func TestSynthSignalOwnership(t *testing.T) {
 	}
 	if err := synth.Close(); err != nil || synthFreed != 1 {
 		t.Fatalf("Synth Close = %v, %d", err, synthFreed)
+	}
+}
+
+func TestLFOAndEnvelopeCompletionControls(t *testing.T) {
+	var start float32
+	var seed uint16
+	var lfoGlobal bool
+	lfo := NewLFO(3, LFODriver{
+		Signal:        SignalDriver{Free: func(uintptr) {}},
+		SetStartPhase: func(_ uintptr, value float32) { start = value },
+		SetRandomSeed: func(_ uintptr, value uint16) { seed = value },
+		SetGlobal:     func(_ uintptr, value bool) { lfoGlobal = value },
+	})
+	if err := lfo.SetStartPhase(.25); err != nil || start != .25 {
+		t.Fatalf("SetStartPhase = %v, %v", err, start)
+	}
+	if err := lfo.SetStartPhase(-.1); !errors.Is(err, playdate.ErrAudioParameter) {
+		t.Fatalf("invalid SetStartPhase = %v", err)
+	}
+	if err := lfo.SetRandomSeed(65535); err != nil || seed != 65535 {
+		t.Fatalf("SetRandomSeed = %v, %d", err, seed)
+	}
+	if err := lfo.SetGlobal(true); err != nil || !lfoGlobal {
+		t.Fatalf("LFO SetGlobal = %v, %v", err, lfoGlobal)
+	}
+	if err := lfo.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := lfo.SetGlobal(false); !errors.Is(err, playdate.ErrAudioGraphClosed) {
+		t.Fatalf("closed LFO SetGlobal = %v", err)
 	}
 }
 

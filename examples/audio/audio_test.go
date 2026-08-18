@@ -92,6 +92,9 @@ func (*signal) SetLegato(bool) error                       { return nil }
 func (*signal) SetCurvature(float32) error                 { return nil }
 func (*signal) SetVelocitySensitivity(float32) error       { return nil }
 func (*signal) SetRateScaling(float32, uint8, uint8) error { return nil }
+func (*signal) SetStartPhase(float32) error                { return nil }
+func (*signal) SetRandomSeed(uint16) error                 { return nil }
+func (*signal) SetGlobal(bool) error                       { return nil }
 func (*signal) AddEvent(int, float32, bool) error          { return nil }
 func (*signal) RemoveEvent(int) error                      { return nil }
 func (*signal) ClearEvents() error                         { return nil }
@@ -102,6 +105,7 @@ type channel struct {
 	adds, removes int
 }
 
+func (c *channel) Output() (playdate.AudioSource, error)  { return c.source, nil }
 func (c *channel) AddSource(s playdate.AudioSource) error { c.source = s; c.adds++; return nil }
 func (c *channel) RemoveSource(playdate.AudioSource) error {
 	c.source = nil

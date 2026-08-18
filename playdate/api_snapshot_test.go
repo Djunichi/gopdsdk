@@ -249,7 +249,7 @@ func XORPaint() Paint
 type Accelerometer interface{AccelerometerXYZ() (x float32, y float32, z float32); SetAccelerometerEnabled(bool)}
 type Animation struct{table BitmapTable; first int; count int; frame int; frameSeconds float32; elapsed float32; paused bool; fixed bool}
 type Audio interface{LoadFilePlayer(path string) (FilePlayer, error); LoadSoundEffect(path string) (SoundEffect, error)}
-type AudioChannel interface{AddEffect(effect AudioEffect) error; AddSource(source AudioSource) error; Close() error; RemoveEffect(effect AudioEffect) error; RemoveSource(source AudioSource) error; SetPan(pan float32) error; SetPanModulator(Signal) error; SetVolume(volume float32) error; SetVolumeModulator(Signal) error; Volume() (float32, error)}
+type AudioChannel interface{AddEffect(effect AudioEffect) error; AddSource(source AudioSource) error; Close() error; Output() (AudioSource, error); RemoveEffect(effect AudioEffect) error; RemoveSource(source AudioSource) error; SetPan(pan float32) error; SetPanModulator(Signal) error; SetVolume(volume float32) error; SetVolumeModulator(Signal) error; Volume() (float32, error)}
 type AudioChannels interface{NewAudioChannel() (AudioChannel, error)}
 type AudioClock interface{CurrentAudioTime() (uint32, error)}
 type AudioEffect interface{Close() error; SetMix(level float32) error; SetMixModulator(signal Signal) error}
@@ -315,7 +315,7 @@ type GraphicsState interface{ClearClipRect(); SetBackgroundColor(color Color) er
 type Input struct{Buttons Buttons; Pressed Buttons; Released Buttons; Held Buttons; CrankAngle float32; CrankDelta float32; CrankDocked bool; CrankDockedThisFrame bool; CrankUndocked bool; DeltaSeconds float32}
 type InputReader interface{Input() Input}
 type Instrument interface{ActiveVoiceCount() (int, error); AddVoice(synth Synth, rangeStart uint8, rangeEnd uint8, transpose float32) error; AllNotesOff(when uint32) error; Close() error; NoteOff(note uint8, when uint32) error; SetPitchBend(float32) error; SetPitchBendRange(float32) error; SetTranspose(float32) error; SetVolume(left float32, right float32) error; Volume() (left float32, right float32, err error); AudioSource}
-type LFO interface{SetArpeggiation(steps []float32) error; SetCenter(center float32) error; SetDepth(depth float32) error; SetPhase(phase float32) error; SetRate(rate float32) error; SetRetrigger(retrigger bool) error; Signal}
+type LFO interface{SetArpeggiation(steps []float32) error; SetCenter(center float32) error; SetDepth(depth float32) error; SetGlobal(global bool) error; SetPhase(phase float32) error; SetRandomSeed(seed uint16) error; SetRate(rate float32) error; SetRetrigger(retrigger bool) error; SetStartPhase(phase float32) error; Signal}
 type LFOType uint8
 type Language int
 type Launcher interface{ExitToLauncher()}

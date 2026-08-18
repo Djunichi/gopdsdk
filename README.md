@@ -1040,20 +1040,34 @@ Games can capability-assert `AudioChannels`, `AudioOutputs`, and `Synthesizers`
 without widening the base `Context`. `AudioOutputs` exposes the borrowed default
 channel, current headphone/headset-microphone state, and headphone/speaker
 activation. Explicitly owned channels route sample, file, and synth sources and
-expose channel volume and pan. Synths support native waveforms,
+expose channel volume and pan. A channel's borrowed post-effects output can be
+routed into another channel for nested submixes; closing the owner detaches and
+expires that output, and routing cycles are rejected. Synths support native waveforms,
 ADSR parameters, transpose, audio-clock note scheduling, and frequency or
 amplitude modulation by owned LFOs, envelopes, and control-signal timelines.
 
 `Synth` also exposes curvature, velocity sensitivity, and note-range rate
-scaling for its internal note-triggered envelope. The focused
-`examples/synthesis` scene uses a deliberately long attack and decay so the
-difference between negative and positive curvature is audible: use Left/Right
-to select the curve, then press A to play a fresh note.
+scaling for its internal note-triggered envelope. LFOs expose distinct current
+and initial phase, reproducible sample-and-hold random seeding, and continuous
+global update. The focused `examples/synthesis` scene routes its synth bus into a master bus,
+configures the completed LFO controls, and uses a deliberately long
+attack and decay so the curvature difference is audible: use Left/Right to
+select the curve, then press A to play a fresh note.
 
 ```sh
 go run ./cmd/gopdsdk run --sdk /path/to/PlaydateSDK ./examples/synthesis
 go run ./cmd/gopdsdk run device --memory conservative --sdk /path/to/PlaydateSDK ./examples/synthesis
 ```
+
+On 2026-08-18 the updated scene passed deterministic tests, the official
+Windows SDK 3.1.1 Simulator build and launch, and the TinyGo 0.41.1 conservative
+hard-float device build. The final device artifact uses 285,376 bytes of static
+RAM and produces a 1,504,256-byte ELF and a 60,456-byte PDX; COM3 installation
+and launch pass. User-confirmed Simulator and physical-device interaction
+covered audible nested routing, note playback, curvature control, and responsive
+behavior. The physical conservative-GC soak, bounded memory growth, and
+unchanged post-run `crashlog.txt` and `errorlog.txt` also passed by user
+confirmation.
 
 Two additional focused scenes cover custom audio without adding more controls
 to `examples/audio`. `examples/callbackpcm` continuously renders a sine wave
@@ -1082,7 +1096,8 @@ rejects new native construction instead of allocating from the audio callback.
 
 Routing and modulation edges do not transfer endpoint ownership. Closing a
 source or signal detaches every retained edge before freeing it; closing a
-channel detaches its sources without closing them. Unit tests cover duplicate
+channel detaches its sources and borrowed output without closing upstream
+owned sources. Unit tests cover duplicate
 attachments, close ordering, invalid parameters, graph forwarding through
 `NewApplication`, and generated Simulator/device bridge symbols.
 

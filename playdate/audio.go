@@ -225,6 +225,10 @@ type Microphones interface {
 // a source detaches it; closing the channel detaches every source. Neither
 // operation closes the other owned object.
 type AudioChannel interface {
+	// Output returns the channel's borrowed post-effects, pre-volume-and-pan
+	// output. The source expires when the channel closes and may be routed into
+	// another channel; routing cycles are rejected.
+	Output() (AudioSource, error)
 	AddSource(source AudioSource) error
 	RemoveSource(source AudioSource) error
 	AddEffect(effect AudioEffect) error
@@ -388,6 +392,9 @@ type LFO interface {
 	Signal
 	SetRate(rate float32) error
 	SetPhase(phase float32) error
+	SetStartPhase(phase float32) error
+	SetRandomSeed(seed uint16) error
+	SetGlobal(global bool) error
 	SetCenter(center float32) error
 	SetDepth(depth float32) error
 	SetRetrigger(retrigger bool) error

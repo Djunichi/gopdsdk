@@ -15,6 +15,9 @@ type LFODriver struct {
 	Signal          SignalDriver
 	SetRate         func(uintptr, float32)
 	SetPhase        func(uintptr, float32)
+	SetStartPhase   func(uintptr, float32)
+	SetRandomSeed   func(uintptr, uint16)
+	SetGlobal       func(uintptr, bool)
 	SetCenter       func(uintptr, float32)
 	SetDepth        func(uintptr, float32)
 	SetRetrigger    func(uintptr, bool)
@@ -198,6 +201,33 @@ func (l *lfo) SetPhase(value float32) error {
 		return err
 	}
 	l.driver.SetPhase(h, value)
+	return nil
+}
+func (l *lfo) SetStartPhase(value float32) error {
+	if !finite(value) || value < 0 || value > 1 {
+		return playdate.ErrAudioParameter
+	}
+	h, err := l.nativeHandle()
+	if err != nil {
+		return err
+	}
+	l.driver.SetStartPhase(h, value)
+	return nil
+}
+func (l *lfo) SetRandomSeed(value uint16) error {
+	h, err := l.nativeHandle()
+	if err != nil {
+		return err
+	}
+	l.driver.SetRandomSeed(h, value)
+	return nil
+}
+func (l *lfo) SetGlobal(value bool) error {
+	h, err := l.nativeHandle()
+	if err != nil {
+		return err
+	}
+	l.driver.SetGlobal(h, value)
 	return nil
 }
 func (l *lfo) SetCenter(value float32) error {
