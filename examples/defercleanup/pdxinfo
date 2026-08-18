@@ -1,0 +1,5 @@
+name=gopdsdk Defer Cleanup
+author=gopdsdk contributors
+bundleID=sdk.gopdsdk.defercleanup
+version=0.0.1
+buildNumber=1
