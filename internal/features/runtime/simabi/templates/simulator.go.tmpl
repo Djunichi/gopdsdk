@@ -209,6 +209,8 @@ void bridgeFreeFilePlayer(uintptr_t player);
 uintptr_t bridgeSoundEffectSource(uintptr_t effect);
 uintptr_t bridgeNewAudioChannel(void);
 uintptr_t bridgeAudioChannelOutput(uintptr_t channel);
+uintptr_t bridgeAudioChannelDryLevelSignal(uintptr_t channel);
+uintptr_t bridgeAudioChannelWetLevelSignal(uintptr_t channel);
 uintptr_t bridgeDefaultAudioChannel(void);
 void bridgeAudioOutputState(int* headphones, int* headsetMic);
 void bridgeSetAudioOutputsActive(int headphones, int speaker);
@@ -773,6 +775,9 @@ func (playdateContext) LoadFilePlayer(path string) (sdkPlaydate.FilePlayer, erro
 var audioChannelDriver = sdkRuntime.AudioChannelDriver{
 	Output: func(channel uintptr) uintptr { return uintptr(C.bridgeAudioChannelOutput(C.uintptr_t(channel))) },
 	OutputAudio: sdkRuntime.AudioDriver{Source: func(h uintptr) uintptr { return h }, Stop: func(h uintptr) { C.bridgeSourceStop(C.uintptr_t(h)) }, SetVolume: func(h uintptr,l,r float32){C.bridgeSourceSetVolume(C.uintptr_t(h),C.float(l),C.float(r))}, Volume: func(h uintptr)(float32,float32){var l,r C.float;C.bridgeSourceVolume(C.uintptr_t(h),&l,&r);return float32(l),float32(r)}, IsPlaying: func(h uintptr)bool{return C.bridgeSourceIsPlaying(C.uintptr_t(h))!=0}, Pause: func(uintptr,bool){}},
+	DryLevelSignal: func(channel uintptr) uintptr { return uintptr(C.bridgeAudioChannelDryLevelSignal(C.uintptr_t(channel))) },
+	WetLevelSignal: func(channel uintptr) uintptr { return uintptr(C.bridgeAudioChannelWetLevelSignal(C.uintptr_t(channel))) },
+	LevelSignal: signalDriver,
 	AddSource: func(channel, source uintptr) bool { return C.bridgeAudioChannelAddSource(C.uintptr_t(channel), C.uintptr_t(source)) != 0 },
 	RemoveSource: func(channel, source uintptr) bool { return C.bridgeAudioChannelRemoveSource(C.uintptr_t(channel), C.uintptr_t(source)) != 0 },
 	AddEffect: func(channel, effect uintptr) bool { return C.bridgeAudioChannelAddEffect(C.uintptr_t(channel), C.uintptr_t(effect)) != 0 },

@@ -46,14 +46,16 @@ type ControlSignalDriver struct {
 }
 
 type signalNode struct {
-	handle    uintptr
-	driver    SignalDriver
-	synths    map[*synth]uint8
-	effects   map[*effectNode]uint8
-	delayTaps map[*delayTap]struct{}
-	channels  map[*audioChannel]uint8
-	players   map[*audioPlayer]struct{}
-	closed    bool
+	handle        uintptr
+	driver        SignalDriver
+	synths        map[*synth]uint8
+	effects       map[*effectNode]uint8
+	delayTaps     map[*delayTap]struct{}
+	channels      map[*audioChannel]uint8
+	players       map[*audioPlayer]struct{}
+	closed        bool
+	borrowedOwner *audioChannel
+	borrowedKind  uint8
 }
 
 type lfo struct {
@@ -73,6 +75,13 @@ type controlSignal struct {
 
 func newSignalNode(handle uintptr, driver SignalDriver) *signalNode {
 	return &signalNode{handle: handle, driver: driver, synths: make(map[*synth]uint8), effects: make(map[*effectNode]uint8), delayTaps: make(map[*delayTap]struct{}), channels: make(map[*audioChannel]uint8), players: make(map[*audioPlayer]struct{})}
+}
+
+func newBorrowedSignalNode(handle uintptr, driver SignalDriver, owner *audioChannel, kind uint8) *signalNode {
+	signal := newSignalNode(handle, driver)
+	signal.borrowedOwner = owner
+	signal.borrowedKind = kind
+	return signal
 }
 
 // NewLFO wraps an owned native low-frequency oscillator.
@@ -175,7 +184,18 @@ func (s *signalNode) Close() error {
 	s.delayTaps = nil
 	s.channels = nil
 	s.players = nil
-	s.driver.Free(handle)
+	if s.borrowedOwner == nil && s.driver.Free != nil {
+		s.driver.Free(handle)
+	}
+	if s.borrowedOwner != nil {
+		if s.borrowedKind == 1 && s.borrowedOwner.drySignal == s {
+			s.borrowedOwner.drySignal = nil
+		}
+		if s.borrowedKind == 2 && s.borrowedOwner.wetSignal == s {
+			s.borrowedOwner.wetSignal = nil
+		}
+		s.borrowedOwner = nil
+	}
 	s.handle = 0
 	s.closed = true
 	return nil

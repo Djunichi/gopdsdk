@@ -6,13 +6,27 @@ that out.
 
 ## Unreleased
 
+- Added borrowed `AudioChannel.DryLevelSignal` and `WetLevelSignal` values for
+  modulation driven by the channel level before and after effects. Explicit
+  wrapper close and owner-channel close detach tracked edges without freeing
+  SDK-owned signal state; retained wrappers fail with `ErrAudioGraphClosed`.
+  Deterministic ownership and generated-bridge tests pass, as do the official
+  Windows SDK 3.1.1 Simulator build and TinyGo 0.41.1 conservative hard-float
+  device build of the updated `examples/synthesis` consumer. The device artifact
+  uses 285,856 bytes of static RAM and produces a 1,539,220-byte ELF and a
+  61,460-byte PDX; COM3 installation and launch pass. On 2026-08-18 the user
+  confirmed initialization, repeated note playback, audible dry/wet
+  level-driven pan and volume modulation, curvature changes, and responsive
+  behavior in the Simulator and on a physical Playdate. The physical
+  conservative-GC soak, bounded memory growth, and unchanged post-run
+  `crashlog.txt` and `errorlog.txt` also passed by user confirmation.
 - Added nested audio-channel routing through borrowed post-effects,
   pre-volume-and-pan outputs. Outputs expire and detach from downstream routes
   when their owning channel closes; the runtime rejects direct and transitive
   cycles before native graph mutation.
 - Completed the official LFO controls with distinct initial phase,
-  reproducible sample-and-hold random seeds, and continuous global update. Both generated
-  native adapters and the `examples/synthesis` acceptance consumer cover the
+  reproducible sample-and-hold random seeds, and continuous global update. Both
+  generated native adapters and the `examples/synthesis` acceptance consumer cover the
   new contracts. Deterministic runtime and generated-source tests, the official
   Windows SDK 3.1.1 Simulator build and launch, and the TinyGo 0.41.1
   conservative hard-float device build pass. The final device artifact uses

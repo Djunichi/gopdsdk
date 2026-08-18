@@ -272,6 +272,39 @@ pre-1.0 reconciliation against the official Playdate SDK 3.1.1 headers.
   soak evidence, and unchanged post-run device logs before declaring P12
   complete.
 
+### P12.5 — borrowed channel level signals
+
+Complete. The public API, ownership runtime, both generated native adapters,
+deterministic tests, and `examples/synthesis` implement the accepted scope. The
+official Windows SDK 3.1.1 Simulator build and launch pass. The TinyGo 0.41.1
+conservative hard-float device build uses 285,856 bytes of static RAM and
+produces a 1,539,220-byte ELF and a 61,460-byte PDX; COM3 installation and launch
+pass. On 2026-08-18 the user confirmed initialization, repeated note playback,
+audible dry/wet level-driven pan and volume modulation, curvature changes, and
+responsive behavior in the Simulator and on a physical Playdate. The user also
+confirmed the physical conservative-GC soak, bounded memory growth, and
+unchanged post-run `crashlog.txt` and `errorlog.txt`.
+
+Expose the official channel levels as borrowed modulation signals without
+inventing ownership the SDK does not provide.
+
+- `AudioChannel.DryLevelSignal` follows the channel volume before effects;
+  `WetLevelSignal` follows it after effects.
+- Both values implement the existing `Signal` contract so they compose with
+  current synth, effect, player, tap, and channel modulation setters. Closing a
+  wrapper detaches tracked edges but never frees SDK-owned native state; a later
+  request returns a fresh wrapper.
+- Closing the owning channel detaches every use of both signals before removing
+  the channel and makes retained wrappers return `ErrAudioGraphClosed`.
+- Both generated ABI contexts forward the exact SDK 3.1.1 functions. Runtime
+  tests cover caching, explicit wrapper close, reacquisition, downstream detach,
+  native non-ownership, and owner-close expiry.
+- The `examples/synthesis` consumer uses the dry level for master-bus pan
+  modulation and the wet level for master-bus volume modulation. Require
+  official Simulator interaction, device installation and physical behavior,
+  conservative-GC soak, bounded memory growth, and unchanged post-run logs
+  before declaring P12 complete.
+
 ## P13 — stable contract and `v1.0.0`
 
 P13 adds no planned feature family. It releases the accumulated offline SDK as
